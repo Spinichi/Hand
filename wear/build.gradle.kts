@@ -43,7 +43,7 @@ dependencies {
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.foundation:foundation")
-    implementation("androidx.wear.compose:compose-material:1.6.0") // Wear Compose
+    implementation("androidx.wear.compose:compose-material:1.5.4") // Wear Compose
     implementation("androidx.compose.ui:ui-tooling-preview")
     debugImplementation("androidx.compose.ui:ui-tooling")
 
@@ -57,4 +57,6 @@ dependencies {
     androidTestImplementation(platform("androidx.compose:compose-bom:2024.10.00"))
     androidTestImplementation(libs.androidx.ui.test.junit4)
     debugImplementation(libs.androidx.ui.test.manifest)
+    implementation("androidx.wear.compose:compose-foundation:1.5.4")
+    implementation("androidx.wear.compose:compose-navigation:1.5.4")
 }
