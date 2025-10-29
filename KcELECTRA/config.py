@@ -7,3 +7,6 @@ class ModelConfig:
     DROPOUT_RATE = 0.3   # 2070 Super 8GB GPU 최적화
     MHA_HEADS = 8        # 2070 Super 8GB GPU 최적화
     MHA_KEY_DIM = 64     # 2070 Super 8GB GPU 최적화
+    
+    MODEL_NAME = "beomi/KcELECTRA-base"
+    TOKENIZER = "beomi/KcELECTRA-base"
