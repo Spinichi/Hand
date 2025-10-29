@@ -21,4 +21,5 @@ dependencyResolutionManagement {
 
 rootProject.name = "Hand"
 include(":app")
- 
+include(":wear")
+include(":core")

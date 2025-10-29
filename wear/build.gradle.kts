@@ -5,24 +5,18 @@ plugins {
 }
 
 android {
-    namespace = "com.example.hand"
+    namespace = "com.example.wear"
     compileSdk {
         version = release(36)
     }
-    buildFeatures {
-        compose = true  // Compose 사용
-    }
-    composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.1"  // 최신 Compose Compiler
-    }
+
     defaultConfig {
-        applicationId = "com.example.hand"
-        minSdk = 24
+        applicationId = "com.example.wear"
+        minSdk = 30
         targetSdk = 36
         versionCode = 1
         versionName = "1.0"
 
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     buildTypes {
@@ -41,22 +35,30 @@ android {
     kotlinOptions {
         jvmTarget = "11"
     }
+    useLibrary("wear-sdk")
+    buildFeatures {
+        compose = true
+    }
 }
 
 dependencies {
     implementation(project(":core"))
-    implementation(libs.androidx.core.ktx)
-    implementation(libs.androidx.appcompat)
-    implementation(libs.material)
-    implementation(libs.androidx.activity)
-    implementation(libs.androidx.constraintlayout)
-    testImplementation(libs.junit)
-    androidTestImplementation(libs.androidx.junit)
-    androidTestImplementation(libs.androidx.espresso.core)
-    implementation(platform("androidx.compose:compose-bom:2024.10.00")) // BOM
+    implementation(platform("androidx.compose:compose-bom:2024.10.00"))
     implementation("androidx.activity:activity-compose:1.9.3")
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.material3:material3")
-    implementation("androidx.compose.ui:ui-tooling-preview")
-    debugImplementation("androidx.compose.ui:ui-tooling")
+    implementation(libs.play.services.wearable)
+    implementation(platform(libs.compose.bom))
+    implementation(libs.compose.ui)
+    implementation(libs.androidx.ui.graphics)
+    implementation(libs.compose.ui.tooling.preview)
+    implementation(libs.androidx.compose.material)
+    implementation(libs.androidx.compose.foundation)
+    implementation(libs.androidx.wear.tooling.preview)
+    implementation(libs.activity.compose)
+    implementation(libs.androidx.core.splashscreen)
+    androidTestImplementation(platform(libs.compose.bom))
+    androidTestImplementation(libs.androidx.ui.test.junit4)
+    debugImplementation(libs.compose.ui.tooling)
+    debugImplementation(libs.androidx.ui.test.manifest)
 }
