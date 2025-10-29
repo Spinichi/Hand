@@ -27,13 +27,12 @@
             android:value="true" />
 
         <activity
-            android:name="com.example.hand.wear.MainActivity"
+            android:name="com.example.wear.WearHomeActivity"
             android:exported="true"
             android:taskAffinity=""
             android:theme="@style/MainActivityTheme.Starting">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
