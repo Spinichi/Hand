@@ -1,18 +1,27 @@
 plugins {
-    id("java-library")
-    alias(libs.plugins.jetbrains.kotlin.jvm)
-    alias(libs.plugins.kotlin.android)
+    id("com.android.library")
+    kotlin("android")
 }
-java {
-    sourceCompatibility = JavaVersion.VERSION_11
-    targetCompatibility = JavaVersion.VERSION_11
-}
-kotlin {
-    compilerOptions {
-        jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11
+
+android {
+    namespace = "com.example.core" // 적절히 변경
+    compileSdk = 34
+
+    defaultConfig {
+        minSdk = 21
+        targetSdk = 34
+    }
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_11
+        targetCompatibility = JavaVersion.VERSION_11
+    }
+
+    kotlinOptions {
+        jvmTarget = "11"
     }
 }
 
 dependencies {
-    implementation(libs.androidx.core.ktx)
+    implementation("androidx.core:core-ktx:1.10.1")
 }

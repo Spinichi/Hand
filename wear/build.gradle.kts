@@ -6,9 +6,7 @@ plugins {
 
 android {
     namespace = "com.example.wear"
-    compileSdk {
-        version = release(36)
-    }
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.example.wear"
@@ -16,49 +14,47 @@ android {
         targetSdk = 36
         versionCode = 1
         versionName = "1.0"
-
     }
 
-    buildTypes {
-        release {
-            isMinifyEnabled = false
-            proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
-            )
-        }
+    buildFeatures {
+        compose = true
+    }
+    composeOptions {
+        kotlinCompilerExtensionVersion = "1.5.1"
+    }
+
+    kotlinOptions {
+        jvmTarget = "11"
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
-    kotlinOptions {
-        jvmTarget = "11"
-    }
+
     useLibrary("wear-sdk")
-    buildFeatures {
-        compose = true
-    }
 }
 
 dependencies {
     implementation(project(":core"))
+
+    // Compose
     implementation(platform("androidx.compose:compose-bom:2024.10.00"))
     implementation("androidx.activity:activity-compose:1.9.3")
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.material3:material3")
+    implementation("androidx.compose.foundation:foundation")
+    implementation("androidx.wear.compose:compose-material:1.6.0") // Wear Compose
+    implementation("androidx.compose.ui:ui-tooling-preview")
+    debugImplementation("androidx.compose.ui:ui-tooling")
+
+    // Wear 관련
     implementation(libs.play.services.wearable)
-    implementation(platform(libs.compose.bom))
-    implementation(libs.compose.ui)
-    implementation(libs.androidx.ui.graphics)
-    implementation(libs.compose.ui.tooling.preview)
-    implementation(libs.androidx.compose.material)
-    implementation(libs.androidx.compose.foundation)
-    implementation(libs.androidx.wear.tooling.preview)
-    implementation(libs.activity.compose)
+
+    // 기타
     implementation(libs.androidx.core.splashscreen)
-    androidTestImplementation(platform(libs.compose.bom))
+
+    // 테스트
+    androidTestImplementation(platform("androidx.compose:compose-bom:2024.10.00"))
     androidTestImplementation(libs.androidx.ui.test.junit4)
-    debugImplementation(libs.compose.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
 }
