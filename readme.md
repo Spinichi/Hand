@@ -22,7 +22,7 @@ HAND는 갤럭시 워치를 활용하여 사용자의 심리 상태를 24시간 
 ## 🛠️ 기술 스택
 
 ### Backend
-- Java 21
+- Java 25
 - Spring Boot 3.x
 - Spring Cloud Gateway
 - Gradle
