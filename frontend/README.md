@@ -1,1 +1,0 @@
-# mobile app과 wearOS

@@ -10,5 +10,5 @@ class ModelConfig:
     MODEL_NAME = "beomi/KcELECTRA-base"
     TOKENIZER = "beomi/KcELECTRA-base"
     
-    SEQUENCE_LEN = 128
-    SEQUENCE_STRIDE_LEN = 32
+    SEQUENCE_LEN = 64
+    SEQUENCE_STRIDE_LEN = 16
