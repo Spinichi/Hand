@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.hand.wear">
 
     <uses-permission android:name="android.permission.WAKE_LOCK" />
 
@@ -27,7 +28,7 @@
             android:value="true" />
 
         <activity
-            android:name="com.example.wear.WearHomeActivity"
+            android:name=".WearHomeActivity"
             android:exported="true"
             android:taskAffinity=""
             android:theme="@style/MainActivityTheme.Starting">
@@ -37,7 +38,7 @@
             </intent-filter>
         </activity>
         <activity
-            android:name="com.example.wear.BeforeRelaxActivity"
+            android:name=".BeforeRelaxActivity"
             android:exported="false"
             android:theme="@style/MainActivityTheme.Starting" />
     </application>
