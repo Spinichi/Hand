@@ -36,6 +36,10 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <activity
+            android:name="com.example.wear.BeforeRelaxActivity"
+            android:exported="false"
+            android:theme="@style/MainActivityTheme.Starting" />
     </application>
 
 </manifest>
