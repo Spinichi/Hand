@@ -10,7 +10,7 @@ spring:
         driver-class-name: com.mysql.cj.jdbc.Driver
     jpa:
         hibernate:
-            ddl-auto: validate
+            ddl-auto: update
         show-sql: true
         properties:
             hibernate:
@@ -18,3 +18,7 @@ spring:
                 dialect: org.hibernate.dialect.MySQL8Dialect
 server:
     port: 8080
+
+jwt:
+    secret: "ZkR9mS2QvT7yP0aU1nW4eX6rL8oC5jB3hK9tV2pY0xF7dE1sZq"
+    access-validity-ms: 36000000   # 10시간 = 10 * 60 * 60 * 1000
