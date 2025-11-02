@@ -26,7 +26,15 @@ public class SecurityConfig {
                         .authenticationEntryPoint(new JwtAuthenticationEntryPoint())
                         .accessDeniedHandler(new JwtAccessDeniedHandler()))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/v1/users/signup", "/api/v1/auth/login").permitAll()
+                        // 인증 없이 접근 가능한 경로
+                        .requestMatchers(
+                                "/api/v1/users/signup",
+                                "/api/v1/auth/login",
+                                "/swagger-ui.html", "/swagger-ui/**",
+                                "/v3/api-docs", "/v3/api-docs/**",
+                                "/swagger-resources/**"
+                        ).permitAll()
+                        // 나머지 모든 요청은 인증 필요
                         .anyRequest().authenticated())
                 .addFilterBefore(new JwtAuthenticationFilter(tokenProvider), UsernamePasswordAuthenticationFilter.class);
 
