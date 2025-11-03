@@ -1,17 +1,19 @@
 package com.finger.hand_backend.auth;
 
+import com.finger.hand_backend.common.dto.ApiResponse;
 import com.finger.hand_backend.dto.LoginRequest;
 import com.finger.hand_backend.dto.SignupRequest;
-import com.finger.hand_backend.user.User;
-import com.finger.hand_backend.user.UserRepository;
+import com.finger.hand_backend.user.entity.User;
+import com.finger.hand_backend.user.repository.UserRepository;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
+
 @RestController
-@RequestMapping("/api/v1")
 public class AuthController {
 
     private final AuthService authService;
@@ -22,38 +24,51 @@ public class AuthController {
         this.userRepository = userRepository;
     }
 
+    // ✅ 회원가입
     @PostMapping("/users/signup")
-    public ResponseEntity<?> signup(@Valid @RequestBody SignupRequest request) {
+    public ResponseEntity<ApiResponse<Map<String, Long>>> signup(@Valid @RequestBody SignupRequest request) {
         User created = authService.signup(request.getEmail(), request.getPassword());
-        return ResponseEntity.status(HttpStatus.CREATED).body("{\"id\":"+created.getId()+"}");
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(ApiResponse.success(
+                        Map.of("id", created.getId()),
+                        "회원가입 성공"
+                ));
     }
 
+    // ✅ 로그인
     @PostMapping("/auth/login")
-    public ResponseEntity<?> login(@Valid @RequestBody LoginRequest request) {
+    public ResponseEntity<ApiResponse<Map<String, Object>>> login(@Valid @RequestBody LoginRequest request) {
         String token = authService.login(request);
         long expiresIn = authService.getExpiresInSeconds();
 
-        return ResponseEntity.ok()
-                .header("Authorization", "Bearer " + token) // 👈 헤더에 추가
-                .header("Expires-In", String.valueOf(expiresIn)) // 선택
-                .build();
+        return ResponseEntity.ok(
+                ApiResponse.success(
+                        Map.of(
+                                "accessToken", token,
+                                "expiresIn", expiresIn
+                        ),
+                        "로그인 성공"
+                )
+        );
     }
 
-    // 회원탈퇴 (DB에서 완전 삭제)
+    // ✅ 회원탈퇴 (DB에서 완전 삭제)
     @DeleteMapping("/users/me")
-    public ResponseEntity<?> deleteMyAccount(Authentication authentication) {
+    public ResponseEntity<ApiResponse<?>> deleteMyAccount(Authentication authentication) {
         if (authentication == null || authentication.getName() == null) {
-            return ResponseEntity.status(401).body("{\"message\":\"Unauthorized\"}");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(ApiResponse.fail("Unauthorized"));
         }
 
         Long userId = Long.valueOf(authentication.getName());
         if (!userRepository.existsById(userId)) {
-            return ResponseEntity.status(404).body("{\"message\":\"User not found\"}");
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(ApiResponse.fail("User not found"));
         }
 
         userRepository.deleteById(userId);
-        return ResponseEntity.noContent().build(); // 204 No Content
+        return ResponseEntity.status(HttpStatus.NO_CONTENT)
+                .body(ApiResponse.success(null, "회원탈퇴 완료"));
     }
-
 }
-

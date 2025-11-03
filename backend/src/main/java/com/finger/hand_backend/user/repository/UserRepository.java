@@ -1,5 +1,6 @@
-package com.finger.hand_backend.user;
+package com.finger.hand_backend.user.repository;
 
+import com.finger.hand_backend.user.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Optional;
