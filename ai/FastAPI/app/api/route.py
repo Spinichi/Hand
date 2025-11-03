@@ -15,10 +15,13 @@ async def health():
 @router.post("/emotion_predict", response_model=EmotionOutput)
 async def text_chat(input_data: EmotionInput):
     try:
-        user_id = input_data["user_id"]
-        text = input_data["text"]
-        reply = await emotionClassifying(text)
+        user_id = input_data.user_id
+        text = input_data.text
+        
+        # 감정 예측
+        reply = emotionClassifying(text)
         result = {"user_id": user_id, "reply": reply}
+        
         return result
     
     except Exception as e:
