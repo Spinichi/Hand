@@ -2,7 +2,9 @@ from pydantic import BaseModel
 from typing import List, Dict
 
 class EmotionInput(BaseModel):
-    input_data : dict
+    user_id : int
+    text : List[str]
 
 class EmotionOutput(BaseModel):
-    result: dict
+    user_id : int
+    result: Dict[str, float]
