@@ -1,5 +1,7 @@
-package com.finger.hand_backend.user;
+package com.finger.hand_backend.user.service;
 
+import com.finger.hand_backend.user.entity.User;
+import com.finger.hand_backend.user.repository.UserRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

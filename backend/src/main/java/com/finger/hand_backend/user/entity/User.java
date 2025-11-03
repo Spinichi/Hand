@@ -1,4 +1,4 @@
-package com.finger.hand_backend.user;
+package com.finger.hand_backend.user.entity;
 
 import jakarta.persistence.*;
 import java.time.LocalDateTime;

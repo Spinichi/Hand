@@ -2,9 +2,9 @@ package com.finger.hand_backend.auth;
 
 import com.finger.hand_backend.dto.LoginRequest;
 import com.finger.hand_backend.security.JwtTokenProvider;
-import com.finger.hand_backend.user.User;
-import com.finger.hand_backend.user.UserRepository;
-import com.finger.hand_backend.user.UserService;
+import com.finger.hand_backend.user.entity.User;
+import com.finger.hand_backend.user.repository.UserRepository;
+import com.finger.hand_backend.user.service.UserService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;

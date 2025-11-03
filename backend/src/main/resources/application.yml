@@ -22,6 +22,9 @@ spring:
             auto-index-creation: true
 server:
     port: 8080
+    servlet:
+      context-path: /api/v1
+
 
 jwt:
     secret: "ZkR9mS2QvT7yP0aU1nW4eX6rL8oC5jB3hK9tV2pY0xF7dE1sZq"

@@ -1,10 +1,12 @@
 package com.finger.hand_backend.user.controller;
 
 
+import com.finger.hand_backend.common.dto.ApiResponse;
 import com.finger.hand_backend.user.dto.IndividualUserDtos.*;
 import com.finger.hand_backend.user.service.IndividualUserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -12,7 +14,7 @@ import org.springframework.web.bind.annotation.*;
 
 
 @RestController
-@RequestMapping("/api/v1/individual-users")
+@RequestMapping("/individual-users")
 @RequiredArgsConstructor
 public class IndividualUserController {
     private final IndividualUserService service;
@@ -27,27 +29,35 @@ public class IndividualUserController {
     }
 
 
+    // 생성 (201 Created)
     @PostMapping
-    public ResponseEntity<Response> create(@Valid @RequestBody CreateRequest req) {
-        return ResponseEntity.ok(service.create(currentUserId(), req));
+    public ResponseEntity<ApiResponse<Response>> create(@Valid @RequestBody CreateRequest req) {
+        Response created = service.create(currentUserId(), req);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success(created, "개인프로필 생성 완료"));
     }
 
 
+    // 조회 (200 OK)
     @GetMapping("/me")
-    public ResponseEntity<Response> getMine() {
-        return ResponseEntity.ok(service.getMine(currentUserId()));
+    public ResponseEntity<ApiResponse<Response>> getMine() {
+        Response me = service.getMine(currentUserId());
+        return ResponseEntity.ok(ApiResponse.success(me, "개인프로필 조회 성공"));
     }
 
 
+    // 수정 (200 OK)
     @PutMapping("/me")
-    public ResponseEntity<Response> update(@Valid @RequestBody UpdateRequest req) {
-        return ResponseEntity.ok(service.update(currentUserId(), req));
+    public ResponseEntity<ApiResponse<Response>> update(@Valid @RequestBody UpdateRequest req) {
+        Response updated = service.update(currentUserId(), req);
+        return ResponseEntity.ok(ApiResponse.success(updated, "개인프로필 수정 완료"));
     }
 
 
+    // 삭제 (200 OK) — ApiResponse 래퍼 일관성 유지를 위해 204 대신 200 사용
     @DeleteMapping("/me")
-    public ResponseEntity<Void> deleteMine() {
+    public ResponseEntity<ApiResponse<Void>> deleteMine() {
         service.deleteMine(currentUserId());
-        return ResponseEntity.noContent().build();
+        return ResponseEntity.ok(ApiResponse.success(null, "개인프로필 삭제 완료"));
     }
 }
