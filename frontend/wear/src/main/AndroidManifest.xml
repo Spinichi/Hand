@@ -41,6 +41,42 @@
             android:name=".BeforeRelaxActivity"
             android:exported="false"
             android:theme="@style/MainActivityTheme.Starting" />
+        <activity
+            android:name=".CareEx1Activity"
+            android:exported="false"
+            android:theme="@style/MainActivityTheme.Starting" />
+        <activity
+            android:name=".CareEx2Activity"
+            android:exported="false"
+            android:theme="@style/MainActivityTheme.Starting" />
+        <activity
+            android:name=".Care1Activity"
+            android:exported="false"
+            android:theme="@style/MainActivityTheme.Starting" />
+        <activity
+            android:name=".Care2Activity"
+            android:exported="false"
+            android:theme="@style/MainActivityTheme.Starting" />
+        <activity
+            android:name=".Care3Activity"
+            android:exported="false"
+            android:theme="@style/MainActivityTheme.Starting" />
+        <activity
+            android:name=".Care4Activity"
+            android:exported="false"
+            android:theme="@style/MainActivityTheme.Starting" />
+        <activity
+            android:name=".Care5Activity"
+            android:exported="false"
+            android:theme="@style/MainActivityTheme.Starting" />
+        <activity
+            android:name=".Care6Activity"
+            android:exported="false"
+            android:theme="@style/MainActivityTheme.Starting" />
+        <activity
+            android:name=".CareComplete"
+            android:exported="false"
+            android:theme="@style/MainActivityTheme.Starting" />
     </application>
 
 </manifest>
