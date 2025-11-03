@@ -1,12 +1,14 @@
 package com.hand.wear
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -14,26 +16,40 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Devices
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.wear.compose.material.*
 import ui.theme.HandTheme
+import com.hand.wear.components.BackgroundCircles
+
 
 class BeforeRelaxActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
             HandTheme {
-                BeforeRelaxScreen()
+                BeforeRelaxScreen(
+                    onCancel = {
+                        // ❌ X 버튼 눌렀을 때: WearHomeActivity 로 이동
+                        startActivity(Intent(this, WearHomeActivity::class.java))
+                        finish() // 현재 화면 종료
+                    },
+                    onConfirm = {
+                        // ✅ Check 버튼 눌렀을 때: CareEx1Activity 로 이동
+                        startActivity(Intent(this, CareEx1Activity::class.java))
+                        finish()
+                    }
+                )
             }
         }
     }
 }
 
 @Composable
-fun BeforeRelaxScreen() {
+fun BeforeRelaxScreen(
+    onCancel: () -> Unit = {},
+    onConfirm: () -> Unit = {}
+) {
     Scaffold {
         BoxWithConstraints(
             modifier = Modifier
@@ -44,35 +60,16 @@ fun BeforeRelaxScreen() {
             val screenHeight = this.maxHeight
             val screenWidth = this.maxWidth
 
-            // 반응형 원 리스트 (비율로 지정)
-            val circles = listOf(
-                CircleInfoFraction(0.7f, -0.25f, -0.15f),
-                CircleInfoFraction(0.35f, 0.3f, 0.1f),
-                CircleInfoFraction(0.2f, -0.05f, 0.35f)
-            )
+            BackgroundCircles(screenWidth = screenWidth, screenHeight = screenHeight)
 
 
-
-            // 원 그리기
-            circles.forEach { circle ->
-                Box(
-                    modifier = Modifier
-                        .size(screenHeight * circle.sizeFraction) // 화면 높이 기준 반응형
-                        .offset(
-                            x = screenWidth * circle.offsetXFraction,
-                            y = screenHeight * circle.offsetYFraction
-                        )
-                        .background(Color.White, shape = androidx.compose.foundation.shape.CircleShape)
-                )
-            }
             Box(
                 modifier = Modifier
                     .size(screenHeight * 0.2f)
                     .offset(x = screenWidth * 0.3f, y = screenHeight * 0.1f)
-                    .background(Color(0xFFF7F4F2), shape = androidx.compose.foundation.shape.CircleShape)
+                    .background(Color(0xFFF7F4F2), shape = CircleShape)
             )
 
-            // Column UI (기존과 동일)
             Column(
                 modifier = Modifier.wrapContentHeight(),
                 verticalArrangement = Arrangement.Top,
@@ -83,8 +80,7 @@ fun BeforeRelaxScreen() {
                 Text(
                     text = "잠시 쉬어볼까요?",
                     color = Color(0xFF4F3422),
-                    fontWeight = FontWeight.Bold,
-                    fontSize = (screenHeight.value * 0.09).sp,
+                    style = MaterialTheme.typography.title1.copy(fontSize = (screenHeight.value * 0.09).sp),
                     textAlign = TextAlign.Center,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -101,8 +97,9 @@ fun BeforeRelaxScreen() {
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    // ❌ X 버튼
                     Button(
-                        onClick = { },
+                        onClick = { onCancel() },
                         colors = ButtonDefaults.buttonColors(backgroundColor = Color.Transparent),
                         modifier = Modifier.size(screenHeight * 0.18f)
                     ) {
@@ -115,8 +112,9 @@ fun BeforeRelaxScreen() {
 
                     Spacer(modifier = Modifier.width(screenWidth * 0.2f))
 
+                    // ✅ 체크 버튼
                     Button(
-                        onClick = { },
+                        onClick = { onConfirm() },
                         colors = ButtonDefaults.buttonColors(backgroundColor = Color.Transparent),
                         modifier = Modifier.size(screenHeight * 0.18f)
                     ) {
@@ -134,16 +132,7 @@ fun BeforeRelaxScreen() {
 
 // 화면 비율 기준 원 정보
 data class CircleInfoFraction(
-    val sizeFraction: Float, // 화면 높이에 대한 크기 비율
-    val offsetXFraction: Float, // 화면 폭에 대한 X 위치 비율
-    val offsetYFraction: Float  // 화면 높이에 대한 Y 위치 비율
+    val sizeFraction: Float,
+    val offsetXFraction: Float,
+    val offsetYFraction: Float
 )
-
-
-
-
-@Preview(device = Devices.WEAR_OS_SMALL_ROUND, showSystemUi = true)
-@Composable
-fun BeforeRelaxScreenPreview() {
-    BeforeRelaxScreen()
-}

@@ -1,0 +1,11 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <style name="Theme.Hand.Wear" parent="android:Theme.DeviceDefault">
+        <item name="android:windowBackground">@color/background_color</item>
+    </style>
+
+    <style name="Theme.Hand.Wear.Splash" parent="Theme.Hand.Wear">
+        <item name="android:windowBackground">@drawable/splash_icon</item>
+
+    </style>
+
+</resources>
