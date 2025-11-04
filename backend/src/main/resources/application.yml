@@ -18,7 +18,7 @@ spring:
                 dialect: org.hibernate.dialect.MySQL8Dialect
     data:
         mongodb:
-            uri: mongodb://${MONGO_USERNAME}:${MONGO_PASSWORD}@${MONGO_HOST}:${MONGO_PORT}/${MONGO_DB}?authSource=${MONGO_DB}
+            uri: mongodb://${MONGO_USERNAME}:${MONGO_PASSWORD}@${MONGO_HOST}:${MONGO_PORT}/${MONGO_DB}?authSource=${MONGO_USERNAME}
             auto-index-creation: true
 server:
     port: 8080
