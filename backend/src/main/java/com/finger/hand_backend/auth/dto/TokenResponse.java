@@ -1,5 +1,10 @@
 package com.finger.hand_backend.auth.dto;
 
+import lombok.Getter;
+import lombok.Setter;
+
+@Getter
+@Setter
 public class TokenResponse {
     private String accessToken;
     private long expiresIn; // seconds
@@ -8,7 +13,5 @@ public class TokenResponse {
         this.accessToken = accessToken;
         this.expiresIn = expiresIn;
     }
-    public String getAccessToken() { return accessToken; }
-    public long getExpiresIn() { return expiresIn; }
 }
 
