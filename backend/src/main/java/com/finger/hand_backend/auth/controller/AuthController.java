@@ -39,19 +39,16 @@ public class AuthController {
 
     // ✅ 로그인
     @PostMapping("/auth/login")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> login(@Valid @RequestBody LoginRequest request) {
+    public ResponseEntity<ApiResponse<String>> login(@Valid @RequestBody LoginRequest request) {
         String token = authService.login(request);
         long expiresIn = authService.getExpiresInSeconds();
 
-        return ResponseEntity.ok(
-                ApiResponse.success(
-                        Map.of(
-                                "accessToken", token,
-                                "expiresIn", expiresIn
-                        ),
-                        "로그인 성공"
-                )
-        );
+        return ResponseEntity.ok()
+                // ✅ 헤더에 Bearer 토큰과 만료시간 추가
+                .header("Authorization", "Bearer " + token)
+                .header("Expires-In", String.valueOf(expiresIn))
+                // ✅ 바디에는 간단한 메시지만
+                .body(ApiResponse.success(null, "로그인 성공"));
     }
 
     // ✅ 회원탈퇴 (DB에서 완전 삭제)
