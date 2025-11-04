@@ -1,4 +1,4 @@
-package com.finger.hand_backend.dto;
+package com.finger.hand_backend.auth.dto;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;

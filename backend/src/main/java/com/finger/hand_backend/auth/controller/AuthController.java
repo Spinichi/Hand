@@ -1,8 +1,9 @@
-package com.finger.hand_backend.auth;
+package com.finger.hand_backend.auth.controller;
 
+import com.finger.hand_backend.auth.service.AuthService;
 import com.finger.hand_backend.common.dto.ApiResponse;
-import com.finger.hand_backend.dto.LoginRequest;
-import com.finger.hand_backend.dto.SignupRequest;
+import com.finger.hand_backend.auth.dto.LoginRequest;
+import com.finger.hand_backend.auth.dto.SignupRequest;
 import com.finger.hand_backend.user.entity.User;
 import com.finger.hand_backend.user.repository.UserRepository;
 import jakarta.validation.Valid;

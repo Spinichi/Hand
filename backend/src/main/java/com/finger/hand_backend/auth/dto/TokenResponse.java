@@ -1,4 +1,4 @@
-package com.finger.hand_backend.dto;
+package com.finger.hand_backend.auth.dto;
 
 public class TokenResponse {
     private String accessToken;

@@ -1,6 +1,6 @@
-package com.finger.hand_backend.auth;
+package com.finger.hand_backend.auth.service;
 
-import com.finger.hand_backend.dto.LoginRequest;
+import com.finger.hand_backend.auth.dto.LoginRequest;
 import com.finger.hand_backend.security.JwtTokenProvider;
 import com.finger.hand_backend.user.entity.User;
 import com.finger.hand_backend.user.repository.UserRepository;
