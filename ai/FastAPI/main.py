@@ -9,7 +9,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "*",
-        "http://3.37.250.157:8000",
+        "https://gatewaytohand.store/ai",
     ],
     allow_credentials=True,
     allow_methods=["*"],

@@ -5,7 +5,7 @@ from mlflow.entities import RunStatus
 
 mlflow.set_tracking_uri("sqlite:///mlflow.db")
 
-def restore_runs(root_dir="./mlruns"):
+def restore_runs(root_dir=r"C:\Users\SSAFY\Desktop\WANG\S13P31A106\ai\mlruns"):
     for exp_id in os.listdir(root_dir):
         exp_path = os.path.join(root_dir, exp_id)
         if not os.path.isdir(exp_path) or not exp_id.isdigit():
