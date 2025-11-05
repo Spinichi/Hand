@@ -2,6 +2,7 @@ package com.finger.hand_backend.measurement;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.finger.hand_backend.anomaly.AnomalyDetectionService;
 import com.finger.hand_backend.baseline.Baseline;
 import com.finger.hand_backend.baseline.BaselineRepository;
 import com.finger.hand_backend.measurement.dto.MeasurementRequest;
@@ -22,6 +23,7 @@ import java.util.Optional;
  * - 측정 데이터 저장 및 조회
  * - HRV 계산 (SDNN, RMSSD)
  * - 스트레스 지수 계산 (1-100)
+ * - 이상치 자동 탐지
  */
 @Service
 @RequiredArgsConstructor
@@ -29,6 +31,7 @@ public class MeasurementService {
 
     private final MeasurementRepository measurementRepository;
     private final BaselineRepository baselineRepository;
+    private final AnomalyDetectionService anomalyDetectionService;
     private final ObjectMapper objectMapper;
 
     /**
@@ -118,7 +121,12 @@ public class MeasurementService {
                 .measuredAt(request.getMeasuredAt())
                 .build();
 
-        return measurementRepository.save(measurement);
+        Measurement saved = measurementRepository.save(measurement);
+
+        // 8. 이상치 자동 탐지 (stress_level >= 4)
+        anomalyDetectionService.detectAnomaly(saved);
+
+        return saved;
     }
 
     /**
