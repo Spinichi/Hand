@@ -1,38 +1,40 @@
-# Build stage
+# ===== Build Stage =====
 FROM gradle:9.2.0-jdk25-alpine AS build
 WORKDIR /app
 
-# Copy gradle wrapper (if exists)
-COPY gradlew* ./
+# Gradle wrapper 및 설정 파일 복사
 COPY gradle gradle
+COPY gradlew build.gradle settings.gradle ./
 
-# Copy gradle files
-COPY build.gradle settings.gradle ./
+# 실행 권한 부여
+RUN chmod +x gradlew || true
 
-# Download dependencies (for caching)
-RUN gradle dependencies --no-daemon || true
+# 의존성 다운로드 (캐싱 최적화)
+RUN ./gradlew dependencies --no-daemon || true
 
-# Copy source code
+# 소스 코드 복사
 COPY src ./src
 
-# Build application
-RUN gradle clean build -x test --no-daemon
+# 애플리케이션 빌드
+RUN ./gradlew clean build -x test --no-daemon
 
-# Runtime stage
+# ===== Runtime Stage =====
 FROM eclipse-temurin:25-jre-alpine
 WORKDIR /app
 
-# Create logs directory
+# 로그 디렉토리 생성
 RUN mkdir -p /app/logs
 
-# Copy jar from build stage
+# JAR 파일 복사
 COPY --from=build /app/build/libs/*.jar app.jar
 
-# Expose port
+# 포트 노출
 EXPOSE 8080
 
-# Run application with JVM options
+# JVM 옵션과 함께 실행 (메모리 자동 조정)
 ENTRYPOINT ["java", \
-    "-Xms4g", \
-    "-Xmx12g", \
+    "-XX:+UseContainerSupport", \
+    "-XX:MaxRAMPercentage=75.0", \
+    "-XX:InitialRAMPercentage=50.0", \
+    "-Djava.security.egd=file:/dev/./urandom", \
     "-jar", "/app/app.jar"]
