@@ -32,11 +32,6 @@ public class BaselineResponse {
     private Double objectTempMean;
     private Double objectTempStd;
 
-    // 스트레스 임계값
-    private Integer stressThresholdLow;
-    private Integer stressThresholdMedium;
-    private Integer stressThresholdHigh;
-
     // 메타데이터
     private Integer measurementCount;
     private LocalDate dataStartDate;
@@ -62,9 +57,6 @@ public class BaselineResponse {
                 .heartRateStd(baseline.getHeartRateStd())
                 .objectTempMean(baseline.getObjectTempMean())
                 .objectTempStd(baseline.getObjectTempStd())
-                .stressThresholdLow(baseline.getStressThresholdLow())
-                .stressThresholdMedium(baseline.getStressThresholdMedium())
-                .stressThresholdHigh(baseline.getStressThresholdHigh())
                 .measurementCount(baseline.getMeasurementCount())
                 .dataStartDate(baseline.getDataStartDate())
                 .dataEndDate(baseline.getDataEndDate())

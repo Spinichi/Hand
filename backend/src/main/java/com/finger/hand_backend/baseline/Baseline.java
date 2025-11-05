@@ -112,30 +112,10 @@ public class Baseline {
     @Column(name = "object_temp_std")
     private Double objectTempStd;
 
-    // ========== 스트레스 임계값 ==========
-
-    /**
-     * 낮은 스트레스 임계값 (1-2단계 경계)
-     * 이 값 미만: 매우 편안/편안
-     */
-    @Column(name = "stress_threshold_low")
-    private Integer stressThresholdLow;
-
-    /**
-     * 중간 스트레스 임계값 (2-3단계 경계)
-     * 이 값 미만: 보통
-     */
-    @Column(name = "stress_threshold_medium")
-    private Integer stressThresholdMedium;
-
-    /**
-     * 높은 스트레스 임계값 (3-4단계 경계)
-     * 이 값 이상: 스트레스/고스트레스
-     */
-    @Column(name = "stress_threshold_high")
-    private Integer stressThresholdHigh;
-
     // ========== 메타데이터 ==========
+    // Note: stress_threshold는 제거됨 (고정값 사용)
+    // - stress_index는 Z-score로 이미 개인화됨
+    // - 고정 threshold로 충분: 30/50/70
 
     /**
      * 계산에 사용된 측정 데이터 개수
