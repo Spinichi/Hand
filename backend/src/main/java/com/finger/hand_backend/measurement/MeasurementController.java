@@ -1,7 +1,7 @@
 package com.finger.hand_backend.measurement;
 
-import com.finger.hand_backend.measurement.dto.MeasurementRequest;
-import com.finger.hand_backend.measurement.dto.MeasurementResponse;
+import com.finger.hand_backend.common.dto.ApiResponse;
+import com.finger.hand_backend.measurement.dto.*;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -15,9 +15,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 /**
  * Measurement Controller
@@ -38,7 +36,7 @@ public class MeasurementController {
      * @return 저장된 측정 데이터 ID
      */
     @PostMapping
-    public ResponseEntity<Map<String, Object>> createMeasurement(
+    public ResponseEntity<ApiResponse<MeasurementCreateResponse>> createMeasurement(
             Authentication authentication,
             @Valid @RequestBody MeasurementRequest request
     ) {
@@ -46,13 +44,14 @@ public class MeasurementController {
 
         Measurement measurement = measurementService.save(userId, request);
 
-        Map<String, Object> response = new HashMap<>();
-        response.put("id", measurement.getId());
-        response.put("stressIndex", measurement.getStressIndex());
-        response.put("stressLevel", measurement.getStressLevel());
-        response.put("message", "측정 데이터가 저장되었습니다");
+        MeasurementCreateResponse data = MeasurementCreateResponse.builder()
+                .id(measurement.getId())
+                .stressIndex(measurement.getStressIndex())
+                .stressLevel(measurement.getStressLevel())
+                .build();
 
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success(data, "측정 데이터가 저장되었습니다"));
     }
 
     /**
@@ -63,7 +62,7 @@ public class MeasurementController {
      * @return 측정 데이터 페이지
      */
     @GetMapping
-    public ResponseEntity<Map<String, Object>> getMyMeasurements(
+    public ResponseEntity<ApiResponse<MeasurementPageResponse>> getMyMeasurements(
             Authentication authentication,
             @PageableDefault(size = 20, sort = "measuredAt", direction = Sort.Direction.DESC)
             Pageable pageable
@@ -72,15 +71,16 @@ public class MeasurementController {
 
         Page<Measurement> measurementPage = measurementService.getMyMeasurements(userId, pageable);
 
-        Map<String, Object> response = new HashMap<>();
-        response.put("total", measurementPage.getTotalElements());
-        response.put("page", measurementPage.getNumber());
-        response.put("size", measurementPage.getSize());
-        response.put("measurements", measurementPage.getContent().stream()
-                .map(MeasurementResponse::from)
-                .toList());
+        MeasurementPageResponse data = MeasurementPageResponse.builder()
+                .total(measurementPage.getTotalElements())
+                .page(measurementPage.getNumber())
+                .size(measurementPage.getSize())
+                .measurements(measurementPage.getContent().stream()
+                        .map(MeasurementResponse::from)
+                        .toList())
+                .build();
 
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(ApiResponse.success(data, "측정 데이터 목록을 조회했습니다"));
     }
 
     /**
@@ -92,7 +92,7 @@ public class MeasurementController {
      * @return 측정 데이터 리스트
      */
     @GetMapping("/range")
-    public ResponseEntity<Map<String, Object>> getMeasurementsByDateRange(
+    public ResponseEntity<ApiResponse<MeasurementRangeResponse>> getMeasurementsByDateRange(
             Authentication authentication,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate
@@ -102,15 +102,16 @@ public class MeasurementController {
         List<Measurement> measurements = measurementService
                 .getMeasurementsByDateRange(userId, startDate, endDate);
 
-        Map<String, Object> response = new HashMap<>();
-        response.put("total", measurements.size());
-        response.put("startDate", startDate);
-        response.put("endDate", endDate);
-        response.put("measurements", measurements.stream()
-                .map(MeasurementResponse::from)
-                .toList());
+        MeasurementRangeResponse data = MeasurementRangeResponse.builder()
+                .total(measurements.size())
+                .startDate(startDate)
+                .endDate(endDate)
+                .measurements(measurements.stream()
+                        .map(MeasurementResponse::from)
+                        .toList())
+                .build();
 
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(ApiResponse.success(data, "기간별 측정 데이터를 조회했습니다"));
     }
 
     /**
@@ -121,7 +122,7 @@ public class MeasurementController {
      * @return 측정 데이터 상세
      */
     @GetMapping("/{id}")
-    public ResponseEntity<MeasurementResponse> getMeasurement(
+    public ResponseEntity<ApiResponse<MeasurementResponse>> getMeasurement(
             Authentication authentication,
             @PathVariable Long id
     ) {
@@ -129,7 +130,7 @@ public class MeasurementController {
 
         Measurement measurement = measurementService.getMeasurement(userId, id);
 
-        return ResponseEntity.ok(MeasurementResponse.from(measurement));
+        return ResponseEntity.ok(ApiResponse.success(MeasurementResponse.from(measurement), "상세 데이터 조회"));
     }
 
     /**
@@ -160,7 +161,7 @@ public class MeasurementController {
      * @return 측정 데이터 개수
      */
     @GetMapping("/count")
-    public ResponseEntity<Map<String, Object>> countMeasurements(
+    public ResponseEntity<ApiResponse<MeasurementCountResponse>> countMeasurements(
             Authentication authentication,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate
@@ -169,11 +170,12 @@ public class MeasurementController {
 
         long count = measurementService.countMeasurements(userId, startDate, endDate);
 
-        Map<String, Object> response = new HashMap<>();
-        response.put("count", count);
-        response.put("startDate", startDate);
-        response.put("endDate", endDate);
+        MeasurementCountResponse data = MeasurementCountResponse.builder()
+                .count(count)
+                .startDate(startDate)
+                .endDate(endDate)
+                .build();
 
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(ApiResponse.success(data, "측정 데이터 개수를 조회했습니다"));
     }
 }

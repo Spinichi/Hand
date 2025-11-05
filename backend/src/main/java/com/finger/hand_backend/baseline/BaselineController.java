@@ -1,6 +1,8 @@
 package com.finger.hand_backend.baseline;
 
+import com.finger.hand_backend.baseline.dto.BaselinePageResponse;
 import com.finger.hand_backend.baseline.dto.BaselineResponse;
+import com.finger.hand_backend.common.dto.ApiResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -10,9 +12,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.HashMap;
-import java.util.Map;
 
 /**
  * Baseline Controller
@@ -35,7 +34,7 @@ public class BaselineController {
      * @return 생성된 Baseline
      */
     @PostMapping("/calculate")
-    public ResponseEntity<Map<String, Object>> calculateBaseline(
+    public ResponseEntity<ApiResponse<BaselineResponse>> calculateBaseline(
             Authentication authentication,
             @RequestParam(defaultValue = "3") Integer days
     ) {
@@ -43,11 +42,10 @@ public class BaselineController {
 
         Baseline baseline = baselineService.calculateAndSave(userId, days);
 
-        Map<String, Object> response = new HashMap<>();
-        response.put("baseline", BaselineResponse.from(baseline));
-        response.put("message", "Baseline이 생성되었습니다");
+        BaselineResponse data = BaselineResponse.from(baseline);
 
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success(data, "Baseline이 생성되었습니다"));
     }
 
     /**
@@ -57,14 +55,14 @@ public class BaselineController {
      * @return 활성 Baseline
      */
     @GetMapping("/active")
-    public ResponseEntity<BaselineResponse> getActiveBaseline(
+    public ResponseEntity<ApiResponse<BaselineResponse>> getActiveBaseline(
             Authentication authentication
     ) {
         Long userId = Long.valueOf(authentication.getName());
 
         Baseline baseline = baselineService.getActiveBaseline(userId);
 
-        return ResponseEntity.ok(BaselineResponse.from(baseline));
+        return ResponseEntity.ok(ApiResponse.success(BaselineResponse.from(baseline), "활성화된 baseline입니다."));
     }
 
     /**
@@ -75,7 +73,7 @@ public class BaselineController {
      * @return Baseline 페이지
      */
     @GetMapping("/history")
-    public ResponseEntity<Map<String, Object>> getBaselineHistory(
+    public ResponseEntity<ApiResponse<BaselinePageResponse>> getBaselineHistory(
             Authentication authentication,
             @PageableDefault(size = 10, sort = "version", direction = Sort.Direction.DESC)
             Pageable pageable
@@ -84,15 +82,16 @@ public class BaselineController {
 
         Page<Baseline> baselinePage = baselineService.getBaselineHistory(userId, pageable);
 
-        Map<String, Object> response = new HashMap<>();
-        response.put("total", baselinePage.getTotalElements());
-        response.put("page", baselinePage.getNumber());
-        response.put("size", baselinePage.getSize());
-        response.put("baselines", baselinePage.getContent().stream()
-                .map(BaselineResponse::from)
-                .toList());
+        BaselinePageResponse data = BaselinePageResponse.builder()
+                .total(baselinePage.getTotalElements())
+                .page(baselinePage.getNumber())
+                .size(baselinePage.getSize())
+                .baselines(baselinePage.getContent().stream()
+                        .map(BaselineResponse::from)
+                        .toList())
+                .build();
 
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(ApiResponse.success(data, "Baseline 이력을 조회했습니다"));
     }
 
     /**
@@ -103,7 +102,7 @@ public class BaselineController {
      * @return Baseline
      */
     @GetMapping("/{version}")
-    public ResponseEntity<BaselineResponse> getBaselineByVersion(
+    public ResponseEntity<ApiResponse<BaselineResponse>> getBaselineByVersion(
             Authentication authentication,
             @PathVariable Integer version
     ) {
@@ -111,7 +110,7 @@ public class BaselineController {
 
         Baseline baseline = baselineService.getBaselineByVersion(userId, version);
 
-        return ResponseEntity.ok(BaselineResponse.from(baseline));
+        return ResponseEntity.ok(ApiResponse.success(BaselineResponse.from(baseline), "특정 버전의 baseline입니다."));
     }
 
     /**
@@ -124,7 +123,7 @@ public class BaselineController {
      * @return 업데이트된 Baseline
      */
     @PutMapping("/update")
-    public ResponseEntity<Map<String, Object>> updateBaseline(
+    public ResponseEntity<ApiResponse<BaselineResponse>> updateBaseline(
             Authentication authentication,
             @RequestParam(defaultValue = "3") Integer days
     ) {
@@ -132,11 +131,9 @@ public class BaselineController {
 
         Baseline baseline = baselineService.updateBaseline(userId, days);
 
-        Map<String, Object> response = new HashMap<>();
-        response.put("baseline", BaselineResponse.from(baseline));
-        response.put("message", "Baseline이 업데이트되었습니다");
+        BaselineResponse data = BaselineResponse.from(baseline);
 
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(ApiResponse.success(data, "Baseline이 업데이트되었습니다"));
     }
 
     /**
@@ -149,7 +146,7 @@ public class BaselineController {
      * @return 활성화된 Baseline
      */
     @PutMapping("/{version}/activate")
-    public ResponseEntity<Map<String, Object>> activateBaseline(
+    public ResponseEntity<ApiResponse<BaselineResponse>> activateBaseline(
             Authentication authentication,
             @PathVariable Integer version
     ) {
@@ -157,11 +154,9 @@ public class BaselineController {
 
         Baseline baseline = baselineService.activateBaseline(userId, version);
 
-        Map<String, Object> response = new HashMap<>();
-        response.put("baseline", BaselineResponse.from(baseline));
-        response.put("message", "Baseline이 활성화되었습니다");
+        BaselineResponse data = BaselineResponse.from(baseline);
 
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(ApiResponse.success(data, "Baseline이 활성화되었습니다"));
     }
 
     /**
