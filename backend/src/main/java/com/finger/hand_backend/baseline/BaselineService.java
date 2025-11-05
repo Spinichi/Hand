@@ -74,26 +74,13 @@ public class BaselineService {
         double objectTempMean = calculateMean(measurements, Measurement::getObjectTemp);
         double objectTempStd = calculateStdDev(measurements, Measurement::getObjectTemp, objectTempMean);
 
-        // 3. 스트레스 임계값 계산
-        // Low: 평균 - 0.5σ (편안한 상태)
-        // Medium: 평균 (보통)
-        // High: 평균 + 1σ (스트레스 시작)
-        int stressThresholdLow = (int) Math.round(hrvSdnnMean - (0.5 * hrvSdnnStd));
-        int stressThresholdMedium = (int) Math.round(hrvSdnnMean);
-        int stressThresholdHigh = (int) Math.round(hrvSdnnMean + hrvSdnnStd);
-
-        // 1-100 범위로 제한
-        stressThresholdLow = Math.max(1, Math.min(100, stressThresholdLow));
-        stressThresholdMedium = Math.max(1, Math.min(100, stressThresholdMedium));
-        stressThresholdHigh = Math.max(1, Math.min(100, stressThresholdHigh));
-
-        // 4. 버전 관리
+        // 3. 버전 관리
         Integer nextVersion = baselineRepository.findMaxVersionByUserId(userId) + 1;
 
-        // 5. 기존 활성 Baseline 비활성화
+        // 4. 기존 활성 Baseline 비활성화
         baselineRepository.deactivateAllByUserId(userId);
 
-        // 6. 새 Baseline 생성 및 저장
+        // 5. 새 Baseline 생성 및 저장
         Baseline baseline = Baseline.builder()
                 .userId(userId)
                 .version(nextVersion)
@@ -106,9 +93,6 @@ public class BaselineService {
                 .heartRateStd(heartRateStd)
                 .objectTempMean(objectTempMean)
                 .objectTempStd(objectTempStd)
-                .stressThresholdLow(stressThresholdLow)
-                .stressThresholdMedium(stressThresholdMedium)
-                .stressThresholdHigh(stressThresholdHigh)
                 .measurementCount(measurements.size())
                 .dataStartDate(measurements.get(measurements.size() - 1).getMeasuredAt().toLocalDate())
                 .dataEndDate(measurements.get(0).getMeasuredAt().toLocalDate())
