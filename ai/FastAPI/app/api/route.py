@@ -29,8 +29,8 @@ async def diary_classification(input_data: EmotionInput):
         raise HTTPException(status_code=500, detail=f"오류 코드는 {e}")
 
 
-# GMS 사용 요청
-@router.post("/gms_request", response_model=GMSoutput)
+# 사용자 다이어리와 점수를 받아와서 보고서 작성.
+@router.post("/gms/report", response_model=GMSoutput)
 async def gms_request(text: GMSinput):
     try:
         reply = await report(text.text)
