@@ -3,11 +3,12 @@ from transformers import (
     AutoModelForSequenceClassification,
 )
 import torch
+import os
 
 print("[MODEL LOADER] 모델 로드 중...")
 
-model_path = "./Classifier_Model"
-Device = "cuda" if torch.cuda.is_vailable() else "cpu"
+model_path = os.path.join(os.path.dirname(__file__), "Classifier_Model")
+Device = "cuda" if torch.cuda.is_available() else "cpu"
 
 model = AutoModelForSequenceClassification.from_pretrained(model_path).to(Device)
 tokenizer = AutoTokenizer.from_pretrained(model_path)
