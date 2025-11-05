@@ -3,7 +3,7 @@ pipeline {
     
     environment {
         // GitLab
-        GITLAB_CREDENTIALS = 'gitlab-token'
+        GITLAB_CREDENTIALS = 'gitlab-token2'
         GITLAB_URL = 'https://lab.ssafy.com/s13-final/S13P31A106.git'
         
         // Docker Registry
