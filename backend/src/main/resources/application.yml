@@ -29,3 +29,20 @@ server:
 jwt:
     secret: "ZkR9mS2QvT7yP0aU1nW4eX6rL8oC5jB3hK9tV2pY0xF7dE1sZq"
     access-validity-ms: 36000000   # 10시간 = 10 * 60 * 60 * 1000
+
+management:
+    endpoints:
+        web:
+            exposure:
+                include: health,info,prometheus,metrics
+            base-path: /actuator
+    endpoint:
+        health:
+            show-details: always
+    metrics:
+        export:
+            prometheus:
+                enabled: true
+        tags:
+            application: ${spring.application.name}
+            server: server2-backend

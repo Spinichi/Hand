@@ -46,6 +46,9 @@ dependencies {
 
 	// Swagger/OpenAPI (Spring Boot 3.5.x 호환)
 	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.7.0'
+
+	implementation 'org.springframework.boot:spring-boot-starter-actuator'
+	implementation 'io.micrometer:micrometer-registry-prometheus'
 }
 
 tasks.named('test') {
