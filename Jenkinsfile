@@ -1,6 +1,13 @@
 pipeline {
     agent any
-    
+
+    parameters {
+        booleanParam(name: 'FORCE_BUILD_BACKEND', defaultValue: false, description: '무조건 Backend 빌드')
+        booleanParam(name: 'FORCE_BUILD_WEAR', defaultValue: false, description: '무조건 Wear 빌드')
+        booleanParam(name: 'FORCE_BUILD_WATCH', defaultValue: false, description: '무조건 Watch 빌드')
+        booleanParam(name: 'FORCE_BUILD_AI', defaultValue: false, description: '무조건 AI 빌드')
+    }
+
     environment {
         // GitLab
         GITLAB_CREDENTIALS = 'gitlab-token2'
@@ -52,7 +59,10 @@ pipeline {
         stage('Backend CI/CD') {
             when {
                 beforeAgent true
-                changeset pattern: "backend/**", caseSensitive: true
+                anyOf {
+                    changeset pattern: "backend/**", caseSensitive: true
+                    expression { return params.FORCE_BUILD_BACKEND }
+                }
             }
             stages {
                 stage('Backend Build') {
