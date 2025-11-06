@@ -28,6 +28,11 @@ pipeline {
     
     options {
         gitLabConnection('GitLab')
+        buildDiscarder(logRotator(numToKeepStr: '10'))
+        timestamps()
+        timeout(time: 30, unit: 'MINUTES')
+        disableConcurrentBuilds()
+        skipDefaultCheckout(true)
     }
     
     triggers {
@@ -45,17 +50,23 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
+                echo '📥 Checking out code...'
                 checkout([
                     $class: 'GitSCM',
                     branches: [[name: '*/dev']],
+                    extensions: [
+                        [$class: 'CloneOption', depth: 1, shallow: true, timeout: 10],
+                        [$class: 'CheckoutOption', timeout: 10]
+                    ],
                     userRemoteConfigs: [[
                         url: "${GITLAB_URL}",
                         credentialsId: "${GITLAB_CREDENTIALS}"
                     ]]
                 ])
+                sh 'git log -1 --oneline'
             }
         }
-        
+
         stage('Backend CI/CD') {
             when {
                 beforeAgent true
@@ -160,13 +171,14 @@ pipeline {
             updateGitlabCommitStatus name: 'build', state: 'failed'
         }
         always {
-            echo '🧹 Cleaning up old Docker images...'
+            echo '🧹 Cleaning up...'
             sh '''
                 # 빌드 번호가 붙은 오래된 이미지 정리 (latest는 유지)
                 docker images | grep ${BACKEND_IMAGE} | grep -v latest | awk '{print $3}' | xargs -r docker rmi -f || true
                 # Dangling 이미지 정리
                 docker image prune -f || true
             '''
+            cleanWs()
         }
     }
 }
