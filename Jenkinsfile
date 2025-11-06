@@ -54,10 +54,6 @@ pipeline {
                 checkout([
                     $class: 'GitSCM',
                     branches: [[name: '*/dev']],
-                    extensions: [
-                        [$class: 'CloneOption', depth: 1, shallow: true, timeout: 10],
-                        [$class: 'CheckoutOption', timeout: 10]
-                    ],
                     userRemoteConfigs: [[
                         url: "${GITLAB_URL}",
                         credentialsId: "${GITLAB_CREDENTIALS}"
