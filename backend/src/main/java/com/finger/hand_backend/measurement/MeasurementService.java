@@ -6,6 +6,7 @@ import com.finger.hand_backend.anomaly.AnomalyDetectionService;
 import com.finger.hand_backend.baseline.Baseline;
 import com.finger.hand_backend.baseline.BaselineRepository;
 import com.finger.hand_backend.measurement.dto.MeasurementRequest;
+import com.finger.hand_backend.relief.ReliefAfterBackfill;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -33,6 +34,8 @@ public class MeasurementService {
     private final BaselineRepository baselineRepository;
     private final AnomalyDetectionService anomalyDetectionService;
     private final ObjectMapper objectMapper;
+
+    private final ReliefAfterBackfill reliefAfterBackfill;
 
     /**
      * 측정 데이터 저장
@@ -125,6 +128,8 @@ public class MeasurementService {
 
         // 8. 이상치 자동 탐지 (stress_level >= 4)
         anomalyDetectionService.detectAnomaly(saved);
+
+        reliefAfterBackfill.onNewMeasurement(saved.getUserId(), saved);
 
         return saved;
     }

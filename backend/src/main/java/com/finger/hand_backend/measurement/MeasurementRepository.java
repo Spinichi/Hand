@@ -3,6 +3,8 @@ package com.finger.hand_backend.measurement;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
@@ -87,4 +89,23 @@ public interface MeasurementRepository extends JpaRepository<Measurement, Long> 
      * @return 이전 측정 데이터 (없으면 Optional.empty())
      */
     Optional<Measurement> findTop1ByUserIdAndTotalStepsIsNotNullOrderByMeasuredAtDesc(Long userId);
+
+    // 시작시각 직전(=포함) 가장 최근 1건 — 결정적 정렬
+    @Query("""
+  SELECT m FROM Measurement m
+  WHERE m.userId = :userId
+    AND m.measuredAt <= :t
+  ORDER BY m.measuredAt DESC, m.id DESC
+""")
+    List<Measurement> findLatestAtOrBefore(Long userId, LocalDateTime t, Pageable pageable);
+
+    // 종료 이후 ~ 데드라인 사이 가장 이른 1건 — 결정적 정렬
+    @Query("""
+  SELECT m FROM Measurement m
+  WHERE m.userId = :userId
+    AND m.measuredAt >= :from
+    AND m.measuredAt <= :to
+  ORDER BY m.measuredAt ASC, m.id ASC
+""")
+    List<Measurement> findFirstBetween(Long userId, LocalDateTime from, LocalDateTime to, Pageable pageable);
 }
