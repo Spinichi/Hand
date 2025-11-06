@@ -72,31 +72,19 @@ pipeline {
                 }
             }
             stages {
-                stage('Backend Build') {
-                    steps {
-                        dir('backend') {
-                            echo '📦 Building Backend with Gradle...'
-                            sh '''
-                                chmod +x gradlew
-                                ./gradlew clean build -x test
-                            '''
-                        }
-                    }
-                }
-                
                 stage('Backend Docker Build & Push') {
                     steps {
                         dir('backend') {
                             echo '🐳 Building and Pushing Docker Image to Registry...'
                             sh """
-                                # 이미지 빌드
+                                # Docker Multi-stage build로 Gradle 빌드 포함
                                 docker build -t ${REGISTRY_LOCAL}/${BACKEND_IMAGE}:${BUILD_NUMBER} .
                                 docker tag ${REGISTRY_LOCAL}/${BACKEND_IMAGE}:${BUILD_NUMBER} ${REGISTRY_LOCAL}/${BACKEND_IMAGE}:latest
-                                
+
                                 # Registry에 Push
                                 docker push ${REGISTRY_LOCAL}/${BACKEND_IMAGE}:${BUILD_NUMBER}
                                 docker push ${REGISTRY_LOCAL}/${BACKEND_IMAGE}:latest
-                                
+
                                 echo "✅ Pushed to Registry: ${REGISTRY_LOCAL}/${BACKEND_IMAGE}:latest"
                             """
                         }
