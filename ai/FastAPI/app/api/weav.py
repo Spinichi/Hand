@@ -1,9 +1,9 @@
-import weaviate
+import S13P31A106.ai.FastAPI.app.api.weav as weav
 from weaviate.classes.config import Property, DataType, Configure
 
 # ✅ v4 클라이언트 연결
 try:
-    weaviate_client = weaviate.connect_to_local(
+    weaviate_client = weav.connect_to_local(
         host="localhost",
         port=8080,
         grpc_port=50051,

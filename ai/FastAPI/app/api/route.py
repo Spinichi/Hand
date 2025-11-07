@@ -5,7 +5,7 @@ from app.services.emotion_classify import emotionClassifying
 from app.services.report import report
 from app.services.summary import longSummarize, shortSummarize
 import numpy as np
-from .weaviate import embed_sentence, search_similar
+from .weav import embed_sentence, search_similar
 import asyncio
 
 router = APIRouter()
