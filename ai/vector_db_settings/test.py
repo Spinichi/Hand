@@ -15,18 +15,11 @@ client = weaviate.connect_to_custom(
 
 single = client.collections.get("SingleCounsel")
 
-result = single.query.fetch_objects(
-    limit=1,
-    return_vector=True
-)
+result = single.query.fetch_objects(limit=1, include_vector=True)
 
-if result.objects:
-    obj = result.objects[0]
-    print("✅ ID:", obj.id)
-    print("✅ input:", obj.properties.get("input"))
-    print("✅ output:", obj.properties.get("output"))
-    print("✅ vector length:", len(obj.vector) if obj.vector is not None else None)
-else:
-    print("❌ SingleCounsel 컬렉션에 데이터가 없습니다.")
+
+for obj in result.objects:
+    print("Input:", obj.properties["input"])
+    print("Vector length:", len(obj.vector["default"]))
 
 client.close()
