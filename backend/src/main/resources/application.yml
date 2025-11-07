@@ -31,6 +31,19 @@ jwt:
     secret: "ZkR9mS2QvT7yP0aU1nW4eX6rL8oC5jB3hK9tV2pY0xF7dE1sZq"
     access-validity-ms: 36000000   # 10시간 = 10 * 60 * 60 * 1000
 
+gms:
+    api:
+        url: https://gms.ssafy.io/gmsapi/api.openai.com/v1/chat/completions
+        key: ${GMS_API_KEY}
+
+emotion:
+    api:
+        url: http://localhost:8000/analyze   # FastAPI 서버 (TODO)
+
+logging:
+    level:
+        com.finger.hand_backend.diary.service: DEBUG
+
 management:
     endpoints:
         web:
