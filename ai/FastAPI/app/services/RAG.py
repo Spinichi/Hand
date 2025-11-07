@@ -11,7 +11,7 @@ from app.core.vector_embedding import embed  # <- 당신이 만든 비동기 임
 
 load_dotenv()
 
-WEAVIATE_URL = os.getenv("WEAVIATE_URL", "http://localhost:8080")
+WEAVIATE_URL = os.getenv("WEAVIATE_URL")
 ADVICE_URL = os.getenv("COUNSELING_GMS_URL")
 ADVICE_MODEL = os.getenv("COUNSELING_MODEL")
 GMS_KEY = os.getenv("GMS_KEY")
