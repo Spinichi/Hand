@@ -253,23 +253,7 @@ pipeline {
 
     post {
         success {
-            script {
-                def messages = []
-
-                // Backend 빌드 여부 확인
-                if (currentBuild.changeSets.any { it.affectedPaths.any { it.startsWith('backend/') } } || params.FORCE_BUILD_BACKEND) {
-                    messages.add('✅ Backend 배포 성공!')
-                }
-
-                // Mobile 빌드 여부 확인
-                if (currentBuild.changeSets.any { it.affectedPaths.any { it.startsWith('frontend/app/') } } || params.FORCE_BUILD_MOBILE) {
-                    messages.add('✅ Mobile App Firebase 배포 성공!')
-                }
-
-                if (messages) {
-                    echo messages.join('\n')
-                }
-            }
+            echo '✅ 빌드/배포 성공!'
             updateGitlabCommitStatus name: 'build', state: 'success'
         }
         failure {
