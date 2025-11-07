@@ -1,7 +1,0 @@
-.gradle
-build
-.env
-*.md
-.git
-.gitignore
-.gitattributes
