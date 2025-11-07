@@ -157,23 +157,29 @@ pipeline {
                     stages {
                         stage('Prepare Firebase Credentials') {
                             steps {
-                                dir('frontend') {  // ✅ frontend 디렉토리로
-                                    echo '🔧 Preparing Firebase credentials...'
+                                dir('frontend') {
+                                    echo '🔧 Preparing Firebase and Google Services credentials...'
                                     withCredentials([
-                                        file(credentialsId: 'firebase_sa_json', variable: 'FIREBASE_SA_FILE')
+                                        file(credentialsId: 'firebase_sa_json', variable: 'FIREBASE_SA_FILE'),
+                                        file(credentialsId: 'google-services-json', variable: 'GOOGLE_SERVICES_FILE')
                                     ]) {
                                         sh """
-                                            # Firebase 서비스 계정 JSON 파일 복사 (frontend 루트에)
+                                            # Firebase 서비스 계정 JSON 파일 복사
                                             echo "📋 Copying Firebase service account..."
                                             cp \${FIREBASE_SA_FILE} firebase-service-account.json
                                             chmod 600 firebase-service-account.json
 
-                                            # google-services.json 존재 확인
+                                            # google-services.json 복사
+                                            echo "📋 Copying google-services.json..."
+                                            cp \${GOOGLE_SERVICES_FILE} app/google-services.json
+                                            chmod 600 app/google-services.json
+
+                                            # 파일 존재 확인
                                             if [ ! -f "app/google-services.json" ]; then
                                                 echo "❌ google-services.json not found!"
                                                 exit 1
                                             fi
-                                            echo "✅ google-services.json found in app/"
+                                            echo "✅ google-services.json prepared successfully!"
                                         """
                                     }
                                 }
@@ -184,7 +190,7 @@ pipeline {
                             agent {
                                 docker {
                                     image 'mingc/android-build-box:latest'
-                                    args '-v /var/jenkins_home/.gradle:/root/.gradle -u root'  // ✅ 이대로 OK!
+                                    args '-v /var/jenkins_home/.gradle:/root/.gradle -u root'
                                     reuseNode true
                                 }
                             }
@@ -196,11 +202,11 @@ pipeline {
                                         script {
                                             def gitCommit = sh(returnStdout: true, script: 'git log -1 --oneline').trim()
                                             def releaseNotes = """
-빌드 번호: ${BUILD_NUMBER}
-빌드 시간: ${new Date().format('yyyy-MM-dd HH:mm:ss')}
-커밋: ${gitCommit}
-배포자: Jenkins CI/CD
-                                            """.trim()
+                빌드 번호: ${BUILD_NUMBER}
+                빌드 시간: ${new Date().format('yyyy-MM-dd HH:mm:ss')}
+                커밋: ${gitCommit}
+                배포자: Jenkins CI/CD
+                """.trim()
 
                                             echo '📦 Building Debug APK and Uploading to Firebase...'
                                             sh """
@@ -240,7 +246,11 @@ pipeline {
                             post {
                                 always {
                                     dir('frontend') {
-                                        sh 'rm -f firebase-service-account.json || true'
+                                        echo '🧹 Cleaning up sensitive files...'
+                                        sh '''
+                                            rm -f firebase-service-account.json || true
+                                            rm -f app/google-services.json || true
+                                        '''
                                     }
                                 }
                             }
