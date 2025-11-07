@@ -1,0 +1,65 @@
+spring:
+    config:
+        import: "optional:file:.env[.properties]"
+    application:
+        name: hand-backend
+    datasource:
+        url: jdbc:mysql://${DB_HOST}:${DB_PORT}/${DB_NAME}?serverTimezone=Asia/Seoul&useUnicode=true&characterEncoding=utf8
+        username: ${DB_USERNAME}
+        password: ${DB_PASSWORD}
+        driver-class-name: com.mysql.cj.jdbc.Driver
+    jpa:
+        hibernate:
+            ddl-auto: update
+        show-sql: true
+        properties:
+            hibernate:
+                format_sql: true
+                dialect: org.hibernate.dialect.MySQL8Dialect
+    data:
+        mongodb:
+            uri: mongodb://${MONGO_USERNAME}:${MONGO_PASSWORD}@${MONGO_HOST}:${MONGO_PORT}/${MONGO_DB}?authSource=${MONGO_USERNAME}
+            auto-index-creation: true
+server:
+    port: 8080
+    servlet:
+      context-path: /api/v1
+    tomcat:
+        mbeanregistry:
+            enabled: true
+jwt:
+    secret: "ZkR9mS2QvT7yP0aU1nW4eX6rL8oC5jB3hK9tV2pY0xF7dE1sZq"
+    access-validity-ms: 36000000   # 10시간 = 10 * 60 * 60 * 1000
+
+gms:
+    api:
+        url: https://gms.ssafy.io/gmsapi/api.openai.com/v1/chat/completions
+        key: ${GMS_API_KEY}
+
+emotion:
+    api:
+        url: http://localhost:8000/analyze   # FastAPI 서버 (TODO)
+
+logging:
+    level:
+        com.finger.hand_backend.diary.service: DEBUG
+
+management:
+    endpoints:
+        web:
+            exposure:
+                include: health,info,prometheus,metrics
+            base-path: /actuator
+    endpoint:
+        health:
+            show-details: always
+    metrics:
+        export:
+            prometheus:
+                enabled: true
+        tags:
+            application: ${spring.application.name}
+            server: server2-backend
+        distribution:
+            percentiles-histogram:
+                http.server.requests: true
