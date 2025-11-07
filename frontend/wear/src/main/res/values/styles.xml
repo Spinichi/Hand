@@ -1,9 +1,0 @@
-<resources>
-
-    <style name="MainActivityTheme.Starting" parent="Theme.SplashScreen">
-        <item name="windowSplashScreenAnimatedIcon">@drawable/splash_background</item>
-        <item name="postSplashScreenTheme">@android:style/Theme.DeviceDefault</item>
-    </style>
-
-
-</resources>
