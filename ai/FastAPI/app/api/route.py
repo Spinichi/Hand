@@ -64,11 +64,3 @@ async def diary_classification(input_data: EmotionInput):
     
 #     except Exception as e:
 #         raise HTTPException(status_code=500, detail=f"오류 코드는 {e}")
-    
-# @router.post("/gms/counceling", response_model = CouncelOutput)
-# async def counceling_suggest(input_data: CouncelInput):
-#     try:
-#         user_id = input_data.user_id
-        
-#     except Exception as e:
-#         raise HTTPException(status_code=500, detail=f"오류 코드는 {e}")

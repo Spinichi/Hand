@@ -51,47 +51,47 @@ classifier = pipeline(
 # 감정별 가중치 (심리 영향 기반)
 # → 값이 높을수록 우울/불안에 기여도가 큼
 emotion_weights = {
-    "기쁨": -1.5,
-    "당황": 0.5,
-    "분노": 0.8,
-    "불안": 0.7,
-    "상처": 0.6,
-    "슬픔": 1.0
+    "기쁨": +3.0,
+    "당황": -0.7,
+    "분노": -0.7,
+    "불안": -1.2,
+    "상처": -1.4,
+    "슬픔": -1.7
 }
 
 tokenizer = tokenizer
 model = model
 
-# 감정을 점수화 하는 함수
 def emotionClassifying(texts: list[str]) -> dict:
-    """
-    여러 문장을 받아 감정 평균 확률 + 우울 점수 계산
-    """
-    all_scores = {label: 0.0 for label in id2label.values()}
-
     try:
-        #  문장별 감정 확률 추출
+        # 감정 평균 확률 계산
+        all_scores = {label: 0.0 for label in id2label.values()}
+
         for text in texts:
             preds = classifier(text)[0]
             for p in preds:
                 all_scores[p["label"]] += p["score"]
 
-        #  평균 확률 계산
         for k in all_scores:
-            all_scores[k] = all_scores[k] / len(texts)
+            all_scores[k] /= len(texts)
 
-        #  가중합 계산 (우울 기여도 반영)
         weighted_sum = sum(all_scores[e] * emotion_weights[e] for e in all_scores)
 
-        #  sigmoid로 0–1 정규화 후 0–100 스케일 변환
-        depression_score = 1 / (1 + np.exp(-weighted_sum))
-        depression_score = round(depression_score * 100, 2)
+        # 기본점수 + 감정 편차
+        base_score = 70
+        scale = 20    # 민감도 조정
+
+        final_score = base_score + (weighted_sum * scale)
+
+        # 0~100 범위 제한
+        final_score = max(0, min(100, final_score))
+        final_score = round(final_score, 3)
 
         return {
             "sentiment": {k: round(v, 4) for k, v in all_scores.items()},
-            "score": depression_score,
+            "score": final_score,      
+            "type": "emotion_score"
         }
 
     except Exception as e:
         return {"error": f"예측 중 오류 : {str(e)}"}
-

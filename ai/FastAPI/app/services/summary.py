@@ -3,11 +3,12 @@ import httpx
 import asyncio
 from dotenv import load_dotenv
 from fastapi import HTTPException
-dotenv_path = os.path.join(os.path.dirname(__file__), "..", "..", ".env")
-load_dotenv(dotenv_path)
+
+load_dotenv()
 
 API_KEY = os.getenv("GMS_KEY")
-SUMMARY_MODEL = os.getenv("SUMMARY_MODEL")
+SHORT_SUMMARY_MODEL = os.getenv("SHORT_SUMMARY_MODEL")
+LONG_SUMMARY_MODEL = os.getenv("LONG_SUMMARY_MODEL")
 SUMMARY_URL = os.getenv("SUMMARY_GMS_URL")
 
 async def shortSummarize(text:str):
@@ -35,18 +36,12 @@ async def shortSummarize(text:str):
     }
     
     messages = [
-            {
-                "role": "system",
-                "content": "당신은 입력받은 텍스트를 요약하는 고성능 AI입니다. 입력 받은 텍스트를 요약해주세요. 한국어로 대답해주세요.",
-            },
-            {   
-                "role": "user", 
-                "content": prompt,
-            },
+            {"role": "system", "content": "당신은 입력받은 텍스트를 요약하는 고성능 AI입니다. 입력 받은 텍스트를 요약해주세요. 한국어로 대답해주세요."},
+            {"role": "user", "content": prompt},
         ]
 
     payload = {
-        "model": "gpt-5",
+        "model": SHORT_SUMMARY_MODEL,
         "messages": messages,
         "max_tokens": 500,
         "temperature": 0.5,
@@ -92,25 +87,19 @@ async def longSummarize(text):
     }
     
     messages = [
-            {
-                "role": "system",
-                "content": "당신은 입력받은 텍스트를 요약하는 고성능 AI입니다. 입력 받은 텍스트를 요약해주세요. 한국어로 대답해주세요.",
-            },
-            {   
-                "role": "user", 
-                "content": prompt,
-            },
+            {"role": "system", "content": "당신은 입력받은 텍스트를 요약하는 고성능 AI입니다. 입력 받은 텍스트를 요약해주세요. 한국어로 대답해주세요."},
+            {"role": "user", "content": prompt},
         ]
 
     payload = {
-        "model": "gpt-5",
+        "model": LONG_SUMMARY_MODEL,
         "messages": messages,
         "max_tokens": 2000,
         "temperature": 0.3,
     }
     
     try:
-        async with httpx.AsyncClient(verify=False, timeout=30.0) as client:
+        async with httpx.AsyncClient(verify=False, timeout=20.0) as client:
             response = await client.post(SUMMARY_URL, headers=headers, json=payload)
             response.raise_for_status()
             result = response.json()
