@@ -312,15 +312,15 @@ pipeline {
 
                                                 # 기존 컨테이너 중지 및 제거
                                                 echo "🛑 Stopping old containers..."
-                                                docker-compose down || true
+                                                docker compose down || true
 
                                                 # Registry에서 최신 이미지 Pull
                                                 echo "📥 Pulling latest image from Registry..."
                                                 docker pull ${REGISTRY_PUBLIC}/${AI_IMAGE}:latest
 
-                                                # docker-compose로 서비스 시작
+                                                # docker compose로 서비스 시작
                                                 echo "🚀 Starting AI services..."
-                                                docker-compose up -d
+                                                docker compose up -d
 
                                                 # 컨테이너 실행 확인
                                                 echo "⏳ Waiting for containers to start..."
@@ -331,7 +331,7 @@ pipeline {
                                                     docker ps | grep hand-
                                                 else
                                                     echo "❌ AI containers failed to start!"
-                                                    docker-compose logs
+                                                    docker compose logs
                                                     exit 1
                                                 fi
                                             '
