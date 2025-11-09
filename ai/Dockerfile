@@ -16,14 +16,29 @@ RUN apt-get update && apt-get install -y \
     libgl1 \
     && rm -rf /var/lib/apt/lists/*
 
-# requirements.txt 복사 및 설치
-COPY requirements.txt .
-# 불필요한 무거운 패키지들 제외 (Windows 전용, CUDA, 개발용 도구)
-RUN grep -vE "pywin32|pywinpty|torch.*cu121|torchaudio.*cu121|torchvision.*cu121|tensorflow|keras|tf_keras|django|flask|jupyter|notebook|ipykernel|ipython|ipywidgets|mlflow|matplotlib|pandas|jax|jaxlib|mediapipe|sounddevice|pytest|poetry|black|flake8|mypy" requirements.txt > requirements_linux.txt && \
-    echo "torch==2.5.1" >> requirements_linux.txt && \
-    echo "torchaudio==2.5.1" >> requirements_linux.txt && \
-    echo "torchvision==0.20.1" >> requirements_linux.txt && \
-    pip install --no-cache-dir -r requirements_linux.txt
+# FastAPI 실행에 필요한 최소 패키지만 설치
+RUN pip install --no-cache-dir \
+    fastapi==0.120.0 \
+    uvicorn==0.38.0 \
+    starlette==0.48.0 \
+    pydantic==2.11.2 \
+    pydantic_core==2.33.1 \
+    python-dotenv==1.1.0 \
+    torch==2.5.1 \
+    transformers==4.57.1 \
+    tokenizers==0.22.1 \
+    safetensors==0.6.2 \
+    huggingface-hub==0.35.3 \
+    weaviate-client==4.17.0 \
+    langchain==1.0.4 \
+    langchain-core==1.0.3 \
+    langchain-community \
+    openai==1.70.0 \
+    httpx==0.28.1 \
+    requests==2.32.4 \
+    numpy==1.26.4 \
+    soynlp==0.0.493 \
+    emoji==2.15.0
 
 # FastAPI 애플리케이션 코드 복사
 COPY FastAPI/ ./FastAPI/
