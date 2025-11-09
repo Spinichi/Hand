@@ -309,7 +309,7 @@ pipeline {
 
                                                 # Registry에서 이미지 Pull
                                                 echo "📥 Pulling image from Registry..."
-                                                docker pull ${REGISTRY_PUBLIC}/${AI_IMAGE}:latest
+                                                docker pull ${REGISTRY_PRIVATE}/${AI_IMAGE}:latest
 
                                                 # 기존 컨테이너 중지 및 제거
                                                 echo "🛑 Stopping old containers..."
@@ -317,7 +317,7 @@ pipeline {
 
                                                 # docker compose로 서비스 시작
                                                 echo "🚀 Starting AI services..."
-                                                REGISTRY_URL=${REGISTRY_PUBLIC} docker compose up -d
+                                                REGISTRY_URL=${REGISTRY_PRIVATE} docker compose up -d
 
                                                 # 컨테이너 실행 확인
                                                 echo "⏳ Waiting for containers to start..."
