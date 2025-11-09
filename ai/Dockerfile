@@ -32,7 +32,6 @@ RUN pip install --no-cache-dir \
     emoji==2.15.0 \
     langsmith==0.4.41 \
     langchain-core==1.0.3 \
-    langchain-community==0.0.4 \
     langchain==1.0.4
 
 # FastAPI 애플리케이션 코드 복사
