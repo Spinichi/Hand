@@ -21,4 +21,13 @@ public interface DiaryConversationRepository extends MongoRepository<DiaryConver
      * 사용자 ID와 날짜로 조회
      */
     Optional<DiaryConversation> findByUserIdAndSessionDate(Long userId, LocalDate sessionDate);
+
+    /**
+     * 사용자 ID와 날짜 범위로 조회
+     */
+    List<DiaryConversation> findByUserIdAndSessionDateBetweenOrderBySessionDateAsc(
+            Long userId,
+            LocalDate startDate,
+            LocalDate endDate
+    );
 }
