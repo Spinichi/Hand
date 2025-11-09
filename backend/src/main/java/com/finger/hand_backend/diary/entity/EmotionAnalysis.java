@@ -55,6 +55,18 @@ public class EmotionAnalysis {
     private Double depressionScore;
 
     /**
+     * 짧은 요약
+     * 예: "모든 일이 버거운 날."
+     */
+    private String shortSummary;
+
+    /**
+     * 긴 요약
+     * 예: "퇴근 후 모든 일이 버겁게 느껴지고, 자신에 대한 확신이 없어..."
+     */
+    private String longSummary;
+
+    /**
      * 분석 시각
      */
     private LocalDateTime analyzedAt;

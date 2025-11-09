@@ -200,7 +200,7 @@ public class DiaryService {
         log.info("다이어리 완료 - userId: {}, sessionId: {}, depressionScore: {}",
                 userId, sessionId, analysis.getDepressionScore());
 
-        // 7. 사용자에게는 감정 분석 결과만 반환
+        // 7. 사용자에게는 감정 분석 결과와 요약 반환
         return DiaryCompleteResponse.builder()
                 .sessionId(sessionId)
                 .emotions(EmotionScores.builder()
@@ -212,6 +212,8 @@ public class DiaryService {
                         .sadness(analysis.getSadness())
                         .build())
                 .depressionScore(analysis.getDepressionScore())
+                .shortSummary(analysis.getShortSummary())
+                .longSummary(analysis.getLongSummary())
                 .completedAt(session.getCompletedAt())
                 .build();
     }
@@ -225,8 +227,9 @@ public class DiaryService {
 
         return sessions.map(session -> {
             Double depressionScore = null;
+            String shortSummary = null;
 
-            // 완료된 다이어리인 경우 우울점수 포함
+            // 완료된 다이어리인 경우 우울점수와 짧은 요약 포함
             if (session.getStatus() == DiaryStatus.COMPLETED) {
                 try {
                     DiaryConversation conversation = conversationRepository
@@ -235,6 +238,7 @@ public class DiaryService {
 
                     if (conversation != null && conversation.getEmotionAnalysis() != null) {
                         depressionScore = conversation.getEmotionAnalysis().getDepressionScore();
+                        shortSummary = conversation.getEmotionAnalysis().getShortSummary();
                     }
                 } catch (Exception e) {
                     log.warn("감정 분석 결과 조회 실패 - sessionId: {}", session.getId(), e);
@@ -249,7 +253,109 @@ public class DiaryService {
                     .createdAt(session.getCreatedAt())
                     .completedAt(session.getCompletedAt())
                     .depressionScore(depressionScore)
+                    .shortSummary(shortSummary)
                     .build();
         });
+    }
+
+    /**
+     * 날짜 범위로 내 다이어리 조회
+     */
+    @Transactional(readOnly = true)
+    public Page<DiaryListResponse> getMyDiariesByDateRange(
+            Long userId,
+            LocalDate startDate,
+            LocalDate endDate,
+            Pageable pageable
+    ) {
+        Page<DiarySession> sessions = sessionRepository
+                .findByUserIdAndSessionDateBetweenOrderBySessionDateDesc(
+                        userId, startDate, endDate, pageable
+                );
+
+        return sessions.map(session -> {
+            Double depressionScore = null;
+            String shortSummary = null;
+
+            if (session.getStatus() == DiaryStatus.COMPLETED) {
+                try {
+                    DiaryConversation conversation = conversationRepository
+                            .findById(session.getMongodbDiaryId())
+                            .orElse(null);
+
+                    if (conversation != null && conversation.getEmotionAnalysis() != null) {
+                        depressionScore = conversation.getEmotionAnalysis().getDepressionScore();
+                        shortSummary = conversation.getEmotionAnalysis().getShortSummary();
+                    }
+                } catch (Exception e) {
+                    log.warn("감정 분석 결과 조회 실패 - sessionId: {}", session.getId(), e);
+                }
+            }
+
+            return DiaryListResponse.builder()
+                    .sessionId(session.getId())
+                    .sessionDate(session.getSessionDate())
+                    .status(session.getStatus())
+                    .questionCount(session.getQuestionCount())
+                    .createdAt(session.getCreatedAt())
+                    .completedAt(session.getCompletedAt())
+                    .depressionScore(depressionScore)
+                    .shortSummary(shortSummary)
+                    .build();
+        });
+    }
+
+    /**
+     * 다이어리 상세 조회
+     */
+    @Transactional(readOnly = true)
+    public DiaryDetailResponse getDiaryDetail(Long userId, Long sessionId) {
+        // 세션 조회
+        DiarySession session = sessionRepository.findById(sessionId)
+                .orElseThrow(() -> new IllegalArgumentException("다이어리를 찾을 수 없습니다"));
+
+        if (!session.getUserId().equals(userId)) {
+            throw new IllegalArgumentException("권한이 없습니다");
+        }
+
+        // MongoDB에서 대화 내용 조회
+        DiaryConversation conversation = conversationRepository.findById(session.getMongodbDiaryId())
+                .orElseThrow(() -> new IllegalStateException("대화 내용을 찾을 수 없습니다"));
+
+        // 완료된 경우 감정 분석 결과 포함
+        EmotionScores emotions = null;
+        Double depressionScore = null;
+        String shortSummary = null;
+        String longSummary = null;
+
+        if (session.getStatus() == DiaryStatus.COMPLETED && conversation.getEmotionAnalysis() != null) {
+            EmotionAnalysis analysis = conversation.getEmotionAnalysis();
+
+            emotions = EmotionScores.builder()
+                    .joy(analysis.getJoy())
+                    .embarrassment(analysis.getEmbarrassment())
+                    .anger(analysis.getAnger())
+                    .anxiety(analysis.getAnxiety())
+                    .hurt(analysis.getHurt())
+                    .sadness(analysis.getSadness())
+                    .build();
+
+            depressionScore = analysis.getDepressionScore();
+            shortSummary = analysis.getShortSummary();
+            longSummary = analysis.getLongSummary();
+        }
+
+        return DiaryDetailResponse.builder()
+                .sessionId(session.getId())
+                .sessionDate(session.getSessionDate())
+                .status(session.getStatus())
+                .conversations(conversation.getQuestions())
+                .emotions(emotions)
+                .depressionScore(depressionScore)
+                .shortSummary(shortSummary)
+                .longSummary(longSummary)
+                .createdAt(session.getCreatedAt())
+                .completedAt(session.getCompletedAt())
+                .build();
     }
 }

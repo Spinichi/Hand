@@ -87,17 +87,53 @@ public class DiaryController {
      * GET /api/v1/diaries/my
      *
      * @param pageable 페이징 정보
+     * @param startDate 시작 날짜 (optional)
+     * @param endDate 종료 날짜 (optional)
      * @return 다이어리 목록
      */
     @GetMapping("/my")
     public ResponseEntity<ApiResponse<Page<DiaryListResponse>>> getMyDiaries(
             Authentication authentication,
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate,
             @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
     ) {
         Long userId = Long.valueOf(authentication.getName());
 
-        Page<DiaryListResponse> diaries = diaryService.getMyDiaries(userId, pageable);
+        Page<DiaryListResponse> diaries;
+
+        // 날짜 범위가 지정된 경우
+        if (startDate != null && endDate != null) {
+            diaries = diaryService.getMyDiariesByDateRange(
+                    userId,
+                    java.time.LocalDate.parse(startDate),
+                    java.time.LocalDate.parse(endDate),
+                    pageable
+            );
+        } else {
+            // 전체 조회
+            diaries = diaryService.getMyDiaries(userId, pageable);
+        }
 
         return ResponseEntity.ok(ApiResponse.success(diaries,"내 다이어리 목록 조회"));
+    }
+
+    /**
+     * 다이어리 상세 조회
+     * GET /api/v1/diaries/{sessionId}
+     *
+     * @param sessionId 세션 ID
+     * @return 다이어리 상세 (전체 대화 내용 포함)
+     */
+    @GetMapping("/{sessionId}")
+    public ResponseEntity<ApiResponse<DiaryDetailResponse>> getDiaryDetail(
+            Authentication authentication,
+            @PathVariable Long sessionId
+    ) {
+        Long userId = Long.valueOf(authentication.getName());
+
+        DiaryDetailResponse detail = diaryService.getDiaryDetail(userId, sessionId);
+
+        return ResponseEntity.ok(ApiResponse.success(detail, "다이어리 상세 조회"));
     }
 }

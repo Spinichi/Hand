@@ -37,4 +37,14 @@ public interface DiarySessionRepository extends JpaRepository<DiarySession, Long
      * 사용자 ID와 MongoDB ID로 조회
      */
     Optional<DiarySession> findByUserIdAndMongodbDiaryId(Long userId, String mongodbDiaryId);
+
+    /**
+     * 사용자 ID와 날짜 범위로 조회 (페이징)
+     */
+    Page<DiarySession> findByUserIdAndSessionDateBetweenOrderBySessionDateDesc(
+            Long userId,
+            LocalDate startDate,
+            LocalDate endDate,
+            Pageable pageable
+    );
 }

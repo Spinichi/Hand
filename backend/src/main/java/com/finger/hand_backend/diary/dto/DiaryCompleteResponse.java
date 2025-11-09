@@ -32,6 +32,18 @@ public class DiaryCompleteResponse {
     private Double depressionScore;
 
     /**
+     * 짧은 요약
+     * 예: "모든 일이 버거운 날."
+     */
+    private String shortSummary;
+
+    /**
+     * 긴 요약
+     * 예: "퇴근 후 모든 일이 버겁게 느껴지고..."
+     */
+    private String longSummary;
+
+    /**
      * 완료 시각
      */
     private LocalDateTime completedAt;
