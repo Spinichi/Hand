@@ -295,9 +295,11 @@ pipeline {
                                 ]) {
                                     sshagent([SSH_CREDENTIALS]) {
                                         sh """
-                                            # .env 파일 전송
+                                            # 기존 읽기 전용 .env 파일 제거 후 전송
                                             echo "📤 Transferring .env file..."
+                                            ssh -o StrictHostKeyChecking=no ubuntu@${AI_SERVER} 'rm -f /home/ubuntu/ai/.env' || true
                                             scp -o StrictHostKeyChecking=no \${ENV_FILE} ubuntu@${AI_SERVER}:/home/ubuntu/ai/.env
+                                            ssh -o StrictHostKeyChecking=no ubuntu@${AI_SERVER} 'chmod 644 /home/ubuntu/ai/.env'
 
                                             # docker-compose.yml 파일 전송
                                             echo "📤 Transferring docker-compose.yml..."
