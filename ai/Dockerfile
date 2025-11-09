@@ -18,7 +18,12 @@ RUN apt-get update && apt-get install -y \
 
 # requirements.txt 복사 및 설치
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# 불필요한 무거운 패키지들 제외 (Windows 전용, CUDA, 개발용 도구)
+RUN grep -vE "pywin32|pywinpty|torch.*cu121|torchaudio.*cu121|torchvision.*cu121|tensorflow|keras|tf_keras|django|flask|jupyter|notebook|ipykernel|ipython|ipywidgets|mlflow|matplotlib|pandas|jax|jaxlib|mediapipe|sounddevice|pytest|poetry|black|flake8|mypy" requirements.txt > requirements_linux.txt && \
+    echo "torch==2.5.1" >> requirements_linux.txt && \
+    echo "torchaudio==2.5.1" >> requirements_linux.txt && \
+    echo "torchvision==0.20.1" >> requirements_linux.txt && \
+    pip install --no-cache-dir -r requirements_linux.txt
 
 # FastAPI 애플리케이션 코드 복사
 COPY FastAPI/ ./FastAPI/
