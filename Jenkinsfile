@@ -307,20 +307,17 @@ pipeline {
                                             ssh -o StrictHostKeyChecking=no ubuntu@${AI_SERVER} '
                                                 cd /home/ubuntu/ai
 
-                                                # Registry URL 환경변수 설정
-                                                export REGISTRY_URL=${REGISTRY_PUBLIC}
+                                                # Registry에서 이미지 Pull
+                                                echo "📥 Pulling image from Registry..."
+                                                docker pull ${REGISTRY_PUBLIC}/${AI_IMAGE}:latest
 
                                                 # 기존 컨테이너 중지 및 제거
                                                 echo "🛑 Stopping old containers..."
-                                                docker compose down || true
-
-                                                # Registry에서 최신 이미지 Pull
-                                                echo "📥 Pulling latest image from Registry..."
-                                                docker pull ${REGISTRY_PUBLIC}/${AI_IMAGE}:latest
+                                                docker compose down 2>/dev/null || true
 
                                                 # docker compose로 서비스 시작
                                                 echo "🚀 Starting AI services..."
-                                                docker compose up -d
+                                                REGISTRY_URL=${REGISTRY_PUBLIC} docker compose up -d
 
                                                 # 컨테이너 실행 확인
                                                 echo "⏳ Waiting for containers to start..."
