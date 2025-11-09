@@ -22,6 +22,10 @@ pipeline {
         BACKEND_IMAGE = 'hand-backend'
         BACKEND_SERVER = "${env.BACKEND_SERVER_IP}"
 
+        // AI
+        AI_IMAGE = 'hand-ai'
+        AI_SERVER = "${env.AI_SERVER_IP}"
+
         // Credentials
         SSH_CREDENTIALS = 'server-ssh-key'
     }
@@ -202,19 +206,16 @@ pipeline {
                                         script {
                                             def gitCommit = sh(returnStdout: true, script: 'git log -1 --oneline').trim()
                                             def releaseNotes = """
-                빌드 번호: ${BUILD_NUMBER}
-                빌드 시간: ${new Date().format('yyyy-MM-dd HH:mm:ss')}
-                커밋: ${gitCommit}
-                배포자: Jenkins CI/CD
-                """.trim()
+빌드 번호: ${BUILD_NUMBER}
+빌드 시간: ${new Date().format('yyyy-MM-dd HH:mm:ss')}
+커밋: ${gitCommit}
+배포자: Jenkins CI/CD
+                                            """.trim()
 
                                             echo '📦 Building Debug APK and Uploading to Firebase...'
                                             sh """
                                                 chmod +x gradlew
                                                 ./gradlew --version
-
-                                                echo "🧹 Cleaning..."
-                                                ./gradlew :app:clean
 
                                                 echo "🔨 Building app module APK..."
                                                 ./gradlew :app:assembleDebug
@@ -257,6 +258,90 @@ pipeline {
                         }
                     }
                 }
+
+                stage('AI CI/CD') {
+                    when {
+                        beforeAgent true
+                        anyOf {
+                            changeset pattern: "ai/**", caseSensitive: true
+                            expression { return params.FORCE_BUILD_AI }
+                        }
+                    }
+                    stages {
+                        stage('AI Docker Build & Push') {
+                            steps {
+                                dir('ai') {
+                                    echo '🐳 Building AI Docker Image...'
+                                    sh """
+                                        # Docker 빌드
+                                        docker build -t ${REGISTRY_LOCAL}/${AI_IMAGE}:${BUILD_NUMBER} .
+                                        docker tag ${REGISTRY_LOCAL}/${AI_IMAGE}:${BUILD_NUMBER} ${REGISTRY_LOCAL}/${AI_IMAGE}:latest
+
+                                        # Registry에 Push
+                                        docker push ${REGISTRY_LOCAL}/${AI_IMAGE}:${BUILD_NUMBER}
+                                        docker push ${REGISTRY_LOCAL}/${AI_IMAGE}:latest
+
+                                        echo "✅ Pushed to Registry: ${REGISTRY_LOCAL}/${AI_IMAGE}:latest"
+                                    """
+                                }
+                            }
+                        }
+
+                        stage('AI Deploy to Server 3') {
+                            steps {
+                                echo '🚀 Deploying AI to Server 3...'
+                                withCredentials([
+                                    file(credentialsId: 'ai-env', variable: 'ENV_FILE')
+                                ]) {
+                                    sshagent([SSH_CREDENTIALS]) {
+                                        sh """
+                                            # .env 파일 전송
+                                            echo "📤 Transferring .env file..."
+                                            scp -o StrictHostKeyChecking=no \${ENV_FILE} ubuntu@${AI_SERVER}:/home/ubuntu/ai/.env
+
+                                            # docker-compose.yml 파일 전송
+                                            echo "📤 Transferring docker-compose.yml..."
+                                            scp -o StrictHostKeyChecking=no ai/docker-compose.yml ubuntu@${AI_SERVER}:/home/ubuntu/ai/docker-compose.yml
+
+                                            # 서버3에서 배포 실행
+                                            ssh -o StrictHostKeyChecking=no ubuntu@${AI_SERVER} '
+                                                cd /home/ubuntu/ai
+
+                                                # Registry URL 환경변수 설정
+                                                export REGISTRY_URL=${REGISTRY_PUBLIC}
+
+                                                # 기존 컨테이너 중지 및 제거
+                                                echo "🛑 Stopping old containers..."
+                                                docker-compose down || true
+
+                                                # Registry에서 최신 이미지 Pull
+                                                echo "📥 Pulling latest image from Registry..."
+                                                docker pull ${REGISTRY_PUBLIC}/${AI_IMAGE}:latest
+
+                                                # docker-compose로 서비스 시작
+                                                echo "🚀 Starting AI services..."
+                                                docker-compose up -d
+
+                                                # 컨테이너 실행 확인
+                                                echo "⏳ Waiting for containers to start..."
+                                                sleep 15
+
+                                                if docker ps | grep -q hand-ai && docker ps | grep -q hand-weaviate; then
+                                                    echo "✅ AI containers are running!"
+                                                    docker ps | grep hand-
+                                                else
+                                                    echo "❌ AI containers failed to start!"
+                                                    docker-compose logs
+                                                    exit 1
+                                                fi
+                                            '
+                                        """
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
     }
@@ -275,9 +360,17 @@ pipeline {
             sh '''
                 # 백엔드 이미지 정리
                 docker images | grep ${BACKEND_IMAGE} | grep -v latest | awk '{print $3}' | xargs -r docker rmi -f || true
+                # AI 이미지 정리
+                docker images | grep ${AI_IMAGE} | grep -v latest | awk '{print $3}' | xargs -r docker rmi -f || true
                 docker image prune -f || true
             '''
-            cleanWs()
+            cleanWs(
+              deleteDirs: true,
+              patterns: [
+                [pattern: '**',                      type: 'INCLUDE'], // 기본은 모두 삭제
+                [pattern: 'frontend/app/build/**',   type: 'EXCLUDE']  // 여기만 보존
+              ]
+            )
         }
     }
 }
