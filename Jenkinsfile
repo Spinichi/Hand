@@ -370,10 +370,12 @@ pipeline {
                 if [ ! -z "$OLD_BACKEND_TAGS" ]; then
                     for tag in $OLD_BACKEND_TAGS; do
                         echo "Deleting ${BACKEND_IMAGE}:$tag"
-                        DIGEST=$(curl -s -H "Accept: application/vnd.docker.distribution.manifest.v2+json" \
+                        DIGEST=$(curl -I -s -H "Accept: application/vnd.docker.distribution.manifest.v2+json" \
                             http://localhost:${REGISTRY_PORT}/v2/${BACKEND_IMAGE}/manifests/$tag | \
-                            jq -r .config.digest)
-                        curl -X DELETE http://localhost:${REGISTRY_PORT}/v2/${BACKEND_IMAGE}/manifests/$DIGEST || true
+                            grep -i Docker-Content-Digest | awk '{print $2}' | tr -d '\r')
+                        if [ ! -z "$DIGEST" ]; then
+                            curl -X DELETE http://localhost:${REGISTRY_PORT}/v2/${BACKEND_IMAGE}/manifests/$DIGEST || true
+                        fi
                     done
                 fi
 
@@ -383,10 +385,12 @@ pipeline {
                 if [ ! -z "$OLD_AI_TAGS" ]; then
                     for tag in $OLD_AI_TAGS; do
                         echo "Deleting ${AI_IMAGE}:$tag"
-                        DIGEST=$(curl -s -H "Accept: application/vnd.docker.distribution.manifest.v2+json" \
+                        DIGEST=$(curl -I -s -H "Accept: application/vnd.docker.distribution.manifest.v2+json" \
                             http://localhost:${REGISTRY_PORT}/v2/${AI_IMAGE}/manifests/$tag | \
-                            jq -r .config.digest)
-                        curl -X DELETE http://localhost:${REGISTRY_PORT}/v2/${AI_IMAGE}/manifests/$DIGEST || true
+                            grep -i Docker-Content-Digest | awk '{print $2}' | tr -d '\r')
+                        if [ ! -z "$DIGEST" ]; then
+                            curl -X DELETE http://localhost:${REGISTRY_PORT}/v2/${AI_IMAGE}/manifests/$DIGEST || true
+                        fi
                     done
                 fi
 
