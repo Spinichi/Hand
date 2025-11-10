@@ -82,16 +82,23 @@ pipeline {
                             steps {
                                 dir('backend') {
                                     echo '🐳 Building and Pushing Docker Image to Registry...'
-                                    sh """
-                                        # Docker Multi-stage build로 Gradle 빌드 포함 (cache-from으로 캐시 재사용)
-                                        docker pull ${REGISTRY_LOCAL}/${BACKEND_IMAGE}:latest || true
-                                        docker build --cache-from ${REGISTRY_LOCAL}/${BACKEND_IMAGE}:latest -t ${REGISTRY_LOCAL}/${BACKEND_IMAGE}:latest .
+                                    withCredentials([file(credentialsId: 'fcm-service-account', variable: 'FCM_KEY_FILE')]) {
+                                        sh """
+                                            # FCM 키 파일을 resources 폴더에 복사
+                                            echo "📋 Copying FCM service account key..."
+                                            cp \${FCM_KEY_FILE} src/main/resources/fcm-key.json
+                                            chmod 600 src/main/resources/fcm-key.json
 
-                                        # Registry에 Push (latest만)
-                                        docker push ${REGISTRY_LOCAL}/${BACKEND_IMAGE}:latest
+                                            # Docker Multi-stage build로 Gradle 빌드 포함 (cache-from으로 캐시 재사용)
+                                            docker pull ${REGISTRY_LOCAL}/${BACKEND_IMAGE}:latest || true
+                                            docker build --cache-from ${REGISTRY_LOCAL}/${BACKEND_IMAGE}:latest -t ${REGISTRY_LOCAL}/${BACKEND_IMAGE}:latest .
 
-                                        echo "✅ Pushed to Registry: ${REGISTRY_LOCAL}/${BACKEND_IMAGE}:latest"
-                                    """
+                                            # Registry에 Push (latest만)
+                                            docker push ${REGISTRY_LOCAL}/${BACKEND_IMAGE}:latest
+
+                                            echo "✅ Pushed to Registry: ${REGISTRY_LOCAL}/${BACKEND_IMAGE}:latest"
+                                        """
+                                    }
                                 }
                             }
                         }
