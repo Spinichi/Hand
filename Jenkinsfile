@@ -141,6 +141,11 @@ pipeline {
                                                     docker logs hand-backend
                                                     exit 1
                                                 fi
+
+                                                # 오래된 이미지 정리
+                                                echo "🧹 Cleaning old images..."
+                                                docker images | grep ${REGISTRY_PUBLIC}/${BACKEND_IMAGE} | grep -v latest | awk "{print \$3}" | xargs -r docker rmi -f || true
+                                                docker image prune -f || true
                                             '
                                         """
                                     }
@@ -333,6 +338,11 @@ pipeline {
                                                     docker compose logs
                                                     exit 1
                                                 fi
+
+                                                # 오래된 이미지 정리
+                                                echo "🧹 Cleaning old images..."
+                                                docker images | grep ${REGISTRY_PRIVATE}/${AI_IMAGE} | grep -v latest | awk "{print \$3}" | xargs -r docker rmi -f || true
+                                                docker image prune -f || true
                                             '
                                         """
                                     }
