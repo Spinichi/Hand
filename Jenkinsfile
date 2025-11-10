@@ -85,11 +85,9 @@ pipeline {
                                     sh """
                                         # Docker Multi-stage build로 Gradle 빌드 포함 (cache-from으로 캐시 재사용)
                                         docker pull ${REGISTRY_LOCAL}/${BACKEND_IMAGE}:latest || true
-                                        docker build --cache-from ${REGISTRY_LOCAL}/${BACKEND_IMAGE}:latest -t ${REGISTRY_LOCAL}/${BACKEND_IMAGE}:${BUILD_NUMBER} .
-                                        docker tag ${REGISTRY_LOCAL}/${BACKEND_IMAGE}:${BUILD_NUMBER} ${REGISTRY_LOCAL}/${BACKEND_IMAGE}:latest
+                                        docker build --cache-from ${REGISTRY_LOCAL}/${BACKEND_IMAGE}:latest -t ${REGISTRY_LOCAL}/${BACKEND_IMAGE}:latest .
 
-                                        # Registry에 Push
-                                        docker push ${REGISTRY_LOCAL}/${BACKEND_IMAGE}:${BUILD_NUMBER}
+                                        # Registry에 Push (latest만)
                                         docker push ${REGISTRY_LOCAL}/${BACKEND_IMAGE}:latest
 
                                         echo "✅ Pushed to Registry: ${REGISTRY_LOCAL}/${BACKEND_IMAGE}:latest"
@@ -281,11 +279,9 @@ pipeline {
                                     sh """
                                         # Docker 빌드 (cache-from으로 이전 이미지 레이어 재사용)
                                         docker pull ${REGISTRY_LOCAL}/${AI_IMAGE}:latest || true
-                                        docker build --cache-from ${REGISTRY_LOCAL}/${AI_IMAGE}:latest -t ${REGISTRY_LOCAL}/${AI_IMAGE}:${BUILD_NUMBER} .
-                                        docker tag ${REGISTRY_LOCAL}/${AI_IMAGE}:${BUILD_NUMBER} ${REGISTRY_LOCAL}/${AI_IMAGE}:latest
+                                        docker build --cache-from ${REGISTRY_LOCAL}/${AI_IMAGE}:latest -t ${REGISTRY_LOCAL}/${AI_IMAGE}:latest .
 
-                                        # Registry에 Push
-                                        docker push ${REGISTRY_LOCAL}/${AI_IMAGE}:${BUILD_NUMBER}
+                                        # Registry에 Push (latest만)
                                         docker push ${REGISTRY_LOCAL}/${AI_IMAGE}:latest
 
                                         echo "✅ Pushed to Registry: ${REGISTRY_LOCAL}/${AI_IMAGE}:latest"
@@ -369,60 +365,12 @@ pipeline {
         always {
             echo '🧹 Cleaning up...'
             sh '''
-                # Jenkins 서버 로컬 이미지 정리
+                # Jenkins 서버 로컬 이미지 정리만 수행
+                echo "🧹 Cleaning local images on Jenkins server..."
                 docker images | grep ${BACKEND_IMAGE} | grep -v latest | awk '{print $3}' | xargs -r docker rmi -f || true
                 docker images | grep ${AI_IMAGE} | grep -v latest | awk '{print $3}' | xargs -r docker rmi -f || true
-
-                # Registry에서 오래된 이미지 태그 정리 (latest + 최근 1개만 유지)
-                echo "🗑️ Cleaning old tags from Registry..."
-
-                # Backend 태그 정리
-                echo "🔍 Checking Backend tags..."
-                ALL_BACKEND_TAGS=$(curl -s http://registry:5000/v2/${BACKEND_IMAGE}/tags/list | jq -r '.tags[]')
-                echo "All Backend tags: $ALL_BACKEND_TAGS"
-                OLD_BACKEND_TAGS=$(echo "$ALL_BACKEND_TAGS" | grep -v latest | sort -rn | tail -n +2)
-                echo "Tags to delete: $OLD_BACKEND_TAGS"
-
-                if [ ! -z "$OLD_BACKEND_TAGS" ]; then
-                    for tag in $OLD_BACKEND_TAGS; do
-                        echo "Deleting ${BACKEND_IMAGE}:$tag"
-                        DIGEST=$(curl -I -s -H "Accept: application/vnd.docker.distribution.manifest.v2+json" \
-                            http://registry:5000/v2/${BACKEND_IMAGE}/manifests/$tag | \
-                            grep -i Docker-Content-Digest | awk '{print $2}' | tr -d '\r')
-                        echo "Digest: $DIGEST"
-                        if [ ! -z "$DIGEST" ]; then
-                            curl -X DELETE http://registry:5000/v2/${BACKEND_IMAGE}/manifests/$DIGEST || true
-                            echo "✅ Deleted ${BACKEND_IMAGE}:$tag"
-                        fi
-                    done
-                else
-                    echo "No old Backend tags to delete"
-                fi
-
-                # AI 태그 정리
-                echo "🔍 Checking AI tags..."
-                ALL_AI_TAGS=$(curl -s http://registry:5000/v2/${AI_IMAGE}/tags/list | jq -r '.tags[]')
-                echo "All AI tags: $ALL_AI_TAGS"
-                OLD_AI_TAGS=$(echo "$ALL_AI_TAGS" | grep -v latest | sort -rn | tail -n +2)
-                echo "Tags to delete: $OLD_AI_TAGS"
-
-                if [ ! -z "$OLD_AI_TAGS" ]; then
-                    for tag in $OLD_AI_TAGS; do
-                        echo "Deleting ${AI_IMAGE}:$tag"
-                        DIGEST=$(curl -I -s -H "Accept: application/vnd.docker.distribution.manifest.v2+json" \
-                            http://registry:5000/v2/${AI_IMAGE}/manifests/$tag | \
-                            grep -i Docker-Content-Digest | awk '{print $2}' | tr -d '\r')
-                        echo "Digest: $DIGEST"
-                        if [ ! -z "$DIGEST" ]; then
-                            curl -X DELETE http://registry:5000/v2/${AI_IMAGE}/manifests/$DIGEST || true
-                            echo "✅ Deleted ${AI_IMAGE}:$tag"
-                        fi
-                    done
-                else
-                    echo "No old AI tags to delete"
-                fi
-
                 docker image prune -f || true
+                echo "✅ Local cleanup completed"
             '''
             cleanWs(
               deleteDirs: true,
