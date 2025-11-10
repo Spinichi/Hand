@@ -83,8 +83,10 @@ pipeline {
                                 dir('backend') {
                                     echo '🐳 Building and Pushing Docker Image to Registry...'
                                     sh """
-                                        # Docker Multi-stage build로 Gradle 빌드 포함
-                                        docker build -t ${REGISTRY_LOCAL}/${BACKEND_IMAGE}:${BUILD_NUMBER} .
+                                        # Docker Multi-stage build로 Gradle 빌드 포함 (BuildKit + cache-from)
+                                        export DOCKER_BUILDKIT=1
+                                        docker pull ${REGISTRY_LOCAL}/${BACKEND_IMAGE}:latest || true
+                                        docker build --cache-from ${REGISTRY_LOCAL}/${BACKEND_IMAGE}:latest -t ${REGISTRY_LOCAL}/${BACKEND_IMAGE}:${BUILD_NUMBER} .
                                         docker tag ${REGISTRY_LOCAL}/${BACKEND_IMAGE}:${BUILD_NUMBER} ${REGISTRY_LOCAL}/${BACKEND_IMAGE}:latest
 
                                         # Registry에 Push
@@ -278,8 +280,10 @@ pipeline {
                                 dir('ai') {
                                     echo '🐳 Building AI Docker Image...'
                                     sh """
-                                        # Docker 빌드
-                                        docker build -t ${REGISTRY_LOCAL}/${AI_IMAGE}:${BUILD_NUMBER} .
+                                        # Docker 빌드 (BuildKit + cache-from으로 최적화)
+                                        export DOCKER_BUILDKIT=1
+                                        docker pull ${REGISTRY_LOCAL}/${AI_IMAGE}:latest || true
+                                        docker build --cache-from ${REGISTRY_LOCAL}/${AI_IMAGE}:latest -t ${REGISTRY_LOCAL}/${AI_IMAGE}:${BUILD_NUMBER} .
                                         docker tag ${REGISTRY_LOCAL}/${AI_IMAGE}:${BUILD_NUMBER} ${REGISTRY_LOCAL}/${AI_IMAGE}:latest
 
                                         # Registry에 Push
