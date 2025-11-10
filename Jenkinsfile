@@ -365,33 +365,49 @@ pipeline {
                 echo "🗑️ Cleaning old tags from Registry..."
 
                 # Backend 태그 정리
-                OLD_BACKEND_TAGS=$(curl -s http://localhost:${REGISTRY_PORT}/v2/${BACKEND_IMAGE}/tags/list | \
-                    jq -r '.tags[]' | grep -v latest | sort -rn | tail -n +2 || echo "")
+                echo "🔍 Checking Backend tags..."
+                ALL_BACKEND_TAGS=$(curl -s http://registry:5000/v2/${BACKEND_IMAGE}/tags/list | jq -r '.tags[]')
+                echo "All Backend tags: $ALL_BACKEND_TAGS"
+                OLD_BACKEND_TAGS=$(echo "$ALL_BACKEND_TAGS" | grep -v latest | sort -rn | tail -n +2)
+                echo "Tags to delete: $OLD_BACKEND_TAGS"
+
                 if [ ! -z "$OLD_BACKEND_TAGS" ]; then
                     for tag in $OLD_BACKEND_TAGS; do
                         echo "Deleting ${BACKEND_IMAGE}:$tag"
                         DIGEST=$(curl -I -s -H "Accept: application/vnd.docker.distribution.manifest.v2+json" \
-                            http://localhost:${REGISTRY_PORT}/v2/${BACKEND_IMAGE}/manifests/$tag | \
+                            http://registry:5000/v2/${BACKEND_IMAGE}/manifests/$tag | \
                             grep -i Docker-Content-Digest | awk '{print $2}' | tr -d '\r')
+                        echo "Digest: $DIGEST"
                         if [ ! -z "$DIGEST" ]; then
-                            curl -X DELETE http://localhost:${REGISTRY_PORT}/v2/${BACKEND_IMAGE}/manifests/$DIGEST || true
+                            curl -X DELETE http://registry:5000/v2/${BACKEND_IMAGE}/manifests/$DIGEST || true
+                            echo "✅ Deleted ${BACKEND_IMAGE}:$tag"
                         fi
                     done
+                else
+                    echo "No old Backend tags to delete"
                 fi
 
                 # AI 태그 정리
-                OLD_AI_TAGS=$(curl -s http://localhost:${REGISTRY_PORT}/v2/${AI_IMAGE}/tags/list | \
-                    jq -r '.tags[]' | grep -v latest | sort -rn | tail -n +2 || echo "")
+                echo "🔍 Checking AI tags..."
+                ALL_AI_TAGS=$(curl -s http://registry:5000/v2/${AI_IMAGE}/tags/list | jq -r '.tags[]')
+                echo "All AI tags: $ALL_AI_TAGS"
+                OLD_AI_TAGS=$(echo "$ALL_AI_TAGS" | grep -v latest | sort -rn | tail -n +2)
+                echo "Tags to delete: $OLD_AI_TAGS"
+
                 if [ ! -z "$OLD_AI_TAGS" ]; then
                     for tag in $OLD_AI_TAGS; do
                         echo "Deleting ${AI_IMAGE}:$tag"
                         DIGEST=$(curl -I -s -H "Accept: application/vnd.docker.distribution.manifest.v2+json" \
-                            http://localhost:${REGISTRY_PORT}/v2/${AI_IMAGE}/manifests/$tag | \
+                            http://registry:5000/v2/${AI_IMAGE}/manifests/$tag | \
                             grep -i Docker-Content-Digest | awk '{print $2}' | tr -d '\r')
+                        echo "Digest: $DIGEST"
                         if [ ! -z "$DIGEST" ]; then
-                            curl -X DELETE http://localhost:${REGISTRY_PORT}/v2/${AI_IMAGE}/manifests/$DIGEST || true
+                            curl -X DELETE http://registry:5000/v2/${AI_IMAGE}/manifests/$DIGEST || true
+                            echo "✅ Deleted ${AI_IMAGE}:$tag"
                         fi
                     done
+                else
+                    echo "No old AI tags to delete"
                 fi
 
                 docker image prune -f || true
