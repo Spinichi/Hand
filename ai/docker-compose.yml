@@ -8,9 +8,11 @@ services:
       - "50051:50051"
     environment:
       AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: "true"
-      PERSISTENCE_DATA_PATH: "./weaviate_data"
+      PERSISTENCE_DATA_PATH: "/var/lib/weaviate"
       QUERY_DEFAULTS_LIMIT: 25
       DEFAULT_VECTORIZER_MODULE: "none"
+      CLUSTER_HOSTNAME: "node1"
+      RAFT_JOIN: ""
     volumes:
       - weaviate_data:/var/lib/weaviate
     networks:

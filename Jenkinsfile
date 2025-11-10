@@ -82,17 +82,23 @@ pipeline {
                             steps {
                                 dir('backend') {
                                     echo '🐳 Building and Pushing Docker Image to Registry...'
-                                    sh """
-                                        # Docker Multi-stage build로 Gradle 빌드 포함
-                                        docker build -t ${REGISTRY_LOCAL}/${BACKEND_IMAGE}:${BUILD_NUMBER} .
-                                        docker tag ${REGISTRY_LOCAL}/${BACKEND_IMAGE}:${BUILD_NUMBER} ${REGISTRY_LOCAL}/${BACKEND_IMAGE}:latest
+                                    withCredentials([file(credentialsId: 'fcm-service-account', variable: 'FCM_KEY_FILE')]) {
+                                        sh """
+                                            # FCM 키 파일을 resources 폴더에 복사
+                                            echo "📋 Copying FCM service account key..."
+                                            cp \${FCM_KEY_FILE} src/main/resources/fcm-key.json
+                                            chmod 600 src/main/resources/fcm-key.json
 
-                                        # Registry에 Push
-                                        docker push ${REGISTRY_LOCAL}/${BACKEND_IMAGE}:${BUILD_NUMBER}
-                                        docker push ${REGISTRY_LOCAL}/${BACKEND_IMAGE}:latest
+                                            # Docker Multi-stage build로 Gradle 빌드 포함 (cache-from으로 캐시 재사용)
+                                            docker pull ${REGISTRY_LOCAL}/${BACKEND_IMAGE}:latest || true
+                                            docker build --cache-from ${REGISTRY_LOCAL}/${BACKEND_IMAGE}:latest -t ${REGISTRY_LOCAL}/${BACKEND_IMAGE}:latest .
 
-                                        echo "✅ Pushed to Registry: ${REGISTRY_LOCAL}/${BACKEND_IMAGE}:latest"
-                                    """
+                                            # Registry에 Push (latest만)
+                                            docker push ${REGISTRY_LOCAL}/${BACKEND_IMAGE}:latest
+
+                                            echo "✅ Pushed to Registry: ${REGISTRY_LOCAL}/${BACKEND_IMAGE}:latest"
+                                        """
+                                    }
                                 }
                             }
                         }
@@ -141,6 +147,11 @@ pipeline {
                                                     docker logs hand-backend
                                                     exit 1
                                                 fi
+
+                                                # 오래된 이미지 정리
+                                                echo "🧹 Cleaning old images..."
+                                                docker images | grep ${REGISTRY_PUBLIC}/${BACKEND_IMAGE} | grep -v latest | awk "{print \$3}" | xargs -r docker rmi -f || true
+                                                docker image prune -f || true
                                             '
                                         """
                                     }
@@ -273,12 +284,11 @@ pipeline {
                                 dir('ai') {
                                     echo '🐳 Building AI Docker Image...'
                                     sh """
-                                        # Docker 빌드
-                                        docker build -t ${REGISTRY_LOCAL}/${AI_IMAGE}:${BUILD_NUMBER} .
-                                        docker tag ${REGISTRY_LOCAL}/${AI_IMAGE}:${BUILD_NUMBER} ${REGISTRY_LOCAL}/${AI_IMAGE}:latest
+                                        # Docker 빌드 (cache-from으로 이전 이미지 레이어 재사용)
+                                        docker pull ${REGISTRY_LOCAL}/${AI_IMAGE}:latest || true
+                                        docker build --cache-from ${REGISTRY_LOCAL}/${AI_IMAGE}:latest -t ${REGISTRY_LOCAL}/${AI_IMAGE}:latest .
 
-                                        # Registry에 Push
-                                        docker push ${REGISTRY_LOCAL}/${AI_IMAGE}:${BUILD_NUMBER}
+                                        # Registry에 Push (latest만)
                                         docker push ${REGISTRY_LOCAL}/${AI_IMAGE}:latest
 
                                         echo "✅ Pushed to Registry: ${REGISTRY_LOCAL}/${AI_IMAGE}:latest"
@@ -306,34 +316,39 @@ pipeline {
                                             scp -o StrictHostKeyChecking=no ai/docker-compose.yml ubuntu@${AI_SERVER}:/home/ubuntu/ai/docker-compose.yml
 
                                             # 서버3에서 배포 실행
-                                            ssh -o StrictHostKeyChecking=no ubuntu@${AI_SERVER} '
+                                            ssh -o StrictHostKeyChecking=no ubuntu@${AI_SERVER} "
                                                 cd /home/ubuntu/ai
 
                                                 # Registry에서 이미지 Pull
-                                                echo "📥 Pulling image from Registry..."
+                                                echo '📥 Pulling image from Registry...'
                                                 docker pull ${REGISTRY_PRIVATE}/${AI_IMAGE}:latest
 
                                                 # 기존 컨테이너 중지 및 제거
-                                                echo "🛑 Stopping old containers..."
+                                                echo '🛑 Stopping old containers...'
                                                 docker compose down 2>/dev/null || true
 
                                                 # docker compose로 서비스 시작
-                                                echo "🚀 Starting AI services..."
+                                                echo '🚀 Starting AI services...'
                                                 REGISTRY_URL=${REGISTRY_PRIVATE} docker compose up -d
 
                                                 # 컨테이너 실행 확인
-                                                echo "⏳ Waiting for containers to start..."
+                                                echo '⏳ Waiting for containers to start...'
                                                 sleep 15
 
                                                 if docker ps | grep -q hand-ai && docker ps | grep -q hand-weaviate; then
-                                                    echo "✅ AI containers are running!"
+                                                    echo '✅ AI containers are running!'
                                                     docker ps | grep hand-
                                                 else
-                                                    echo "❌ AI containers failed to start!"
+                                                    echo '❌ AI containers failed to start!'
                                                     docker compose logs
                                                     exit 1
                                                 fi
-                                            '
+
+                                                # 오래된 이미지 정리
+                                                echo '🧹 Cleaning old images...'
+                                                docker images | grep ${REGISTRY_PRIVATE}/${AI_IMAGE} | grep -v latest | awk '{print \$3}' | xargs -r docker rmi -f || true
+                                                docker image prune -f || true
+                                            "
                                         """
                                     }
                                 }
@@ -357,11 +372,12 @@ pipeline {
         always {
             echo '🧹 Cleaning up...'
             sh '''
-                # 백엔드 이미지 정리
+                # Jenkins 서버 로컬 이미지 정리만 수행
+                echo "🧹 Cleaning local images on Jenkins server..."
                 docker images | grep ${BACKEND_IMAGE} | grep -v latest | awk '{print $3}' | xargs -r docker rmi -f || true
-                # AI 이미지 정리
                 docker images | grep ${AI_IMAGE} | grep -v latest | awk '{print $3}' | xargs -r docker rmi -f || true
                 docker image prune -f || true
+                echo "✅ Local cleanup completed"
             '''
             cleanWs(
               deleteDirs: true,

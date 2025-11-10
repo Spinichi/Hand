@@ -16,19 +16,25 @@ RUN apt-get update && apt-get install -y \
     libgl1 \
     && rm -rf /var/lib/apt/lists/*
 
-# FastAPI 실행에 필요한 최소 패키지만 설치
+# 1단계: 가장 무거운 패키지 먼저 설치 (캐시 최적화)
+RUN pip install --no-cache-dir \
+    torch==2.5.1 \
+    transformers==4.57.1
+
+# 2단계: ML/데이터 관련 패키지
+RUN pip install --no-cache-dir \
+    numpy==1.26.4 \
+    soynlp==0.0.493
+
+# 3단계: 나머지 애플리케이션 패키지
 RUN pip install --no-cache-dir \
     fastapi==0.120.0 \
     uvicorn==0.38.0 \
     python-dotenv==1.1.0 \
-    torch==2.5.1 \
-    transformers==4.57.1 \
     weaviate-client==4.17.0 \
     openai==1.70.0 \
     httpx==0.28.1 \
     requests==2.32.4 \
-    numpy==1.26.4 \
-    soynlp==0.0.493 \
     emoji==2.15.0 \
     langsmith==0.4.41 \
     langchain-core==1.0.3 \
