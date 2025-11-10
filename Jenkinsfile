@@ -357,10 +357,39 @@ pipeline {
         always {
             echo '🧹 Cleaning up...'
             sh '''
-                # 백엔드 이미지 정리
+                # Jenkins 서버 로컬 이미지 정리
                 docker images | grep ${BACKEND_IMAGE} | grep -v latest | awk '{print $3}' | xargs -r docker rmi -f || true
-                # AI 이미지 정리
                 docker images | grep ${AI_IMAGE} | grep -v latest | awk '{print $3}' | xargs -r docker rmi -f || true
+
+                # Registry에서 오래된 이미지 태그 정리 (latest + 최근 1개만 유지)
+                echo "🗑️ Cleaning old tags from Registry..."
+
+                # Backend 태그 정리
+                OLD_BACKEND_TAGS=$(curl -s http://localhost:${REGISTRY_PORT}/v2/${BACKEND_IMAGE}/tags/list | \
+                    jq -r '.tags[]' | grep -v latest | sort -rn | tail -n +2 || echo "")
+                if [ ! -z "$OLD_BACKEND_TAGS" ]; then
+                    for tag in $OLD_BACKEND_TAGS; do
+                        echo "Deleting ${BACKEND_IMAGE}:$tag"
+                        DIGEST=$(curl -s -H "Accept: application/vnd.docker.distribution.manifest.v2+json" \
+                            http://localhost:${REGISTRY_PORT}/v2/${BACKEND_IMAGE}/manifests/$tag | \
+                            jq -r .config.digest)
+                        curl -X DELETE http://localhost:${REGISTRY_PORT}/v2/${BACKEND_IMAGE}/manifests/$DIGEST || true
+                    done
+                fi
+
+                # AI 태그 정리
+                OLD_AI_TAGS=$(curl -s http://localhost:${REGISTRY_PORT}/v2/${AI_IMAGE}/tags/list | \
+                    jq -r '.tags[]' | grep -v latest | sort -rn | tail -n +2 || echo "")
+                if [ ! -z "$OLD_AI_TAGS" ]; then
+                    for tag in $OLD_AI_TAGS; do
+                        echo "Deleting ${AI_IMAGE}:$tag"
+                        DIGEST=$(curl -s -H "Accept: application/vnd.docker.distribution.manifest.v2+json" \
+                            http://localhost:${REGISTRY_PORT}/v2/${AI_IMAGE}/manifests/$tag | \
+                            jq -r .config.digest)
+                        curl -X DELETE http://localhost:${REGISTRY_PORT}/v2/${AI_IMAGE}/manifests/$DIGEST || true
+                    done
+                fi
+
                 docker image prune -f || true
             '''
             cleanWs(
