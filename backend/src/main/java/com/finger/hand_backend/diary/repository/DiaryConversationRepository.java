@@ -30,4 +30,9 @@ public interface DiaryConversationRepository extends MongoRepository<DiaryConver
             LocalDate startDate,
             LocalDate endDate
     );
+
+    /**
+     * 특정 날짜의 모든 다이어리 조회 (스케줄러용)
+     */
+    List<DiaryConversation> findBySessionDate(LocalDate sessionDate);
 }
