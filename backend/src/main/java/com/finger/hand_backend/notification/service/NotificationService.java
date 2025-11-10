@@ -219,11 +219,11 @@ public class NotificationService {
         }
 
         Map<String, String> stringMap = new HashMap<>();
-        data.forEach((key, value) -> {
-            if (value != null) {
-                stringMap.put(key, value.toString());
+        for (Map.Entry<String, Object> entry : data.entrySet()) {
+            if (entry.getValue() != null) {
+                stringMap.put(entry.getKey(), entry.getValue().toString());
             }
-        });
+        }
         return stringMap;
     }
 }
