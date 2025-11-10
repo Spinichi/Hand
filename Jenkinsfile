@@ -309,39 +309,39 @@ pipeline {
                                             scp -o StrictHostKeyChecking=no ai/docker-compose.yml ubuntu@${AI_SERVER}:/home/ubuntu/ai/docker-compose.yml
 
                                             # 서버3에서 배포 실행
-                                            ssh -o StrictHostKeyChecking=no ubuntu@${AI_SERVER} '
+                                            ssh -o StrictHostKeyChecking=no ubuntu@${AI_SERVER} "
                                                 cd /home/ubuntu/ai
 
                                                 # Registry에서 이미지 Pull
-                                                echo "📥 Pulling image from Registry..."
+                                                echo '📥 Pulling image from Registry...'
                                                 docker pull ${REGISTRY_PRIVATE}/${AI_IMAGE}:latest
 
                                                 # 기존 컨테이너 중지 및 제거
-                                                echo "🛑 Stopping old containers..."
+                                                echo '🛑 Stopping old containers...'
                                                 docker compose down 2>/dev/null || true
 
                                                 # docker compose로 서비스 시작
-                                                echo "🚀 Starting AI services..."
+                                                echo '🚀 Starting AI services...'
                                                 REGISTRY_URL=${REGISTRY_PRIVATE} docker compose up -d
 
                                                 # 컨테이너 실행 확인
-                                                echo "⏳ Waiting for containers to start..."
+                                                echo '⏳ Waiting for containers to start...'
                                                 sleep 15
 
                                                 if docker ps | grep -q hand-ai && docker ps | grep -q hand-weaviate; then
-                                                    echo "✅ AI containers are running!"
+                                                    echo '✅ AI containers are running!'
                                                     docker ps | grep hand-
                                                 else
-                                                    echo "❌ AI containers failed to start!"
+                                                    echo '❌ AI containers failed to start!'
                                                     docker compose logs
                                                     exit 1
                                                 fi
 
                                                 # 오래된 이미지 정리
-                                                echo "🧹 Cleaning old images..."
-                                                docker images | grep ${REGISTRY_PRIVATE}/${AI_IMAGE} | grep -v latest | awk "{print \$3}" | xargs -r docker rmi -f || true
+                                                echo '🧹 Cleaning old images...'
+                                                docker images | grep ${REGISTRY_PRIVATE}/${AI_IMAGE} | grep -v latest | awk '{print \$3}' | xargs -r docker rmi -f || true
                                                 docker image prune -f || true
-                                            '
+                                            "
                                         """
                                     }
                                 }
