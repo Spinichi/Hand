@@ -1,6 +1,7 @@
 package com.hand.hand.ui.home.header
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
@@ -32,45 +33,59 @@ fun HomeGreetingHeader(
     moodLabel: String,
     recommendation: String,
     modifier: Modifier = Modifier,
-    // CareHeader와 매칭되는 비율값들
+
+    // CareHeader2와 매칭되는 값들
     headerHeightRatio: Float = 0.25f,
     horizontalGutterRatio: Float = 0.07f,
     topPaddingRatio: Float = 0.05f,
     bottomCornerRadius: Dp = 50.dp,
-    // 상위(HomeScreen)에서 Dp로 직접 넘기면 그 값을 우선 사용
+    // 외곽 배경색(기본: CareHeader2의 녹색)
+    backgroundColor: Color = Brown80,
+
+    // 상위에서 Dp로 직접 넘기면 그 값을 우선 사용
     horizontalGutter: Dp? = null,
 ) {
     val conf = LocalConfiguration.current
     val screenH = conf.screenHeightDp.dp
     val screenW = conf.screenWidthDp.dp
 
-    val headerHeight = screenH * headerHeightRatio
-    val topPadding = screenH * topPaddingRatio
-    // 🔧 핵심: 상위에서 준 Dp가 있으면 그걸 쓰고, 없으면 비율로 계산
-    val resolvedHorizontalGutter = horizontalGutter ?: (screenW * horizontalGutterRatio)
+    // 상태바 높이
+    val statusTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
 
-    Surface(
-        color = Brown80,
-        contentColor = White,
-        shape = RoundedCornerShape(
-            topStart = 0.dp, topEnd = 0.dp,
-            bottomStart = bottomCornerRadius, bottomEnd = bottomCornerRadius
-        ),
+//    // 보이는 헤더 높이(25%) + 상태바 포함한 실제 topBar 높이
+//    val headerVisible = screenH * headerHeightRatio
+//    val headerTotal = headerVisible + statusTop
+//
+//    // 내부 패딩 계산
+//    val topPadding = screenH * topPaddingRatio
+    val resolvedHorizontalGutter = horizontalGutter ?: (screenW * horizontalGutterRatio)
+    val topPadding = 16.dp
+
+    // === CareHeader2 외곽 모양(파일 나누기 없이 인라인) ===
+    Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(headerHeight)
+            .wrapContentHeight() // ← 콘텐츠 높이만큼. 잘림 방지
+            .background( // ← 배경을 바깥 Box에 직접 적용 (matchParentSize 제거)
+                color = backgroundColor,
+                shape = RoundedCornerShape(
+                    topStart = 0.dp, topEnd = 0.dp,
+                    bottomStart = bottomCornerRadius, bottomEnd = bottomCornerRadius
+                )
+            )
     ) {
         Column(
             modifier = Modifier
-                .windowInsetsPadding(WindowInsets.statusBars)
+                .fillMaxWidth()
+                .padding(top = statusTop) // 상태바 만큼 내림
                 .padding(
                     start = resolvedHorizontalGutter,
                     end = resolvedHorizontalGutter,
-                    top = topPadding,
+                    top = topPadding,    // ← dp 기반
                     bottom = 16.dp
                 )
-        ) {
-            // ... 이하 동일 ...
+        )  {
+            // 상단 날짜 + 모드
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
@@ -112,6 +127,7 @@ fun HomeGreetingHeader(
 
             Spacer(Modifier.height(16.dp))
 
+            // 아바타 + 이름 + 상태 필
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Image(
                     painter = painterResource(R.drawable.ic_user_round),

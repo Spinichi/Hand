@@ -2,9 +2,20 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.hand.wear">
 
+    <!-- 기존 권한 -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />
 
+    <!-- ⭐ 센서 수집 권한 (com.mim.watch) -->
+    <uses-permission android:name="android.permission.BODY_SENSORS"/>
+    <uses-permission android:name="android.permission.BODY_SENSORS_BACKGROUND"/>
+    <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_HEALTH"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC"/>
+    <uses-permission android:name="android.permission.VIBRATE"/>
+
     <uses-feature android:name="android.hardware.type.watch" />
+    <uses-feature android:name="android.hardware.sensor.heartrate" android:required="false"/>
 
     <application
         android:allowBackup="true"
@@ -77,6 +88,13 @@
             android:name=".CareComplete"
             android:exported="false"
             android:theme="@style/MainActivityTheme.Starting" />
+
+        <!-- ⭐ com.mim.watch 센서 수집 서비스 -->
+        <service
+            android:name="com.mim.watch.services.BioForegroundService"
+            android:exported="false"
+            android:stopWithTask="false"
+            android:foregroundServiceType="health|dataSync" />
     </application>
 
 </manifest>

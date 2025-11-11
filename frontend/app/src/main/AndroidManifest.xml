@@ -12,7 +12,7 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Hand">
         <activity
-            android:name=".MainActivity"
+            android:name=".feature.auth.SignInActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -33,6 +33,28 @@
         <activity android:name="com.hand.hand.diary.DiaryHomeActivity" />
         <activity android:name="com.hand.hand.diary.DiaryDetailActivity" />
         <activity android:name="com.hand.hand.diary.DiaryWriteActivity" />
+        <activity android:name="com.hand.hand.feature.auth.SignUpActivity" />
+        <activity android:name="com.hand.hand.feature.auth.SignInTypeActivity" />
+        <activity android:name="com.hand.hand.ui.home.HomeActivity" />
+        <activity android:name="com.hand.hand.feature.auth.SignUpManagerActivity" />
+        <activity android:name="com.hand.hand.feature.auth.SignUpPrivateActivity" />
+        <activity android:name="com.hand.hand.ui.home.stats.MoodChangeActivity" />
+        <activity android:name="com.hand.hand.ui.personal.detail.PersonalWeeklyDetailActivity" />
+        <activity android:name="com.hand.hand.ui.personal.PersonalCareActivity" />
+        <activity android:name="com.hand.hand.ui.admin.member.MemberDetailActivity" />
+        <activity android:name="com.hand.hand.feature.auth.SignUpPrivateSurveyActivity" />
+        <activity android:name="com.hand.hand.feature.auth.SignUpPrivateSurvey2Activity" />
+        <activity android:name="com.hand.hand.feature.auth.SignUpPrivateSurvey3Activity" />
+        <activity android:name="com.hand.hand.feature.auth.SignUpPrivateSurvey4Activity" />
+        <activity android:name="com.hand.hand.AiDocument.PrivateAiDocumentHomeActivity" />
+        <activity android:name="com.hand.hand.AiDocument.PrivateAiDocumentActivity" />
+        <activity android:name="com.hand.hand.AiDocument.TeamAiDocumentActivity" />
+
+
+
+
+
+
     </application>
 
 </manifest>

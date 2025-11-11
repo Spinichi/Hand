@@ -5,7 +5,6 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -14,11 +13,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.text.font.FontWeight
-import com.hand.hand.nav.NavBar
 import com.hand.hand.ui.theme.BrandFontFamily
+import com.hand.hand.ui.home.BottomTab
+import com.hand.hand.ui.home.CurvedBottomNavBar
+import com.hand.hand.ui.home.HomeActivity  // ✅ 홈 이동용
+import com.hand.hand.diary.DiaryHomeActivity // ✅ 글쓰기(다이어리 홈) 이동용
+import com.hand.hand.AiDocument.PrivateAiDocumentHomeActivity // ✅ 다이어리 버튼 이동용
 
 class CareActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -53,10 +56,17 @@ fun CareScreen() {
             .fillMaxSize()
             .background(Color(0xFFF7F4F2))
     ) {
-        // 헤더
-        CareHeader(onBackClick = { /* 뒤로가기 */ })
+        // ✅ 상단 헤더
+        CareHeader(
+            onBackClick = {
+                // 뒤로가기 → 홈으로 이동
+                val intent = Intent(context, HomeActivity::class.java)
+                intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                context.startActivity(intent)
+            }
+        )
 
-        // 메인 콘텐츠
+        // ✅ 메인 콘텐츠
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -67,7 +77,6 @@ fun CareScreen() {
                 ),
             horizontalAlignment = Alignment.Start
         ) {
-            // 제목
             Text(
                 text = "마음 완화법 리스트",
                 fontFamily = BrandFontFamily,
@@ -78,7 +87,6 @@ fun CareScreen() {
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // 2열 4행 그리드
             Column(verticalArrangement = Arrangement.spacedBy(screenHeight * 0.015f)) {
                 for (row in 0 until 4) {
                     Row(
@@ -89,7 +97,6 @@ fun CareScreen() {
                             val index = row * 2 + col
                             if (index < gridItems.size) {
                                 val (text, subText) = gridItems[index]
-
                                 CareGridItem(
                                     text = text,
                                     subText = subText,
@@ -111,13 +118,37 @@ fun CareScreen() {
             }
         }
 
-        // 하단 NavBar
+        // ✅ 하단 곡선형 네비게이션 바
         Box(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
         ) {
-            NavBar()
+            CurvedBottomNavBar(
+                selectedTab =  BottomTab.None,
+                onClickHome = {
+                    // 홈 버튼 클릭 → HomeActivity 이동
+                    val intent = Intent(context, HomeActivity::class.java)
+                    intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                    context.startActivity(intent)
+                },
+                onClickWrite = {
+                    // ✅ 글쓰기 버튼 클릭 → DiaryHomeActivity 이동
+                    val intent = Intent(context, DiaryHomeActivity::class.java)
+                    context.startActivity(intent)
+                },
+                onClickDiary = {
+                    // ✅ 다이어리 버튼 클릭 → PrivateAiDocumentHomeActivity 이동
+                    val intent = Intent(context, PrivateAiDocumentHomeActivity::class.java)
+                    context.startActivity(intent)
+                },
+                onClickProfile = { /* TODO: 프로필 페이지 */ },
+                onClickCenter = {
+                    // ✅ 중앙 버튼 클릭 → CareActivity로 이동
+                    val intent = Intent(context, CareActivity::class.java)
+                    context.startActivity(intent)
+                }
+            )
         }
     }
 }
