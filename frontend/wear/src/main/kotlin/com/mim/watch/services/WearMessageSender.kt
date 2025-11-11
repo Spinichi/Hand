@@ -1,7 +1,9 @@
 package com.mim.watch.services
 
 import android.content.Context
+import android.net.Uri
 import android.util.Log
+import com.google.android.gms.wearable.PutDataMapRequest
 import com.google.android.gms.wearable.Wearable
 import com.mim.watch.data.model.BioSampleBatch
 import kotlinx.coroutines.tasks.await
@@ -9,55 +11,43 @@ import com.google.gson.Gson
 
 /**
  * Wear → Phone 데이터 전송
- * - Wearable MessageClient 사용
+ * - Wearable DataClient 사용 (백그라운드 수신 지원)
  * - connectedNodes로 페어링된 Phone 찾기
  */
 class WearMessageSender(private val context: Context) {
 
-    private val messageClient = Wearable.getMessageClient(context)
+    private val dataClient = Wearable.getDataClient(context)
     private val nodeClient = Wearable.getNodeClient(context)
     private val gson = Gson()
 
     companion object {
         private const val TAG = "WearMessageSender"
-        private const val MESSAGE_PATH = "/mim/bio_data"  // 고유 경로
+        private const val DATA_PATH = "/mim/bio_data"  // 고유 경로
     }
 
     /**
      * BioSampleBatch를 Phone으로 전송
+     * DataClient를 사용하여 백그라운드 수신 지원
      */
     suspend fun sendBatch(batch: BioSampleBatch): Boolean {
         return try {
-            // 1. 페어링된 Phone 노드 찾기
-            val nodes = nodeClient.connectedNodes.await()
-
-            if (nodes.isEmpty()) {
-                Log.w(TAG, "No connected phone found")
-                return false
-            }
-
-            // 2. JSON으로 직렬화
+            // 1. JSON으로 직렬화
             val json = gson.toJson(batch)
-            val data = json.toByteArray(Charsets.UTF_8)
 
-            Log.d(TAG, "Sending batch: ${batch.samples.size} samples to ${nodes.size} node(s)")
+            // 2. DataItem 생성 (타임스탬프를 포함하여 매번 새로운 데이터로 인식)
+            val putDataReq = PutDataMapRequest.create(DATA_PATH).apply {
+                dataMap.putString("json", json)
+                dataMap.putLong("timestamp", System.currentTimeMillis())
+            }.asPutDataRequest()
+                .setUrgent() // 즉시 전송
 
-            // 3. 모든 연결된 노드에 전송 (보통 Phone 1개)
-            var successCount = 0
-            nodes.forEach { node ->
-                try {
-                    messageClient.sendMessage(node.id, MESSAGE_PATH, data).await()
-                    Log.d(TAG, "✅ Sent to node: ${node.displayName} (${node.id})")
-                    successCount++
-                } catch (e: Exception) {
-                    Log.e(TAG, "❌ Failed to send to node ${node.id}: ${e.message}", e)
-                }
-            }
-
-            successCount > 0
+            // 3. 전송
+            val result = dataClient.putDataItem(putDataReq).await()
+            Log.d(TAG, "✅ Data sent: ${batch.samples.size} samples, uri=${result.uri}")
+            true
 
         } catch (e: Exception) {
-            Log.e(TAG, "sendBatch failed: ${e.message}", e)
+            Log.e(TAG, "❌ sendBatch failed: ${e.message}", e)
             false
         }
     }

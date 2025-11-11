@@ -70,6 +70,10 @@ dependencies {
     implementation("androidx.navigation:navigation-compose:2.8.3")
 
     implementation(platform("com.google.firebase:firebase-bom:34.5.0"))
+
+    // Wearable communication
+    implementation("com.google.android.gms:play-services-wearable:18.0.0")
+    implementation("com.google.code.gson:gson:2.10.1")
 }
 
 firebaseAppDistribution {

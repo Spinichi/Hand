@@ -6,11 +6,11 @@ plugins {
 }
 
 android {
-    namespace = "com.hand.wear"
+    namespace = "com.hand.hand"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.hand.wear"
+        applicationId = "com.hand.hand"
         minSdk = 30
         targetSdk = 36
         versionCode = 1

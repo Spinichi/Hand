@@ -1,7 +1,9 @@
 package com.hand.hand.feature.auth
 
 import android.content.Intent
+import android.os.Build
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.Image
@@ -35,12 +37,31 @@ import com.hand.hand.diary.DiaryHomeActivity
 import com.hand.hand.ui.common.BrandWaveHeader
 import com.hand.hand.ui.theme.BrandFontFamily
 import com.hand.hand.ui.theme.Green60
+import com.hand.hand.wear.WearListenerForegroundService
 
 class SignInActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // ⭐ Wear 데이터 수신 서비스 시작 (백그라운드에서 계속 실행)
+        startWearListenerService()
+
         setContent {
             SignInScreen()
+        }
+    }
+
+    private fun startWearListenerService() {
+        try {
+            val intent = Intent(this, WearListenerForegroundService::class.java)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                startForegroundService(intent)
+            } else {
+                startService(intent)
+            }
+            Log.d("SignInActivity", "✅ WearListenerForegroundService started")
+        } catch (e: Exception) {
+            Log.e("SignInActivity", "❌ Failed to start WearListenerService", e)
         }
     }
 }

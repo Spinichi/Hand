@@ -2,6 +2,12 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <!-- Foreground Service 권한 -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+
     <application
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
@@ -11,6 +17,10 @@
         android:roundIcon="@mipmap/ic_launcher_hand_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.Hand">
+
+        <meta-data
+            android:name="com.google.android.gms.version"
+            android:value="@integer/google_play_services_version" />
         <activity
             android:name=".feature.auth.SignInActivity"
             android:exported="true">
@@ -50,10 +60,11 @@
         <activity android:name="com.hand.hand.AiDocument.PrivateAiDocumentActivity" />
         <activity android:name="com.hand.hand.AiDocument.TeamAiDocumentActivity" />
 
-
-
-
-
+        <!-- Wear 앱으로부터 생체 데이터를 백그라운드에서 수신하는 Foreground Service -->
+        <service
+            android:name=".wear.WearListenerForegroundService"
+            android:foregroundServiceType="connectedDevice"
+            android:exported="false" />
 
     </application>
 

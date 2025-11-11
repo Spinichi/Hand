@@ -17,11 +17,12 @@ class BaselineProvider(
 ) {
     // 임시 부트스트랩(개인화 전 기본값)
     // 개인화 이전의 부트스트랩(고정) 값. std가 0이면 안 되므로 현실적인 값으로 설정.
+    // ⚠️ 실제 측정값에 맞춰 조정 (IBI 데이터가 제한적인 환경)
     private val bootstrap = BaseLine(
-        hrvSdnnMean = 285.6,  hrvSdnnStd = 40.6,
-        hrvRmssdMean = 372.5, hrvRmssdStd = 39.0,
-        hrMean = 70.0,        hrStd = 8.0,
-        objTempMean = 33.5,   objTempStd = 0.25
+        hrvSdnnMean = 15.0,   hrvSdnnStd = 10.0,   // 측정 SDNN: 2~30ms 범위
+        hrvRmssdMean = 20.0,  hrvRmssdStd = 15.0,  // 측정 RMSSD: 3~43ms 범위
+        hrMean = 95.0,        hrStd = 5.0,         // 측정 HR: 94~97 bpm
+        objTempMean = 36.0,   objTempStd = 0.2     // 측정 Temp: 36.0~36.2°C
     )
 
     // 활성Baseline 반환(없으면 bootstrap)

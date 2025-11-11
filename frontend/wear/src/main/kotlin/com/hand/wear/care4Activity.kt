@@ -25,6 +25,7 @@ import androidx.wear.compose.material.Scaffold
 import com.hand.wear.components.BackgroundCircles
 import kotlinx.coroutines.*
 import java.util.Locale
+import com.hand.hand.R
 
 class Care4Activity : ComponentActivity() {
 

@@ -9,6 +9,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
+import com.hand.hand.R
 
 // 화면 크기에 맞춰 반응형으로 그려주는 백그라운드 원 컴포넌트
 @Composable

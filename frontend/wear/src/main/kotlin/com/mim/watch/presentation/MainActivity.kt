@@ -49,6 +49,10 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        // ⭐ Samsung Health SDK 연결 (권한 동의 UI를 위해 Activity 전달)
+        // MainActivity에서 먼저 연결하여 사용자 동의를 받은 후 서비스 시작
+        HealthDebugManager.connect(applicationContext, this)
+
         // 앱 최초 진입 시 포그라운드 서비스 기동(한 번만 떠도 계속 유지)
         val i = Intent(this, BioForegroundService::class.java)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -76,6 +80,9 @@ class MainActivity : ComponentActivity() {
             var stressLevel by remember { mutableStateOf<Int?>(null) }
             var hrvSdnn by remember { mutableStateOf<Double?>(null) }
             var hrvRmssd by remember { mutableStateOf<Double?>(null) }
+
+            // 스무딩용 EMA (Exponential Moving Average)
+            var smoothedIndex by remember { mutableStateOf<Double?>(null) }
 
             // HealthDebugManager는 서비스에서 connect/start되어 있으므로 여기선 덤프만 구독
             LaunchedEffect(Unit) {
@@ -116,10 +123,22 @@ class MainActivity : ComponentActivity() {
                         lastStepAtMs   = SensorCollector.lastStepTimestampMs
                     )
                     val result = gateway.processRealtimeSample(sample)
-                    stressIndex = result.stressIndex
+
+                    // EMA 스무딩 적용 (알파=0.3: 부드럽게 변화)
+                    smoothedIndex = if (smoothedIndex == null) {
+                        result.stressIndex  // 첫 값
+                    } else {
+                        val alpha = 0.3
+                        smoothedIndex!! * (1 - alpha) + result.stressIndex * alpha
+                    }
+
+                    stressIndex = smoothedIndex  // 스무딩된 값 사용
                     stressLevel = result.stressLevel
                     hrvSdnn = result.sdnn
                     hrvRmssd = result.rmssd
+
+                    // 디버깅: 원본과 스무딩된 값 비교
+                    Log.d("StressDebug", "HR=${parsed.hrBpm} SDNN=${result.sdnn} RMSSD=${result.rmssd} → Raw=${result.stressIndex} Smoothed=${"%.1f".format(smoothedIndex)}")
 
                     delay(1000L)
                 }

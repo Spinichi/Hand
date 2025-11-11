@@ -23,6 +23,8 @@ import android.util.Log
 import com.mim.watch.data.model.BioSample
 import com.mim.watch.sensors.SensorCollector
 import android.provider.Settings
+import com.mim.watch.services.SensorGatewayImpl
+import com.mim.watch.core.measurement.SensorSample
 
 class BioForegroundService : Service() {
 
@@ -41,6 +43,12 @@ class BioForegroundService : Service() {
     // ⭐ Phone 전송용
     private lateinit var messageSender: WearMessageSender
 
+    // ⭐ Stress 계산용
+    private lateinit var stressGateway: SensorGatewayImpl
+
+    // ⭐ IBI 버퍼 (스트레스 계산용 - 최근 10개 저장)
+    private val ibiBuffer = mutableListOf<Double>()
+
     override fun onCreate() {
         super.onCreate()
         if (created.compareAndSet(false, true)) {
@@ -52,39 +60,65 @@ class BioForegroundService : Service() {
             DataBufferManager.setDeviceId(deviceId)
             messageSender = WearMessageSender(applicationContext)
 
+            // ⭐ Stress 계산 Gateway 초기화
+            stressGateway = SensorGatewayImpl(applicationContext)
+
             // 1) Health SDK 연결 (Activity 없이)
+            // ✅ connect() 성공 시 자동으로 센서 시작 (onConnectionSuccess 콜백)
             HealthDebugManager.connect(applicationContext, null)
 
-            // 2) 백그라운드에서도 센서가 실제로 흐르도록 트래커 시작
-            //    ⚠️ 개별 start* 함수가 없으므로, 존재하는 API만 호출
-            try {
-                HealthDebugManager.startAllTrackers()
-            } catch (e: Throwable) {
-                Log.e(TAG, "startAllTrackers() failed", e)
-            }
-
-            // 3) 실시간 샘플 콜백 → 10초 버퍼링 → Phone 전송
+            // 3) 실시간 샘플 콜백 → 스트레스 계산 → 10초 버퍼링 → Phone 전송
             HealthDebugManager.onSample = { ts, hr, ibi, move, extras ->
-                Log.d(TAG, "sample ts=$ts hr=$hr ibi=$ibi move=$move")
+                // extras에서 피부 온도 추출
+                val objTemp = (extras["ObjTemp(C)"] as? Number)?.toFloat()
 
-                // BioSample 생성
-                val sample = BioSample(
-                    timestampMs = ts,
-                    heartRateBpm = hr,
-                    ibiMsList = ibi?.let { listOf(it) },  // Float? → List<Float>?
-                    skinTempC = null,  // TODO: 온도 데이터 추가
-                    movementIndex = move,
-                    totalSteps = SensorCollector.lastStepCount?.toLong(),
-                    stressIndex = null,  // TODO: 스트레스 지수 추가
-                    stressLevel = null
-                )
+                // ⭐ IBI 버퍼에 추가 (최근 10개 유지)
+                ibi?.let {
+                    synchronized(ibiBuffer) {
+                        ibiBuffer.add(it.toDouble())
+                        if (ibiBuffer.size > 10) {
+                            ibiBuffer.removeAt(0)
+                        }
+                    }
+                }
 
-                // 버퍼에 추가 → 10개 모이면 배치 반환
-                val batch = DataBufferManager.addSample(sample)
+                // ⭐ 스트레스 실시간 계산 (coroutine에서 실행)
+                scope.launch {
+                    // IBI 버퍼 복사 (2개 이상일 때만 사용)
+                    val ibiList = synchronized(ibiBuffer) {
+                        if (ibiBuffer.size >= 2) ibiBuffer.toList() else null
+                    }
 
-                // 배치가 준비되면 Phone으로 전송
-                batch?.let {
-                    scope.launch {
+                    val sensorSample = SensorSample(
+                        timestampMs = ts,
+                        heartRateBpm = hr?.toDouble(),
+                        ibiMsList = ibiList,  // ⭐ 여러 개의 IBI 사용
+                        objectTempC = objTemp?.toDouble(),
+                        accelMagnitude = move?.toDouble(),
+                        totalSteps = SensorCollector.lastStepCount?.toLong(),
+                        lastStepAtMs = SensorCollector.lastStepTimestampMs
+                    )
+                    val stressResult = stressGateway.processRealtimeSample(sensorSample)
+
+                    Log.d(TAG, "sample ts=$ts hr=$hr ibi_count=${ibiList?.size ?: 0} temp=$objTemp stress=${stressResult.stressIndex}")
+
+                    // BioSample 생성 (계산된 스트레스 포함, Double → Float 변환)
+                    val sample = BioSample(
+                        timestampMs = ts,
+                        heartRateBpm = hr,
+                        ibiMsList = ibi?.let { listOf(it) },
+                        skinTempC = objTemp,
+                        movementIndex = move,
+                        totalSteps = SensorCollector.lastStepCount?.toLong(),
+                        stressIndex = stressResult.stressIndex,
+                        stressLevel = stressResult.stressLevel
+                    )
+
+                    // 버퍼에 추가 → 10개 모이면 배치 반환
+                    val batch = DataBufferManager.addSample(sample)
+
+                    // 배치가 준비되면 Phone으로 전송
+                    batch?.let {
                         val success = messageSender.sendBatch(it)
                         if (success) {
                             Log.d(TAG, "✅ Batch sent: ${it.samples.size} samples")
@@ -170,11 +204,14 @@ class BioForegroundService : Service() {
         try {
             val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
             @Suppress("DEPRECATION")
-            val wl = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "mim:bio-short")
+            val wl = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "mim:bio-tracking")
             wl.setReferenceCounted(false)
-            wl.acquire(30_000L) // 초기 연결 안정화
+            wl.acquire(10 * 60 * 1000L) // ⭐ 10분 고정 - 화면 켜면 자동 초기화
             wakeLock = wl
-        } catch (_: Throwable) { /* optional */ }
+            Log.d(TAG, "✅ WakeLock acquired (10min)")
+        } catch (e: Throwable) {
+            Log.e(TAG, "❌ Failed to acquire WakeLock", e)
+        }
     }
 
     private fun startWristTrigger() {
