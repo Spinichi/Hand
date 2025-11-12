@@ -1,7 +1,5 @@
 package com.finger.hand_backend.risk;
 
-import com.finger.hand_backend.anomaly.AnomalyDetection;
-import com.finger.hand_backend.anomaly.AnomalyDetectionRepository;
 import com.finger.hand_backend.measurement.Measurement;
 import com.finger.hand_backend.measurement.MeasurementRepository;
 import lombok.RequiredArgsConstructor;
@@ -12,7 +10,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * 일일 위험 점수 서비스
@@ -24,7 +21,6 @@ import java.util.stream.Collectors;
 public class DailyRiskScoreService {
 
     private final DailyRiskScoreRepository riskScoreRepository;
-    private final AnomalyDetectionRepository anomalyRepository;
     private final MeasurementRepository measurementRepository;
 
     /**
@@ -52,9 +48,10 @@ public class DailyRiskScoreService {
         Integer measurementCount = (int) measurementRepository
                 .countByUserIdAndMeasuredAtBetween(userId, startOfDay, endOfDay);
 
-        // 4. 하루 이상치 감지 횟수
-        Integer anomalyCount = (int) anomalyRepository
-                .countByUserIdAndCreatedAtBetween(userId, startOfDay, endOfDay);
+        // 4. 하루 이상치 감지 횟수 (워치에서 탐지된 isAnomaly=true)
+        List<Measurement> anomalies = measurementRepository
+                .findByUserIdAndIsAnomalyTrueAndMeasuredAtBetweenOrderByMeasuredAtAsc(userId, startOfDay, endOfDay);
+        Integer anomalyCount = anomalies.size();
 
         // 5. 최종 risk_score 계산 (가중 평균)
         // diary 50% + measurement 50%
@@ -84,9 +81,9 @@ public class DailyRiskScoreService {
      * = f(anomalyCount, avgStressIndex)
      */
     private Double calculateMeasurementComponent(Long userId, LocalDateTime startOfDay, LocalDateTime endOfDay) {
-        // 1. 하루 동안의 AnomalyDetection 조회
-        List<AnomalyDetection> anomalies = anomalyRepository
-                .findByUserIdAndCreatedAtBetween(userId, startOfDay, endOfDay);
+        // 1. 하루 동안 워치에서 이상치로 탐지된 측정 데이터 조회 (isAnomaly=true)
+        List<Measurement> anomalies = measurementRepository
+                .findByUserIdAndIsAnomalyTrueAndMeasuredAtBetweenOrderByMeasuredAtAsc(userId, startOfDay, endOfDay);
 
         if (anomalies.isEmpty()) {
             return 0.0; // 이상치 없음
@@ -94,13 +91,9 @@ public class DailyRiskScoreService {
 
         Integer anomalyCount = anomalies.size();
 
-        // 2. AnomalyDetection의 stressIndex 평균 계산
-        List<Long> measurementIds = anomalies.stream()
-                .map(AnomalyDetection::getMeasurementId)
-                .collect(Collectors.toList());
-
-        Double avgStressIndex = measurementRepository.findAllById(measurementIds).stream()
-                .mapToInt(Measurement::getStressIndex)
+        // 2. 이상치 측정 데이터의 stressIndex 평균 계산
+        Double avgStressIndex = anomalies.stream()
+                .mapToDouble(Measurement::getStressIndex)
                 .average()
                 .orElse(0.0);
 

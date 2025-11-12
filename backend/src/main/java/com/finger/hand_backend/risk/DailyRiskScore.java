@@ -65,7 +65,7 @@ public class DailyRiskScore {
 
     /**
      * 측정 데이터 기여분 (0-100)
-     * AnomalyDetection 기반 (횟수 + 평균 stressIndex)
+     * Measurement.isAnomaly 기반 (이상치 횟수 + 평균 stressIndex)
      */
     @Column(name = "measurement_component")
     private Double measurementComponent;

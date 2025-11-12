@@ -42,6 +42,9 @@ public class ReliefAfterBackfill {
                             !t.isAfter(end.plusMinutes(postWindowMinutes)); // t <= end+window
                 });
 
-        target.ifPresent(log -> log.setAfterStress(m.getStressIndex()));
+        target.ifPresent(log -> {
+            Double stressIndex = m.getStressIndex();
+            log.setAfterStress(stressIndex != null ? stressIndex.intValue() : null);
+        });
     }
 }

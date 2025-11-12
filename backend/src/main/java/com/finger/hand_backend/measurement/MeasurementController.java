@@ -48,6 +48,7 @@ public class MeasurementController {
                 .id(measurement.getId())
                 .stressIndex(measurement.getStressIndex())
                 .stressLevel(measurement.getStressLevel())
+                .isAnomaly(measurement.getIsAnomaly())
                 .build();
 
         return ResponseEntity.status(HttpStatus.CREATED)

@@ -1,7 +1,5 @@
 package com.finger.hand_backend.report.service;
 
-import com.finger.hand_backend.anomaly.AnomalyDetection;
-import com.finger.hand_backend.anomaly.AnomalyDetectionRepository;
 import com.finger.hand_backend.baseline.Baseline;
 import com.finger.hand_backend.baseline.BaselineRepository;
 import com.finger.hand_backend.measurement.Measurement;
@@ -22,7 +20,7 @@ import java.util.stream.Collectors;
 /**
  * 생체 데이터 수집기
  * - 보고서 생성을 위한 생체 데이터 수집
- * - Baseline, 이상치 개수, 사용자 기본 정보만 수집
+ * - Baseline, 이상치(워치에서 탐지), 사용자 기본 정보 수집
  */
 @Service
 @RequiredArgsConstructor
@@ -32,7 +30,6 @@ public class BiometricDataCollector {
 
     private final MeasurementRepository measurementRepository;
     private final BaselineRepository baselineRepository;
-    private final AnomalyDetectionRepository anomalyDetectionRepository;
     private final IndividualUserRepository individualUserRepository;
 
     /**
@@ -136,44 +133,29 @@ public class BiometricDataCollector {
 
     /**
      * 이상치 상세 정보 조회
-     * - 각 이상치 발생 시점의 스트레스 지수, 레벨, 심박수 등 포함
+     * - 워치에서 이상치로 탐지된 측정 데이터 조회 (isAnomaly=true)
      */
     private List<Map<String, Object>> getAnomalyDetails(Long userId, LocalDateTime start, LocalDateTime end) {
-        List<AnomalyDetection> anomalies = anomalyDetectionRepository
-                .findByUserIdAndCreatedAtBetween(userId, start, end);
+        // Measurement 테이블에서 isAnomaly=true인 데이터 직접 조회
+        List<Measurement> anomalies = measurementRepository
+                .findByUserIdAndIsAnomalyTrueAndMeasuredAtBetweenOrderByMeasuredAtAsc(userId, start, end);
 
         if (anomalies.isEmpty()) {
             log.debug("No anomalies found for user {} from {} to {}", userId, start, end);
             return new ArrayList<>();
         }
 
-        // 측정 ID 목록 추출
-        List<Long> measurementIds = anomalies.stream()
-                .map(AnomalyDetection::getMeasurementId)
-                .collect(Collectors.toList());
-
-        // 측정 데이터 일괄 조회
-        Map<Long, Measurement> measurementMap = measurementRepository.findAllById(measurementIds)
-                .stream()
-                .collect(Collectors.toMap(Measurement::getId, m -> m));
-
         // 이상치 상세 정보 구성
         List<Map<String, Object>> anomalyDetails = new ArrayList<>();
-        for (AnomalyDetection anomaly : anomalies) {
-            Measurement measurement = measurementMap.get(anomaly.getMeasurementId());
-            if (measurement == null) {
-                log.warn("Measurement {} not found for anomaly {}", anomaly.getMeasurementId(), anomaly.getId());
-                continue;
-            }
-
+        for (Measurement measurement : anomalies) {
             Map<String, Object> detail = new HashMap<>();
-            detail.put("detectedAt", anomaly.getCreatedAt());
-            detail.put("measurementId", anomaly.getMeasurementId());
+            detail.put("measuredAt", measurement.getMeasuredAt());
             detail.put("stressIndex", measurement.getStressIndex());
             detail.put("stressLevel", measurement.getStressLevel());
             detail.put("heartRate", measurement.getHeartRate());
             detail.put("hrvSdnn", measurement.getHrvSdnn());
             detail.put("hrvRmssd", measurement.getHrvRmssd());
+            detail.put("objectTemp", measurement.getObjectTemp());
 
             anomalyDetails.add(detail);
         }

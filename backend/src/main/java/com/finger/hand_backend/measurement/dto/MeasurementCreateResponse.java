@@ -18,12 +18,17 @@ public class MeasurementCreateResponse {
     private Long id;
 
     /**
-     * 스트레스 지수 (1-100)
+     * 스트레스 지수 (0-100)
      */
-    private Integer stressIndex;
+    private Double stressIndex;
 
     /**
      * 스트레스 단계 (1-5)
      */
     private Integer stressLevel;
+
+    /**
+     * 이상치 여부
+     */
+    private Boolean isAnomaly;
 }

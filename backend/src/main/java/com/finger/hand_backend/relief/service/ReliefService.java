@@ -72,13 +72,19 @@ public class ReliefService {
         var one = measurementRepo
                 .findLatestAtOrBefore(userId, startedAt, PageRequest.of(0, 1))
                 .stream().findFirst();
-        if (one.isPresent()) return one.get().getStressIndex();
+        if (one.isPresent()) {
+            Double stressIndex = one.get().getStressIndex();
+            return stressIndex != null ? stressIndex.intValue() : null;
+        }
 
         // 2차: 경계/지터 백업(시작 시각 + 1초까지 허용)
         var backup = measurementRepo
                 .findLatestAtOrBefore(userId, startedAt.plusSeconds(1), PageRequest.of(0, 1))
                 .stream().findFirst();
-        return backup.map(Measurement::getStressIndex).orElse(null);
+        return backup.map(m -> {
+            Double stressIndex = m.getStressIndex();
+            return stressIndex != null ? stressIndex.intValue() : null;
+        }).orElse(null);
     }
 
     private Optional<Integer> resolveAfterStress(Long userId, LocalDateTime endedAt) {
@@ -86,7 +92,10 @@ public class ReliefService {
         return measurementRepo
                 .findFirstBetween(userId, endedAt, deadline, PageRequest.of(0, 1))
                 .stream().findFirst()
-                .map(Measurement::getStressIndex);
+                .map(m -> {
+                    Double stressIndex = m.getStressIndex();
+                    return stressIndex != null ? stressIndex.intValue() : null;
+                });
     }
 
     private Integer calcDuration(LocalDateTime s, LocalDateTime e) {

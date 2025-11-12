@@ -90,6 +90,21 @@ public interface MeasurementRepository extends JpaRepository<Measurement, Long> 
      */
     Optional<Measurement> findTop1ByUserIdAndTotalStepsIsNotNullOrderByMeasuredAtDesc(Long userId);
 
+    /**
+     * 이상치 데이터 조회 (isAnomaly=true)
+     * 보고서 생성 시 워치에서 탐지된 이상치 조회
+     *
+     * @param userId 사용자 ID
+     * @param start  시작 시간
+     * @param end    종료 시간
+     * @return 이상치 측정 데이터 리스트
+     */
+    List<Measurement> findByUserIdAndIsAnomalyTrueAndMeasuredAtBetweenOrderByMeasuredAtAsc(
+        Long userId,
+        LocalDateTime start,
+        LocalDateTime end
+    );
+
     // 시작시각 직전(=포함) 가장 최근 1건 — 결정적 정렬
     @Query("""
   SELECT m FROM Measurement m

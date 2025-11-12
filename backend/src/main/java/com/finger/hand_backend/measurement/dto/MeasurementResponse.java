@@ -14,24 +14,22 @@ import java.time.LocalDateTime;
 public class MeasurementResponse {
 
     private Long id;
-    private Integer heartRate;
+    private Double heartRate;
     private Double hrvSdnn;
     private Double hrvRmssd;
     private Double objectTemp;
     private Double ambientTemp;
-    private Integer accelX;
-    private Integer accelY;
-    private Integer accelZ;
+    private Double accelX;
+    private Double accelY;
+    private Double accelZ;
     private Double movementIntensity;
-    private Integer stressIndex;  // 1-100
-    private Integer stressLevel;  // 1-5
+    private Double stressIndex;
+    private Integer stressLevel;
+    private Boolean isAnomaly;
 
     // 활동 감지
     private Integer totalSteps;
-    private LocalDateTime lastStepAt;
     private Double stepsPerMinute;
-    private String activityState;  // STATIC | WALKING
-    private String measurementQuality;  // HIGH | LOW
 
     private LocalDateTime measuredAt;
     private LocalDateTime createdAt;
@@ -53,11 +51,9 @@ public class MeasurementResponse {
             .movementIntensity(measurement.getMovementIntensity())
             .stressIndex(measurement.getStressIndex())
             .stressLevel(measurement.getStressLevel())
+            .isAnomaly(measurement.getIsAnomaly())
             .totalSteps(measurement.getTotalSteps())
-            .lastStepAt(measurement.getLastStepAt())
             .stepsPerMinute(measurement.getStepsPerMinute())
-            .activityState(measurement.getActivityState())
-            .measurementQuality(measurement.getMeasurementQuality())
             .measuredAt(measurement.getMeasuredAt())
             .createdAt(measurement.getCreatedAt())
             .build();
