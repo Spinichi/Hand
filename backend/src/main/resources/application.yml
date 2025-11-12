@@ -27,6 +27,8 @@ server:
     tomcat:
         mbeanregistry:
             enabled: true
+    forward-headers-strategy: framework
+
 jwt:
     secret: "ZkR9mS2QvT7yP0aU1nW4eX6rL8oC5jB3hK9tV2pY0xF7dE1sZq"
     access-validity-ms: 36000000   # 10시간 = 10 * 60 * 60 * 1000

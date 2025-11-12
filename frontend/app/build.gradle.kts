@@ -1,21 +1,20 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
-    id("org.jetbrains.kotlin.plugin.compose") version "2.0.21"
+//    id("org.jetbrains.kotlin.plugin.compose") version "2.0.21"
+    id("org.jetbrains.kotlin.plugin.compose")
     id("com.google.gms.google-services")
     id("com.google.firebase.appdistribution") version "5.2.0"
 }
 
 android {
     namespace = "com.hand.hand"
-    compileSdk {
-        version = release(36)
-    }
+    compileSdk = 36
     buildFeatures {
         compose = true  //ㅉ Compose 사용
     }
     composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.1"  // 최신 Compose Compiler
+        kotlinCompilerExtensionVersion = "1.5.8"  // 최신 Compose Compiler
     }
     defaultConfig {
         applicationId = "com.hand.hand"
@@ -46,6 +45,7 @@ android {
 }
 
 dependencies {
+    implementation("androidx.compose.material3:material3:1.2.0")
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
     implementation(libs.material)
@@ -69,6 +69,16 @@ dependencies {
     implementation("androidx.navigation:navigation-compose:2.8.3")
 
     implementation(platform("com.google.firebase:firebase-bom:34.5.0"))
+
+    // Wearable communication
+    implementation("com.google.android.gms:play-services-wearable:18.0.0")
+    implementation("com.google.code.gson:gson:2.10.1")
+
+    // 레트로핏 & gson 컨버터 & 로깅 인터셉터
+    implementation("com.squareup.retrofit2:retrofit:2.11.0")
+    implementation("com.squareup.retrofit2:converter-gson:2.11.0")
+    implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
+
 }
 
 firebaseAppDistribution {

@@ -1,51 +1,60 @@
 package com.hand.hand.ui.home.sections
 
+import android.content.Intent
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.Text
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.text.font.FontWeight
 import com.hand.hand.R
+import com.hand.hand.diary.DiaryHomeActivity
 import com.hand.hand.ui.theme.*
-import androidx.compose.ui.unit.Dp
-
 
 @Composable
-fun MyRecordsSection(horizontalPadding: Dp = 0.dp,
-                     moodChangeCount: Int = 2,   // ← 추가
-                     diaryDoneCount: Int = 31,   // ← 추가
-                     diaryTotal: Int = 365       // ← 추가 (기본 365)
-                              ) {
+fun MyRecordsSection(
+    horizontalPadding: Dp = 0.dp,
+    moodChangeCount: Int = 2,
+    diaryDoneCount: Int = 31,
+    diaryTotal: Int = 365,
+    onMoodChangeClick: () -> Unit = {}
+) {
+    val context = LocalContext.current
+
     Column(
-        Modifier.padding(horizontal = horizontalPadding),   // 16.dp → param
+        Modifier.padding(horizontal = horizontalPadding),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Text("내 기록", fontWeight = FontWeight.Bold, fontFamily = BrandFontFamily, fontSize = 16.sp, color = Brown80)
+        Text(
+            "내 기록",
+            fontWeight = FontWeight.Bold,
+            fontFamily = BrandFontFamily,
+            fontSize = 16.sp,
+            color = Brown80
+        )
 
         Row(
             Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-
-            // ── 오늘 감정 변화 ──
+            // ── 오늘 감정 변화 카드 ──
             Card(
-                modifier = Modifier.weight(1f),
+                modifier = Modifier
+                    .weight(1f)
+                    .clickable { onMoodChangeClick() },
                 shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFF9AB067)) // 피그마 그린
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF9AB067))
             ) {
                 Column(
                     modifier = Modifier
@@ -53,7 +62,6 @@ fun MyRecordsSection(horizontalPadding: Dp = 0.dp,
                         .aspectRatio(0.83f)
                         .padding(14.dp)
                 ) {
-                    // 상단: 하트 + 라벨
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -72,10 +80,11 @@ fun MyRecordsSection(horizontalPadding: Dp = 0.dp,
                             fontFamily = BrandFontFamily
                         )
                     }
+
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .weight(0.42f),                           // ← 숫자 영역 비율
+                            .weight(0.42f),
                         verticalArrangement = Arrangement.SpaceBetween
                     ) {
                         Spacer(Modifier.weight(1f))
@@ -89,7 +98,6 @@ fun MyRecordsSection(horizontalPadding: Dp = 0.dp,
                         Spacer(Modifier.weight(1f))
                     }
 
-                    // 🔽 그래프 영역: 그대로 58% 유지 → 크기 변화 없음
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -110,11 +118,16 @@ fun MyRecordsSection(horizontalPadding: Dp = 0.dp,
                 }
             }
 
-            // ── 감정 다이어리 (기존 유지) ──
+            // ── 감정 다이어리 카드 ──
             Card(
-                modifier = Modifier.weight(1f),
+                modifier = Modifier
+                    .weight(1f)
+                    .clickable {
+                        val intent = Intent(context, DiaryHomeActivity::class.java)
+                        context.startActivity(intent)
+                    },
                 shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFFEF8834)) // 피그마 오렌지
+                colors = CardDefaults.cardColors(containerColor = Color(0xFFEF8834))
             ) {
                 Column(
                     modifier = Modifier
@@ -122,7 +135,6 @@ fun MyRecordsSection(horizontalPadding: Dp = 0.dp,
                         .aspectRatio(0.83f)
                         .padding(14.dp)
                 ) {
-                    // 상단: 연필 아이콘 + 라벨
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -170,7 +182,7 @@ fun MyRecordsSection(horizontalPadding: Dp = 0.dp,
                             contentDescription = null,
                             contentScale = ContentScale.Fit,
                             modifier = Modifier
-                                .fillMaxWidth(0.78f)          // 좌하단 반응형 배치 유지
+                                .fillMaxWidth(0.78f)
                                 .aspectRatio(114f / 94f)
                                 .align(Alignment.BottomStart)
                                 .padding(bottom = 1.dp)

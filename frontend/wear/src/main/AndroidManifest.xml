@@ -1,10 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.hand.wear">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!-- 기존 권한 -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />
 
+    <!-- ⭐ 센서 수집 권한 (com.mim.watch) -->
+    <uses-permission android:name="android.permission.BODY_SENSORS"/>
+    <uses-permission android:name="android.permission.BODY_SENSORS_BACKGROUND"/>
+    <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_HEALTH"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC"/>
+    <uses-permission android:name="android.permission.VIBRATE"/>
+
     <uses-feature android:name="android.hardware.type.watch" />
+    <uses-feature android:name="android.hardware.sensor.heartrate" android:required="false"/>
 
     <application
         android:allowBackup="true"
@@ -27,8 +37,9 @@
             android:name="com.google.android.wearable.standalone"
             android:value="true" />
 
+        <!-- 디버깅용: MainActivity를 시작 화면으로 -->
         <activity
-            android:name=".WearHomeActivity"
+            android:name="com.mim.watch.presentation.MainActivity"
             android:exported="true"
             android:taskAffinity=""
             android:theme="@style/MainActivityTheme.Starting">
@@ -36,6 +47,14 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+        </activity>
+
+        <!-- 기존 완화법 화면 (디버깅 후 다시 원복 가능) -->
+        <activity
+            android:name=".WearHomeActivity"
+            android:exported="false"
+            android:taskAffinity=""
+            android:theme="@style/MainActivityTheme.Starting">
         </activity>
         <activity
             android:name=".BeforeRelaxActivity"
@@ -77,6 +96,13 @@
             android:name=".CareComplete"
             android:exported="false"
             android:theme="@style/MainActivityTheme.Starting" />
+
+        <!-- ⭐ com.mim.watch 센서 수집 서비스 -->
+        <service
+            android:name="com.mim.watch.services.BioForegroundService"
+            android:exported="false"
+            android:stopWithTask="false"
+            android:foregroundServiceType="health|dataSync" />
     </application>
 
 </manifest>

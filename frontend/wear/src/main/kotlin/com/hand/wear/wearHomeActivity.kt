@@ -19,6 +19,7 @@ import androidx.wear.compose.material.Text
 import android.content.Intent
 import androidx.compose.ui.platform.LocalContext
 import ui.theme.HandTheme
+import com.hand.hand.R
 
 class WearHomeActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {

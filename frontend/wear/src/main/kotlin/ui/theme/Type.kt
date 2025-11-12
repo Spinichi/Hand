@@ -6,7 +6,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import androidx.wear.compose.material.Typography
-import com.hand.wear.R
+import com.hand.hand.R
 
 val kyonggi = FontFamily(
     Font(R.font.kyonggi_light, FontWeight.Light),

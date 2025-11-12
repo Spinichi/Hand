@@ -24,6 +24,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.runtime.remember
 import androidx.wear.compose.material.Button
 import androidx.wear.compose.material.ButtonDefaults
+import com.hand.hand.R
 
 class CareComplete : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {

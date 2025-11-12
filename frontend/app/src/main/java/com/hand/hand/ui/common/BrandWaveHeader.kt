@@ -1,6 +1,7 @@
 package com.hand.hand.ui.common
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -8,19 +9,17 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
-
-
 /**
- * 피그마 기준으로 정확히 맞추는 헤더
- * - edgeY: 좌우 모서리의 Y (dp)
- * - centerY: 중앙 최저 Y (dp)
- * - overhang: 좌/우를 살짝 넘겨 그려 모서리 틈새 방지
+ * 자연스러운 곡선형 브랜드 헤더
+ * - edgeY: 좌우 모서리의 높이 (dp)
+ * - centerY: 중앙 최저점 (dp)
+ * - overhang: 좌우 끝을 살짝 넘겨서 그려 틈새 방지
  */
 @Composable
 fun BrandWaveHeader(
@@ -28,13 +27,15 @@ fun BrandWaveHeader(
     edgeY: Dp,
     centerY: Dp,
     overhang: Dp = 0.dp,
-    height: Dp = centerY,
+    // ✅ 높이를 기존 centerY보다 살짝 키움 (여유 공간 확보)
+    height: Dp = centerY + 40.dp,
     modifier: Modifier = Modifier,
     content: @Composable (BoxScope.() -> Unit) = {}
 ) {
     Box(
         modifier = modifier
             .fillMaxWidth()
+            .background(Color(0xFFF7F4F2))
             .height(height),
         contentAlignment = Alignment.TopCenter
     ) {
@@ -44,23 +45,19 @@ fun BrandWaveHeader(
             val centerYpx = centerY.toPx()
             val oh = overhang.toPx()
 
-            // 타원 사각형: 좌우 모서리(y=edgeY), 중앙 최저(y=centerY)
-            val oval = Rect(
-                left = -oh,
-                top = edgeYpx,
-                right = w + oh,
-                bottom = centerYpx
-            )
-
             val p = Path().apply {
-                moveTo(0f, 0f)
-                lineTo(w, 0f)
-                lineTo(w, edgeYpx)
-                // 오른쪽 → 왼쪽으로 180도 아크
-                arcTo(oval, 0f, 180f, false)
-                lineTo(0f, 0f)
+                moveTo(-oh, 0f)
+                lineTo(w + oh, 0f)
+                lineTo(w + oh, edgeYpx)
+
+                quadraticBezierTo(
+                    w / 2, centerYpx,
+                    -oh, edgeYpx
+                )
+
                 close()
             }
+
             drawPath(p, fillColor)
         }
         content()

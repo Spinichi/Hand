@@ -34,12 +34,12 @@ import com.hand.hand.ui.theme.Brown10
 import com.hand.hand.ui.theme.Brown40
 import com.hand.hand.ui.theme.Gray20
 
-enum class BottomTab { Home, Write, Diary, Profile }
+enum class BottomTab { Home, Write, Diary, Profile, None }
 
 @Composable
 fun CurvedBottomNavBar(
     modifier: Modifier = Modifier,
-    selectedTab: BottomTab = BottomTab.Home,
+    selectedTab: BottomTab = BottomTab.None,
     barHeight: Dp = 68.dp,
     barRadius: Dp = 24.dp,
     centerButtonSize: Dp = 56.dp,
@@ -56,7 +56,8 @@ fun CurvedBottomNavBar(
     onClickProfile: () -> Unit = {},
     onClickCenter: () -> Unit = {},
 ) {
-    val CenterGreen = Color(0xFF86B96A)
+    val CenterGreen = Color(0xFF9BB167)
+
 
     // 컷아웃 미세조정 파라미터
     val cutoutRadiusScale = 0.64f   // 컷아웃 반지름 = 버튼지름 * scale (0.60~0.68 권장)

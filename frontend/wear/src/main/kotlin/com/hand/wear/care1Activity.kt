@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.sp
 import androidx.wear.compose.material.Scaffold
 import com.hand.wear.components.BackgroundCircles
 import java.util.Locale
+import com.hand.hand.R
 
 class Care1Activity : ComponentActivity() {
 
