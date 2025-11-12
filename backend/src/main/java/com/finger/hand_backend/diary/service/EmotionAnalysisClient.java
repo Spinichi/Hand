@@ -13,7 +13,9 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
@@ -40,8 +42,9 @@ public class EmotionAnalysisClient {
      * 감정 분석
      * FastAPI 서버로 대화 내용 전송 후 감정 분석 결과 수신
      */
-    public EmotionAnalysis analyzeEmotion(List<QuestionAnswer> conversationHistory) {
-        log.info("EmotionAnalysis: Analyzing (conversation size: {})", conversationHistory.size());
+    public EmotionAnalysis analyzeEmotion(Long userId, LocalDate date, List<QuestionAnswer> conversationHistory) {
+        log.info("EmotionAnalysis: Analyzing for user {} on {} (conversation size: {})",
+                userId, date, conversationHistory.size());
 
         try {
             // 답변들만 이어붙여서 하나의 문자열로 생성
@@ -50,7 +53,10 @@ public class EmotionAnalysisClient {
                     .map(QuestionAnswer::getAnswerText)
                     .collect(Collectors.joining(" "));
 
-            Map<String, Object> requestBody = Map.of("diary", diary);
+            Map<String, Object> requestBody = new HashMap<>();
+            requestBody.put("userId", userId);
+            requestBody.put("date", date);
+            requestBody.put("diary", diary);
 
             // FastAPI 호출
             HttpHeaders headers = new HttpHeaders();
@@ -78,6 +84,7 @@ public class EmotionAnalysisClient {
                     .depressionScore(result.get("score").asDouble())
                     .shortSummary(result.get("short_summary").asText())
                     .longSummary(result.get("long_summary").asText())
+                    .emotionalAdvice(result.get("emotional_advice").asText())
                     .analyzedAt(LocalDateTime.now())
                     .build();
 
@@ -95,6 +102,7 @@ public class EmotionAnalysisClient {
                     .depressionScore(random.nextDouble() * 100)
                     .shortSummary("감정 분석 중 오류가 발생했습니다.")
                     .longSummary("FastAPI 서버와의 연결에 실패하여 임시 데이터를 반환합니다. 서버 상태를 확인해주세요.")
+                    .emotionalAdvice("현재 감정 조언을 생성할 수 없습니다. 서버 상태를 확인해주세요.")
                     .analyzedAt(LocalDateTime.now())
                     .build();
         }

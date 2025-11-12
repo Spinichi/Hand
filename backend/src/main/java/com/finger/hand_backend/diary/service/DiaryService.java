@@ -180,7 +180,11 @@ public class DiaryService {
                 .orElseThrow(() -> new IllegalStateException("대화를 찾을 수 없습니다"));
 
         // 3. 감정 분석 (FastAPI - 현재는 Mock)
-        EmotionAnalysis analysis = emotionAnalysisClient.analyzeEmotion(conversation.getQuestions());
+        EmotionAnalysis analysis = emotionAnalysisClient.analyzeEmotion(
+                userId,
+                session.getSessionDate(),
+                conversation.getQuestions()
+        );
 
         // 4. 감정 분석 결과를 MongoDB에 저장
         conversation.setEmotionAnalysisResult(analysis);
@@ -214,6 +218,7 @@ public class DiaryService {
                 .depressionScore(analysis.getDepressionScore())
                 .shortSummary(analysis.getShortSummary())
                 .longSummary(analysis.getLongSummary())
+                .emotionalAdvice(analysis.getEmotionalAdvice())
                 .completedAt(session.getCompletedAt())
                 .build();
     }
@@ -327,6 +332,7 @@ public class DiaryService {
         Double depressionScore = null;
         String shortSummary = null;
         String longSummary = null;
+        String emotionalAdvice = null;
 
         if (session.getStatus() == DiaryStatus.COMPLETED && conversation.getEmotionAnalysis() != null) {
             EmotionAnalysis analysis = conversation.getEmotionAnalysis();
@@ -343,6 +349,7 @@ public class DiaryService {
             depressionScore = analysis.getDepressionScore();
             shortSummary = analysis.getShortSummary();
             longSummary = analysis.getLongSummary();
+            emotionalAdvice = analysis.getEmotionalAdvice();
         }
 
         return DiaryDetailResponse.builder()
@@ -354,6 +361,7 @@ public class DiaryService {
                 .depressionScore(depressionScore)
                 .shortSummary(shortSummary)
                 .longSummary(longSummary)
+                .emotionalAdvice(emotionalAdvice)
                 .createdAt(session.getCreatedAt())
                 .completedAt(session.getCompletedAt())
                 .build();

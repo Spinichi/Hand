@@ -105,7 +105,13 @@ public class MonthlyReportService {
         biometricsForApi.put("userInfo", biometricData.getUserInfo());
 
         ReportAnalysisClient.ReportAnalysisResult analysisResult =
-                reportAnalysisClient.analyzeMonthlyReport(dailyDiaries, biometricsForApi);
+                reportAnalysisClient.analyzeMonthlyReport(
+                        userId,
+                        monthStart,
+                        monthEnd,
+                        dailyDiaries,
+                        biometricsForApi
+                );
 
         // 9. 통계 계산
         DoubleSummaryStatistics scoreStats = diaries.stream()
@@ -123,10 +129,8 @@ public class MonthlyReportService {
                 .userBaseline(biometricData.getUserBaseline())
                 .anomalies(biometricData.getAnomalies())
                 .userInfo(biometricData.getUserInfo())
-                .monthlySummary(analysisResult.getSummary())
+                .report(analysisResult.getReport())
                 .emotionalAdvice(analysisResult.getEmotionalAdvice())
-                .trendAnalysis(analysisResult.getTrendAnalysis())
-                .biometricInsights(analysisResult.getBiometricInsights())
                 .totalDiaryCount(diaries.size())
                 .averageDepressionScore(scoreStats.getAverage())
                 .maxDepressionScore(scoreStats.getMax())

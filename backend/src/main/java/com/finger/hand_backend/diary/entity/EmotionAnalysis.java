@@ -67,6 +67,12 @@ public class EmotionAnalysis {
     private String longSummary;
 
     /**
+     * 감정 조언
+     * 예: "긴장 완화를 위해 심호흡을 시도해보세요. 충분한 휴식도 중요합니다."
+     */
+    private String emotionalAdvice;
+
+    /**
      * 분석 시각
      */
     private LocalDateTime analyzedAt;

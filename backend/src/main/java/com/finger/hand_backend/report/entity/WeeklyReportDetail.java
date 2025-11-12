@@ -60,10 +60,16 @@ public class WeeklyReportDetail {
 
     // ========== AI 분석 결과 ==========
 
-    private String weeklySummary;
+    /**
+     * 주간 보고서 (통합)
+     * - 이전의 weeklySummary, trendAnalysis, biometricInsights 통합
+     */
+    private String report;
+
+    /**
+     * 감정 조언
+     */
     private String emotionalAdvice;
-    private String trendAnalysis;
-    private String biometricInsights;
 
     // ========== 통계 ==========
 

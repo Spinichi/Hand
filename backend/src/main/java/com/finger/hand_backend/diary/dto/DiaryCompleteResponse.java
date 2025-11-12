@@ -44,6 +44,12 @@ public class DiaryCompleteResponse {
     private String longSummary;
 
     /**
+     * 감정 조언
+     * 예: "긴장 완화를 위해 심호흡을 시도해보세요."
+     */
+    private String emotionalAdvice;
+
+    /**
      * 완료 시각
      */
     private LocalDateTime completedAt;
