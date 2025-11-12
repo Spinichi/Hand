@@ -44,16 +44,13 @@ public class EmotionAnalysisClient {
         log.info("EmotionAnalysis: Analyzing (conversation size: {})", conversationHistory.size());
 
         try {
-            // 대화 내용을 API 요청 형식으로 변환
-            List<Map<String, String>> conversations = conversationHistory.stream()
+            // 답변들만 이어붙여서 하나의 문자열로 생성
+            String diary = conversationHistory.stream()
                     .filter(qa -> qa.getAnswerText() != null) // 답변이 있는 것만
-                    .map(qa -> Map.of(
-                            "question", qa.getQuestionText(),
-                            "answer", qa.getAnswerText()
-                    ))
-                    .collect(Collectors.toList());
+                    .map(QuestionAnswer::getAnswerText)
+                    .collect(Collectors.joining(" "));
 
-            Map<String, Object> requestBody = Map.of("conversations", conversations);
+            Map<String, Object> requestBody = Map.of("diary", diary);
 
             // FastAPI 호출
             HttpHeaders headers = new HttpHeaders();

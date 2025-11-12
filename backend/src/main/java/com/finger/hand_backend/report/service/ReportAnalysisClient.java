@@ -33,6 +33,9 @@ public class ReportAnalysisClient {
     @Value("${report.api.monthly.url:http://localhost:8000/analyze-month}")
     private String monthlyReportApiUrl;
 
+    @Value("${report.api.counseling.url:http://localhost:8000/analyze-counseling}")
+    private String counselingApiUrl;
+
     /**
      * 주간 보고서 분석
      *
@@ -112,6 +115,41 @@ public class ReportAnalysisClient {
                     .trendAnalysis("데이터 분석을 완료하지 못했습니다.")
                     .biometricInsights("생체 데이터 분석이 불가능합니다.")
                     .build();
+        }
+    }
+
+    /**
+     * 관리자 상담용 분석
+     *
+     * @param requestBody 전체 요청 데이터 (userId, period, totalSummary, diaries, biometrics)
+     * @return 상담 조언
+     */
+    public String analyzeCounseling(Map<String, Object> requestBody) {
+        log.info("Analyzing counseling");
+
+        try {
+            // FastAPI 호출
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+
+            String jsonRequestBody = objectMapper.writeValueAsString(requestBody);
+            HttpEntity<String> request = new HttpEntity<>(jsonRequestBody, headers);
+
+            log.debug("Counseling API Request: {}", jsonRequestBody);
+            String responseBody = restTemplate.postForObject(counselingApiUrl, request, String.class);
+            log.debug("Counseling API Response: {}", responseBody);
+
+            // 응답 파싱
+            JsonNode root = objectMapper.readTree(responseBody);
+            JsonNode result = root.at("/result");
+
+            return result.get("counselingAdvice").asText();
+
+        } catch (Exception e) {
+            log.warn("Counseling Analysis: FastAPI 호출 실패, Mock 데이터 반환", e);
+
+            // Fallback: Mock 데이터 반환
+            return "상담 분석 중 오류가 발생했습니다.\n\nFastAPI 서버와의 연결에 실패하여 상담 조언을 생성할 수 없습니다.\n서버 상태를 확인해주세요.";
         }
     }
 
