@@ -1,11 +1,15 @@
 package com.hand.hand.feature.auth
 
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -40,14 +44,55 @@ import com.hand.hand.ui.theme.Green60
 import com.hand.hand.wear.WearListenerForegroundService
 
 class SignInActivity : ComponentActivity() {
+
+    private val permissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val allGranted = permissions.all { it.value }
+        if (allGranted) {
+            Log.d("SignInActivity", "✅ All permissions granted")
+            startWearListenerService()
+        } else {
+            Log.e("SignInActivity", "❌ Permissions denied: ${permissions.filter { !it.value }}")
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // ⭐ Wear 데이터 수신 서비스 시작 (백그라운드에서 계속 실행)
-        startWearListenerService()
+        // ⭐ 권한 확인 후 Wear 데이터 수신 서비스 시작
+        requestPermissionsAndStartService()
 
         setContent {
             SignInScreen()
+        }
+    }
+
+    private fun requestPermissionsAndStartService() {
+        val requiredPermissions = mutableListOf<String>()
+
+        // Android 12+ (API 31+): Bluetooth 권한
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            requiredPermissions.add(Manifest.permission.BLUETOOTH_CONNECT)
+            requiredPermissions.add(Manifest.permission.BLUETOOTH_SCAN)
+        }
+
+        // Android 13+ (API 33+): 알림 권한
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            requiredPermissions.add(Manifest.permission.POST_NOTIFICATIONS)
+        }
+
+        // 권한이 이미 허용되었는지 확인
+        val notGranted = requiredPermissions.filter {
+            ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
+        }
+
+        if (notGranted.isEmpty()) {
+            // 모든 권한이 이미 허용됨 → 바로 서비스 시작
+            startWearListenerService()
+        } else {
+            // 권한 요청
+            permissionLauncher.launch(notGranted.toTypedArray())
         }
     }
 

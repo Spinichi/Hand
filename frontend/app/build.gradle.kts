@@ -8,9 +8,7 @@ plugins {
 
 android {
     namespace = "com.hand.hand"
-    compileSdk {
-        version = release(36)
-    }
+    compileSdk = 36
     buildFeatures {
         compose = true  //ㅉ Compose 사용
     }
