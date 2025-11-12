@@ -117,6 +117,9 @@ class WearListenerForegroundService : Service() {
                     "SPM=${sample.stepsPerMinute}, " +
                     "isAnomaly=${sample.isAnomaly}")
 
+            // ⭐ 테스트 화면용: 데이터 업데이트
+            WearDataReceiver.updateData(sample)
+
             // TODO: 여기서 백엔드 서버로 전송
             // sendToBackend(sample)
 

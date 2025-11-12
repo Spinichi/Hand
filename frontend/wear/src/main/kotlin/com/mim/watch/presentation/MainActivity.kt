@@ -49,6 +49,9 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        // ⭐ 화면 항상 켜짐 유지 (배터리 소모 주의)
+        window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+
         // ⭐ Samsung Health SDK 연결 (권한 동의 UI를 위해 Activity 전달)
         // MainActivity에서 먼저 연결하여 사용자 동의를 받은 후 서비스 시작
         HealthDebugManager.connect(applicationContext, this)

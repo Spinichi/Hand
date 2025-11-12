@@ -70,9 +70,9 @@ object DataBufferManager {
         val validTotalSteps = samples.mapNotNull { it.totalSteps }
         val validStepsPerMinute = samples.mapNotNull { it.stepsPerMinute }
 
-        // ⭐ 이상치 판정: 원본 10개 샘플 중 stressLevel 4 이상이 5개 이상인지 체크
+        // ⭐ 이상치 판정: 원본 10개 샘플 중 stressLevel 4 이상이 6개 이상인지 체크
         val highStressCount = validStressLevel.count { it >= 4 }
-        val isAnomaly = highStressCount >= 5
+        val isAnomaly = highStressCount >= 6
 
         // 대표 샘플 생성 (평균값 사용, 최신 타임스탬프)
         return BioSample(

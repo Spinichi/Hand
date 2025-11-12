@@ -33,6 +33,7 @@ import com.hand.hand.care.CareActivity
 import com.hand.hand.ui.home.HomeActivity          // ✅ 홈 이동용
 import com.hand.hand.diary.DiaryHomeActivity       // ✅ 글쓰기 이동용
 import com.hand.hand.AiDocument.PrivateAiDocumentHomeActivity  // ✅ 다이어리 이동용
+import com.hand.hand.ui.test.WearTestActivity      // ✅ 워치 테스트용
 
 @Composable
 fun HomeScreen() {
@@ -106,7 +107,8 @@ fun HomeScreen() {
                     context.startActivity(Intent(context, PrivateAiDocumentHomeActivity::class.java))
                 },
                 onClickProfile = {
-                    // ✅ 추후 프로필 페이지 추가 가능
+                    // ⭐ 워치 데이터 테스트 화면
+                    context.startActivity(Intent(context, WearTestActivity::class.java))
                 },
                 onClickCenter = {
                     // ✅ 중앙 버튼 → CareActivity
