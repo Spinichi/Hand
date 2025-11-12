@@ -1,21 +1,18 @@
-import httpx
 from model_loader import model, tokenizer
 from transformers import pipeline
 import torch
-import numpy as np
 import re
 import emoji
 from soynlp.normalizer import repeat_normalize
 
-
-# 문장을 더 깔끔하게 가공하는 함수
 
 emojis = ''.join(emoji.EMOJI_DATA.keys())
 pattern = re.compile(f'[^ .,?!/@$%~％·∼()\x00-\x7Fㄱ-ㅣ가-힣{emojis}]+')
 url_pattern = re.compile(
     r'https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)')
 
-def clean(x): 
+# 문장을 더 깔끔하게 가공하는 함수
+def clean(x):
     x = pattern.sub(' ', x)
     x = emoji.replace_emoji(x, replace='') #emoji 삭제
     x = url_pattern.sub('', x)
@@ -49,7 +46,6 @@ classifier = pipeline(
 )
 
 # 감정별 가중치 (심리 영향 기반)
-# → 값이 높을수록 우울/불안에 기여도가 큼
 emotion_weights = {
     "기쁨": +3.0,
     "당황": -0.7,
@@ -59,16 +55,13 @@ emotion_weights = {
     "슬픔": -1.7
 }
 
-tokenizer = tokenizer
-model = model
-
 def emotionClassifying(texts: list[str]) -> dict:
     try:
         # 감정 평균 확률 계산
         all_scores = {label: 0.0 for label in id2label.values()}
 
         for text in texts:
-            preds = classifier(text)[0]
+            preds = clean(classifier(text)[0])
             for p in preds:
                 all_scores[p["label"]] += p["score"]
 
@@ -94,4 +87,6 @@ def emotionClassifying(texts: list[str]) -> dict:
         }
 
     except Exception as e:
-        return {"error": f"예측 중 오류 : {str(e)}"}
+        print(f'"error": "감정 분석 중 오류 : {str(e)}')
+
+        return { "sentiment": {}, "score": 60, "type": "error" }
