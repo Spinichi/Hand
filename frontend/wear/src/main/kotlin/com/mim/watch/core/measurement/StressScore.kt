@@ -34,23 +34,36 @@ object StressScore {        // 유틸 싱글턴
 
     // 상세 + BaseLine -> 지수/레벨 계산
     fun score(sample: SensorSample, baseline: BaseLine): Result {
-        val (ts, hr, ibi, temp, _, _, lastStepAt) = sample  // 필요한 값만 구조분해
+        val (ts, hr, ibi, temp, _, accelX, accelY, accelZ, _, lastStepAt, spm) = sample
 
         // HRV 지표 계산(IBI가 충분할 때만)
         val sdnn  = ibi?.let { if (it.size >= 2) HrvCalculator.sdnn(it) else null }
         val rmssd = ibi?.let { if (it.size >= 2) HrvCalculator.rmssd(it) else null }
+
+        // ⭐ 가속도 크기 계산 (X, Y, Z로부터 벡터 크기)
+        val accelMagnitude = if (accelX != null && accelY != null && accelZ != null) {
+            kotlin.math.sqrt(accelX * accelX + accelY * accelY + accelZ * accelZ)
+        } else null
 
         // 각 항목을 Z -> 0 ~ 100 점수로 환산
         val sSdnn  = zToScore(sdnn?.let  { z(it, baseline.hrvSdnnMean, baseline.hrvSdnnStd) })
         val sRmssd = zToScore(rmssd?.let { z(it, baseline.hrvRmssdMean, baseline.hrvRmssdStd) })
         val sHr    = zToScore(hr?.let    { z(it, baseline.hrMean,      baseline.hrStd) })
         val sTemp  = zToScore(temp?.let  { z(it, baseline.objTempMean,  baseline.objTempStd) })
-        val sAccel = 0.0 // 필요 시 가속도 점수 추가
+
+        // ⭐ 가속도 점수: 높은 움직임 = 높은 스트레스 (간단한 매핑, Baseline 없이 절대값 기준)
+        // 가속도 크기가 클수록 스트레스 증가 (0~20 m/s² 범위를 0~100으로 정규화)
+        val sAccel = accelMagnitude?.let {
+            val normalized = (it / 20.0) * 100.0  // 20 m/s²를 최대값으로 가정
+            min(100.0, max(0.0, normalized))
+        } ?: 0.0
 
         // 가중 합산(논문/설계 비율): HRV 0.6, HR 0.25, Temp 0.10, Accel 0.05
         var index = (sSdnn * 0.30) + (sRmssd * 0.30) + (sHr * 0.25) + (sTemp * 0.10) + (sAccel * 0.05)
-        // 최근 걸음 할인(운동성 반영)
-        index = StressLevelMapper.applyActivityDiscount(index, ts, lastStepAt)
+
+        // ⭐ SPM 기반 활동 보정 (SPM >= 100이면 활동 중으로 간주)
+        index = StressLevelMapper.applyActivityDiscountBySpm(index, spm)
+
         // 0~100으로 클램프
         index = min(100.0, max(0.0, index))
 

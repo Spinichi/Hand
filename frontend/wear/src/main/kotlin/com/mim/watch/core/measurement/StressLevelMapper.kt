@@ -24,4 +24,17 @@ object StressLevelMapper {
         val within10s = lastStepAtMs?.let { measuredAtMs - it <= 10_000 } == true
         return if (within10s) stressIndex * 0.4 else stressIndex
     }
+
+    /**
+     * ⭐ SPM 기반 활동 보정: SPM >= 100이면 운동 중으로 간주하여 지수 0.4배
+     *  - stressIndex: 계산된 스트레스 지수
+     *  - stepsPerMinute: 분당 걸음 수 (SPM)
+     */
+    fun applyActivityDiscountBySpm(
+        stressIndex: Double,
+        stepsPerMinute: Int?
+    ): Double {
+        val isExercising = (stepsPerMinute ?: 0) >= 100
+        return if (isExercising) stressIndex * 0.4 else stressIndex
+    }
 }

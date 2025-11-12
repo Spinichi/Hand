@@ -119,8 +119,12 @@ class MainActivity : ComponentActivity() {
                         ibiMsList      = parsed.ibiMsList,
                         objectTempC    = parsed.objTempC,
                         accelMagnitude = null,
+                        accelX         = parsed.accelX,
+                        accelY         = parsed.accelY,
+                        accelZ         = parsed.accelZ,
                         totalSteps     = SensorCollector.lastStepCount?.toLong(),
-                        lastStepAtMs   = SensorCollector.lastStepTimestampMs
+                        lastStepAtMs   = SensorCollector.lastStepTimestampMs,
+                        stepsPerMinute = SensorCollector.getStepsPerMinute()
                     )
                     val result = gateway.processRealtimeSample(sample)
 
@@ -334,18 +338,24 @@ private fun shortName(name: String): String {
 }
 
 // ───────────────────────────────────────────────────────────────
-// HR/IBI/온도 파싱
+// HR/IBI/온도/가속도 파싱
 // ───────────────────────────────────────────────────────────────
 private data class ParsedVitals(
     val hrBpm: Double?,
     val ibiMsList: List<Double>?,
-    val objTempC: Double?
+    val objTempC: Double?,
+    val accelX: Double?,
+    val accelY: Double?,
+    val accelZ: Double?
 )
 
 private fun parseFromDump(dump: Map<String, String>): ParsedVitals {
     var hr: Double? = null
     var ibi: List<Double>? = null
     var objTemp: Double? = null
+    var accelX: Double? = null
+    var accelY: Double? = null
+    var accelZ: Double? = null
 
     dump.entries.firstOrNull { (k, _) -> k.contains("HEART", ignoreCase = true) }?.let { (_, v) ->
         Regex("""HR:\s*([0-9]+(?:\.[0-9]+)?)""", RegexOption.IGNORE_CASE)
@@ -363,5 +373,14 @@ private fun parseFromDump(dump: Map<String, String>): ParsedVitals {
             .find(v)?.groupValues?.getOrNull(1)?.toDoubleOrNull()?.let { objTemp = it }
     }
 
-    return ParsedVitals(hrBpm = hr, ibiMsList = ibi, objTempC = objTemp)
+    dump.entries.firstOrNull { (k, _) -> k.contains("ACCELEROMETER", ignoreCase = true) }?.let { (_, v) ->
+        Regex("""ACCEL_X:\s*([-+]?[0-9]+(?:\.[0-9]+)?)""", RegexOption.IGNORE_CASE)
+            .find(v)?.groupValues?.getOrNull(1)?.toDoubleOrNull()?.let { accelX = it }
+        Regex("""ACCEL_Y:\s*([-+]?[0-9]+(?:\.[0-9]+)?)""", RegexOption.IGNORE_CASE)
+            .find(v)?.groupValues?.getOrNull(1)?.toDoubleOrNull()?.let { accelY = it }
+        Regex("""ACCEL_Z:\s*([-+]?[0-9]+(?:\.[0-9]+)?)""", RegexOption.IGNORE_CASE)
+            .find(v)?.groupValues?.getOrNull(1)?.toDoubleOrNull()?.let { accelZ = it }
+    }
+
+    return ParsedVitals(hrBpm = hr, ibiMsList = ibi, objTempC = objTemp, accelX = accelX, accelY = accelY, accelZ = accelZ)
 }

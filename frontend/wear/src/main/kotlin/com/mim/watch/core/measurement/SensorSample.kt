@@ -10,6 +10,10 @@ data class  SensorSample(
     val ibiMsList: List<Double>?,   // IBI(ms) 목록, (HRV 계산용 IBI(ms)
     val objectTempC: Double?,       // 피부/객체 온도(섭씨) , null 이면 점수 계산에서 제외
     val accelMagnitude: Double?,    // 가속도 세기 0~1 정규화 or g 단위 힘 단계는 가중치 0
+    val accelX: Double?,            // 가속도 X (m/s²)
+    val accelY: Double?,            // 가속도 Y (m/s²)
+    val accelZ: Double?,            // 가속도 Z (m/s²)
     val totalSteps: Long?,          // 누적 걸음 수(옵션)
-    val lastStepAtMs: Long?         // 마지막 걸음 발생 시각(활동 보정용)
+    val lastStepAtMs: Long?,        // 마지막 걸음 발생 시각(활동 보정용)
+    val stepsPerMinute: Int?        // 분당 걸음 수 (SPM)
 )

@@ -33,6 +33,9 @@ object SensorCollector {
     var derivedStepCount: Int = 0
         private set
 
+    // ⭐ 분당 걸음 수 계산용: 최근 1분간의 걸음 타임스탬프 저장
+    private val stepTimestamps = mutableListOf<Long>()
+
     // 실행 상태
     @Volatile
     var isRunning: Boolean = false
@@ -100,9 +103,17 @@ object SensorCollector {
                     val now = System.currentTimeMillis()
                     lastStepTimestampMs = now
                     derivedStepCount += 1
+
+                    // ⭐ 분당 걸음 수 계산용: 타임스탬프 기록
+                    synchronized(stepTimestamps) {
+                        stepTimestamps.add(now)
+                        // 1분(60초) 이전 데이터는 제거
+                        stepTimestamps.removeAll { it < now - 60_000 }
+                    }
+
                     Log.d(
                         "SensorCollector",
-                        "STEP_DETECT at $now (derivedStepCount=$derivedStepCount)"
+                        "STEP_DETECT at $now (derivedStepCount=$derivedStepCount, SPM=${getStepsPerMinute()})"
                     )
                 }
                 override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
@@ -118,6 +129,19 @@ object SensorCollector {
         isRunning = true
     }
 
+    /**
+     * 분당 걸음 수(SPM) 반환
+     * 최근 1분간 감지된 걸음 수
+     */
+    fun getStepsPerMinute(): Int {
+        synchronized(stepTimestamps) {
+            val now = System.currentTimeMillis()
+            // 1분 이전 데이터 제거 (실시간 정확도 향상)
+            stepTimestamps.removeAll { it < now - 60_000 }
+            return stepTimestamps.size
+        }
+    }
+
     fun stop() {
         Log.d("SensorCollector", "stop() steps-only")
         stepCounterListener?.let { sensorManager?.unregisterListener(it) }
@@ -126,5 +150,8 @@ object SensorCollector {
         stepDetectListener = null
         sensorManager = null
         isRunning = false
+        synchronized(stepTimestamps) {
+            stepTimestamps.clear()
+        }
     }
 }

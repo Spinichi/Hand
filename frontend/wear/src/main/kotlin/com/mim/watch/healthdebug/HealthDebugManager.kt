@@ -33,13 +33,19 @@ object HealthDebugManager {
         private set
     private val latestMutable = ConcurrentHashMap<String, String>()
 
-    // ★ 서비스가 실시간 샘플을 받아 CSV에 쓰기 위한 콜백
+    // ★ 서비스가 실시간 샘플을 받아 전송하기 위한 콜백
     @Volatile
     var onSample: ((tsMs: Long, hrBpm: Float?, ibiMs: Float?, movement: Float?, extras: Map<String, Any?>) -> Unit)? = null
 
     // 가속도 → movement(0~1) 계산용 상태(EMA)
     @Volatile
     private var movementEma: Float? = null
+
+    // 각 센서별 최신 데이터 병합용 (모든 센서 데이터를 한 곳에 모음)
+    private val latestSensorDataInternal = ConcurrentHashMap<String, Any?>()
+
+    // 외부에서 읽기 전용으로 접근 가능
+    fun getLatestSensorData(): Map<String, Any?> = HashMap(latestSensorDataInternal)
 
     // 안전하게 trackerType 이름 뽑는 헬퍼
     private fun itName(typeObj: Any): String = try {
@@ -252,7 +258,16 @@ object HealthDebugManager {
                     //     }
                     // }
 
+                    // ⭐ Heart Rate 콜백에서도 최신 센서 데이터를 latestSensorDataInternal에 저장
+                    if (hrFilled != null) latestSensorDataInternal["heartRate"] = hrFilled
+                    if (ibiMs != null) latestSensorDataInternal["ibi"] = ibiMs
+
+                    // ⭐ extras에 모든 최신 센서 데이터 포함 (병합, 순서 중요)
                     val extras = buildMap<String, Any?> {
+                        // 1. 먼저 저장된 모든 센서 데이터 추가
+                        putAll(latestSensorDataInternal)
+
+                        // 2. 현재 Heart Rate 메타데이터로 덮어쓰기
                         put("tracker", trackerName)
                         put("src", "HTS")
                         put("hr_src", hrSrc)
@@ -356,13 +371,27 @@ object HealthDebugManager {
                     latestByTracker = HashMap(latestMutable)
                     Log.d(TAG, "[$trackerName] update:\n$sb")
 
-                    // CSV 기록 (HR/IBI는 비우고 movement만 기록)
-                    val extras = mapOf(
-                        "tracker" to trackerName,
-                        "src" to "HTS",
-                        "algo" to "movement=ema0.2(|mag-g|/6.0)",
-                        "unit" to "m/s2"
-                    )
+                    // ⭐ 가속도 데이터를 latestSensorDataInternal에 저장
+                    latestSensorDataInternal["accelX"] = ax
+                    latestSensorDataInternal["accelY"] = ay
+                    latestSensorDataInternal["accelZ"] = az
+                    latestSensorDataInternal["movementIntensity"] = movementEma
+
+                    Log.d(TAG, "⭐ ACCEL updated: X=$ax, Y=$ay, Z=$az, movement=$movementEma")
+
+                    // ⭐ extras에 모든 최신 센서 데이터 병합 (순서 중요: putAll 먼저, 현재 값으로 덮어쓰기)
+                    val extras = buildMap<String, Any?> {
+                        // 1. 먼저 저장된 모든 센서 데이터 추가
+                        putAll(latestSensorDataInternal)
+
+                        // 2. 현재 가속도 값으로 덮어쓰기 (최신 값 보장)
+                        put("tracker", trackerName)
+                        put("src", "HTS")
+                        put("accelX", ax)
+                        put("accelY", ay)
+                        put("accelZ", az)
+                        put("movementIntensity", movementEma)
+                    }
                     onSample?.invoke(latestPoint.timestamp, null, null, movementEma, extras)
                 }
 
@@ -417,6 +446,10 @@ object HealthDebugManager {
                 Log.d(TAG, "discovery: skipping $trackerName (doesn't work properly)")
                 return@forEach
             }
+            if (trackerName.contains("ACCELEROMETER", true)) {
+                Log.d(TAG, "discovery: skipping $trackerName (already handled by main tracker)")
+                return@forEach
+            }
 
             try {
                 val tracker = s.getHealthTracker(trackerType)
@@ -461,21 +494,33 @@ object HealthDebugManager {
                         latestByTracker = HashMap(latestMutable)
                         Log.d(TAG, "[DISCOVERY:$trackerName] update:\n$sb")
 
-                        // ⭐ 온도 데이터를 onSample 콜백으로 전달 (SKIN_TEMPERATURE 트래커만)
+                        // ⭐ 온도 데이터를 저장 및 콜백 전달 (SKIN_TEMPERATURE 트래커만)
                         if (trackerName.contains("SKIN_TEMPERATURE", ignoreCase = true)) {
                             var objTemp: Float? = null
+                            var ambTemp: Float? = null
                             try {
                                 objTemp = (latestPoint.getValue(ValueKey.SkinTemperatureSet.OBJECT_TEMPERATURE) as? Number)?.toFloat()
                             } catch (_: Throwable) {}
+                            try {
+                                ambTemp = (latestPoint.getValue(ValueKey.SkinTemperatureSet.AMBIENT_TEMPERATURE) as? Number)?.toFloat()
+                            } catch (_: Throwable) {}
 
-                            if (objTemp != null) {
-                                val extras = mapOf(
-                                    "tracker" to trackerName,
-                                    "src" to "HTS",
-                                    "ObjTemp(C)" to objTemp
-                                )
-                                onSample?.invoke(latestPoint.timestamp, null, null, null, extras)
+                            // latestSensorDataInternal에 저장
+                            latestSensorDataInternal["objectTemp"] = objTemp
+                            latestSensorDataInternal["ambientTemp"] = ambTemp
+
+                            // ⭐ extras에 모든 최신 센서 데이터 병합 (순서 중요)
+                            val extras = buildMap<String, Any?> {
+                                // 1. 먼저 저장된 모든 센서 데이터 추가
+                                putAll(latestSensorDataInternal)
+
+                                // 2. 현재 온도 값으로 덮어쓰기 (최신 값 보장)
+                                put("tracker", trackerName)
+                                put("src", "HTS")
+                                put("objectTemp", objTemp)
+                                put("ambientTemp", ambTemp)
                             }
+                            onSample?.invoke(latestPoint.timestamp, null, null, null, extras)
                         }
                     }
 

@@ -16,6 +16,7 @@ import com.google.android.gms.wearable.Wearable
 import com.google.gson.Gson
 import com.hand.hand.R
 import com.hand.hand.wear.model.BioSampleBatch
+import com.hand.hand.wear.model.BioSample
 
 /**
  * 백그라운드에서 Wear 앱으로부터 데이터를 수신하는 Foreground Service
@@ -99,22 +100,25 @@ class WearListenerForegroundService : Service() {
                 return
             }
 
-            val batch = gson.fromJson(json, BioSampleBatch::class.java)
+            // ⭐ 대표 샘플 1개 수신 (10초마다)
+            val sample = gson.fromJson(json, BioSample::class.java)
 
-            Log.d(TAG, "=== Received Bio Data from Watch ===")
-            Log.d(TAG, "Device ID: ${batch.deviceId}")
-            Log.d(TAG, "Batch Timestamp: ${batch.batchTimestamp}")
-            Log.d(TAG, "Samples Count: ${batch.samples.size}")
-
-            batch.samples.forEachIndexed { index, sample ->
-                Log.d(TAG, "  [${index + 1}] HR=${sample.heartRateBpm} bpm, " +
-                        "Temp=${sample.skinTempC}°C, " +
-                        "IBI=${sample.ibiMsList ?: "null"}, " +
-                        "Stress=${sample.stressIndex?.let { "%.1f".format(it) } ?: "N/A"}")
-            }
+            Log.d(TAG, "=== Received Representative Sample from Watch ===")
+            Log.d(TAG, "Timestamp: ${sample.timestampMs}")
+            Log.d(TAG, "HR=${sample.heartRate} bpm, " +
+                    "HRV_SDNN=${sample.hrvSdnn?.let { "%.1f".format(it) } ?: "N/A"} ms, " +
+                    "HRV_RMSSD=${sample.hrvRmssd?.let { "%.1f".format(it) } ?: "N/A"} ms, " +
+                    "ObjTemp=${sample.objectTemp}°C, " +
+                    "AmbTemp=${sample.ambientTemp}°C, " +
+                    "Accel(${sample.accelX}, ${sample.accelY}, ${sample.accelZ}), " +
+                    "Movement=${sample.movementIntensity?.let { "%.2f".format(it) } ?: "N/A"}, " +
+                    "Stress=${sample.stressIndex?.let { "%.1f".format(it) } ?: "N/A"}(Lv${sample.stressLevel}), " +
+                    "Steps=${sample.totalSteps}, " +
+                    "SPM=${sample.stepsPerMinute}, " +
+                    "isAnomaly=${sample.isAnomaly}")
 
             // TODO: 여기서 백엔드 서버로 전송
-            // sendToBackend(batch)
+            // sendToBackend(sample)
 
         } catch (e: Exception) {
             Log.e(TAG, "Error parsing bio data", e)

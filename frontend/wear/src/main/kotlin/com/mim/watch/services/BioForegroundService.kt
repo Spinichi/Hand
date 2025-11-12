@@ -63,14 +63,29 @@ class BioForegroundService : Service() {
             // ⭐ Stress 계산 Gateway 초기화
             stressGateway = SensorGatewayImpl(applicationContext)
 
+            // ⭐ 걸음 수 센서 시작
+            SensorCollector.start(applicationContext)
+            Log.d(TAG, "✅ SensorCollector started")
+
             // 1) Health SDK 연결 (Activity 없이)
             // ✅ connect() 성공 시 자동으로 센서 시작 (onConnectionSuccess 콜백)
             HealthDebugManager.connect(applicationContext, null)
 
             // 3) 실시간 샘플 콜백 → 스트레스 계산 → 10초 버퍼링 → Phone 전송
             HealthDebugManager.onSample = { ts, hr, ibi, move, extras ->
-                // extras에서 피부 온도 추출
-                val objTemp = (extras["ObjTemp(C)"] as? Number)?.toFloat()
+                // ⭐ 디버깅: extras 내용 확인
+                Log.d(TAG, "onSample extras keys: ${extras.keys}")
+
+                // ⭐ extras에서 센서 데이터 추출 (extras에 이미 모든 데이터가 병합되어 있음)
+                val objectTemp = (extras["objectTemp"] as? Number)?.toFloat()
+                val ambientTemp = (extras["ambientTemp"] as? Number)?.toFloat()
+                val accelX = (extras["accelX"] as? Number)?.toFloat()
+                val accelY = (extras["accelY"] as? Number)?.toFloat()
+                val accelZ = (extras["accelZ"] as? Number)?.toFloat()
+                val movementIntensity = (extras["movementIntensity"] as? Number)?.toFloat()
+
+                // ⭐ 디버깅: 추출된 값 확인
+                Log.d(TAG, "Extracted: accelX=$accelX, accelY=$accelY, accelZ=$accelZ, movement=$movementIntensity")
 
                 // ⭐ IBI 버퍼에 추가 (최근 10개 유지)
                 ibi?.let {
@@ -93,37 +108,51 @@ class BioForegroundService : Service() {
                         timestampMs = ts,
                         heartRateBpm = hr?.toDouble(),
                         ibiMsList = ibiList,  // ⭐ 여러 개의 IBI 사용
-                        objectTempC = objTemp?.toDouble(),
-                        accelMagnitude = move?.toDouble(),
+                        objectTempC = objectTemp?.toDouble(),
+                        accelMagnitude = movementIntensity?.toDouble(),
+                        accelX = accelX?.toDouble(),
+                        accelY = accelY?.toDouble(),
+                        accelZ = accelZ?.toDouble(),
                         totalSteps = SensorCollector.lastStepCount?.toLong(),
-                        lastStepAtMs = SensorCollector.lastStepTimestampMs
+                        lastStepAtMs = SensorCollector.lastStepTimestampMs,
+                        stepsPerMinute = SensorCollector.getStepsPerMinute()
                     )
                     val stressResult = stressGateway.processRealtimeSample(sensorSample)
 
-                    Log.d(TAG, "sample ts=$ts hr=$hr ibi_count=${ibiList?.size ?: 0} temp=$objTemp stress=${stressResult.stressIndex}")
+                    Log.d(TAG, "sample ts=$ts hr=$hr temp=$objectTemp accelX=$accelX stress=${stressResult.stressIndex} level=${stressResult.stressLevel}")
 
-                    // BioSample 생성 (계산된 스트레스 포함, Double → Float 변환)
+                    // ⭐ BioSample 생성 (isAnomaly는 기본값 false)
                     val sample = BioSample(
                         timestampMs = ts,
-                        heartRateBpm = hr,
-                        ibiMsList = ibi?.let { listOf(it) },
-                        skinTempC = objTemp,
-                        movementIndex = move,
-                        totalSteps = SensorCollector.lastStepCount?.toLong(),
+                        heartRate = hr,
+                        hrvSdnn = stressResult.sdnn,
+                        hrvRmssd = stressResult.rmssd,
+                        objectTemp = objectTemp,
+                        ambientTemp = ambientTemp,
+                        accelX = accelX,
+                        accelY = accelY,
+                        accelZ = accelZ,
+                        movementIntensity = movementIntensity,
                         stressIndex = stressResult.stressIndex,
-                        stressLevel = stressResult.stressLevel
+                        stressLevel = stressResult.stressLevel,
+                        totalSteps = SensorCollector.lastStepCount?.toLong(),
+                        stepsPerMinute = SensorCollector.getStepsPerMinute(),
+                        isAnomaly = false  // 기본값 false, 대표 샘플 생성 시 재설정
                     )
 
-                    // 버퍼에 추가 → 10개 모이면 배치 반환
-                    val batch = DataBufferManager.addSample(sample)
+                    // 버퍼에 추가 → 10개 모이면 대표 샘플 1개 반환 (isAnomaly 포함)
+                    val representativeSample = DataBufferManager.addSample(sample)
 
-                    // 배치가 준비되면 Phone으로 전송
-                    batch?.let {
-                        val success = messageSender.sendBatch(it)
+                    // 대표 샘플이 준비되면 Phone으로 전송
+                    representativeSample?.let { repSample ->
+                        Log.d(TAG, "✅ Representative sample: stressLevel=${repSample.stressLevel} isAnomaly=${repSample.isAnomaly}")
+
+                        // Phone으로 대표 샘플 1개 전송
+                        val success = messageSender.sendSample(repSample)
                         if (success) {
-                            Log.d(TAG, "✅ Batch sent: ${it.samples.size} samples")
+                            Log.d(TAG, "✅ Sample sent to Phone")
                         } else {
-                            Log.w(TAG, "❌ Failed to send batch")
+                            Log.w(TAG, "❌ Failed to send sample")
                         }
                     }
                 }
