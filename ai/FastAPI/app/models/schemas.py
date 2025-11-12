@@ -1,38 +1,84 @@
 from pydantic import BaseModel
 from typing import List, Dict, Any
 
-# 감정 분석
-class EmotionInput(BaseModel):
+# 감정 분석 후 요약본 제공
+class DiaryInput(BaseModel):
     user_id : int
     texts : List[str]
 
-class EmotionOutput(BaseModel):
+class DiaryOutput(BaseModel):
     user_id : int
     result: Dict[str, Any]
 
-# 일간 다이어리 전용
-class DailyInput(BaseModel):
-    user_id : int
-    diary : str
-    
-class DailyOutput(BaseModel):
-    user_id : int
-    result: Dict[str, float]
 
-# 주간(월간) 보고서 전용
-class WeeklyInput(BaseModel):
+# 주간(월간) 보고서
+class DiaryItem(BaseModel):
+    date: str
+    longSummary: str
+    shortSummary: str
+    depressionScore: float
+
+class BaselineItem(BaseModel):
+    version: int
+    measurementCount: int
+    dataStartDate: str
+    dataEndDate: str
+    hrvSdnn: Dict[str, float]
+    hrvRmssd: Dict[str, float]
+    heartRate: Dict[str, float]
+    objectTemp: Dict[str, float]
+
+class AnomalyItem(BaseModel):
+    detectedAt: str
+    measurementId: int
+    stressIndex: float
+    stressLevel: int
+    heartRate: float
+    hrvSdnn: float
+    hrvRmssd: float
+
+class UserInfo(BaseModel):
+    age: int
+    gender: str
+    job: str
+    height: float
+    weight: float
+    disease: str
+
+class Biometrics(BaseModel):
+    baseline: BaselineItem
+    anomalies: List[AnomalyItem]
+    userInfo: UserInfo
+
+class ReportInput(BaseModel):
+    user_id: int
+    diaries: List[DiaryItem]
+    biometrics: Biometrics
+
+class ReportOutput(BaseModel):
+    user_id: int
+    result : str
+
+# 개인 조언 전용
+class PersonalAdviceInput(BaseModel):
+    user_id: int
+    diaries: List[DiaryItem]
+    biometrics: Biometrics
+    total_summary : str
+
+class PersonalAdviceOutput(BaseModel):
     user_id : int
-    text : str
-    
-class WeeklyOutput(BaseModel):
-    user_id : int
-    result : Dict[str, Any]
+    report : str
+    advice : str
 
 # 관리자 상담 전용
-class CouncelInput(BaseModel):
-    user_id : int
-    summarized_list : List
+class ManageAdviceInput(BaseModel):
+    user_id: int
+    diaries: List[DiaryItem]
+    biometrics: Biometrics
+    total_summary : str
 
-class CouncelOutput(BaseModel):
+class ManageAdviceOutput(BaseModel):
     user_id : int
-    suggest : str
+    report : str
+    advice : str

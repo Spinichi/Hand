@@ -1,6 +1,5 @@
 import os
 import httpx
-import asyncio
 from dotenv import load_dotenv
 from fastapi import HTTPException
 
@@ -48,7 +47,7 @@ async def shortSummarize(text:str):
     }
     
     try:
-        async with httpx.AsyncClient(verify=False, timeout=10.0) as client:
+        async with httpx.AsyncClient(verify=False, timeout=30.0) as client:
             response = await client.post(SUMMARY_URL, headers=headers, json=payload)
             response.raise_for_status()
             result = response.json()

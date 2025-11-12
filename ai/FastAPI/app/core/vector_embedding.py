@@ -1,34 +1,43 @@
 from dotenv import load_dotenv
 import os
 import httpx
-import requests
 load_dotenv()
 
-VECTOR_DB = os.getenv("WEAVIATE_URL")
 API_KEY = os.getenv("GMS_KEY")
 EMB_MODEL = os.getenv("EMBEDDING_MODEL")
 EMB_URL = os.getenv("EMBEDDING_GMS_URL")
 
-async def embed(text:str) -> list:
+def embed(text: str) -> list[float]:
     headers = {
-        "Content-type": "application/json",
-        "Authorization": f"Bearer {API_KEY}"
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {API_KEY}",
     }
-    
+
     payload = {
         "model": EMB_MODEL,
         "input": text,
     }
-    
-    async with httpx.AsyncClient(verify=False, timeout=15.0) as client:
-        try:
-            response = await requests.post(EMB_URL, headers=headers, json=payload)
-            response.raise_for_status()
-            result = response.json()
-            output = result["data"][0]["embedding"]
-            
-            return output
 
-        except Exception as e:
-            print("에러 발생, 에러 코드 : ", e)
-            
+    try:
+        response = httpx.post(
+            EMB_URL,
+            headers=headers,
+            json=payload,
+            timeout=10.0,
+            verify=False,
+        )
+        response.raise_for_status()
+        data = response.json()
+        if "data" not in data:
+            embedding = []
+        else:
+            embedding = data["data"][0]["embedding"]
+
+        if not isinstance(embedding, list):
+            raise ValueError("embedding이 list 형태가 아닙니다.")
+
+        return [float(v) for v in embedding]
+
+    except Exception as e:
+        print("Embedding 요청 오류 발생:", e)
+        raise e
