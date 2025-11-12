@@ -2,6 +2,7 @@ package com.hand.hand.feature.auth
 
 import android.content.Intent
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.Image
@@ -30,8 +31,9 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.hand.hand.R
-import com.hand.hand.care.CareActivity
-import com.hand.hand.diary.DiaryHomeActivity
+import com.hand.hand.api.SignUp.SignUpManager
+import com.hand.hand.api.SignUp.SignupRequest
+import com.hand.hand.api.SignUp.SignupResponse
 import com.hand.hand.ui.common.BrandWaveHeader
 import com.hand.hand.ui.theme.BrandFontFamily
 import com.hand.hand.ui.theme.Green60
@@ -46,10 +48,7 @@ class SignUpActivity : ComponentActivity() {
 }
 
 @Composable
-fun SignUpScreen(
-    onClickLogin: (String, String) -> Unit = { _, _ -> },
-    onClickSignUp: () -> Unit = {}
-) {
+fun SignUpScreen() {
     val context = LocalContext.current
     val screenWidthDp = LocalConfiguration.current.screenWidthDp
     val screenHeightDp = LocalConfiguration.current.screenHeightDp
@@ -85,7 +84,6 @@ fun SignUpScreen(
                 overhang = overhang,
                 height = headerHeight
             ) {
-                // 로고 이미지
                 Image(
                     painter = painterResource(R.drawable.image_14),
                     contentDescription = "로고",
@@ -95,10 +93,7 @@ fun SignUpScreen(
                         .size(width = screenWidthDp.dp * 0.3f, height = screenHeightDp.dp * 0.05f)
                 )
             }
-
-
         }
-
 
         Text(
             text = "회원가입",
@@ -107,7 +102,7 @@ fun SignUpScreen(
             fontFamily = BrandFontFamily,
             color = Color(0xFF4F3422),
             textAlign = TextAlign.Center,
-            modifier = Modifier.align(Alignment.CenterHorizontally) // 변경됨
+            modifier = Modifier.align(Alignment.CenterHorizontally)
         )
         Spacer(Modifier.height(20.dp))
 
@@ -203,9 +198,24 @@ fun SignUpScreen(
 
         Spacer(Modifier.height(24.dp))
 
-        // 로그인 버튼
+        // 회원가입 버튼
         Button(
-            onClick = { onClickLogin(id, pw) },
+            onClick = {
+                // Retrofit 회원가입 API 호출
+                val signupRequest = SignupRequest(email = id, password = pw)
+                SignUpManager.signup(
+                    signupRequest,
+                    onSuccess = { response: SignupResponse ->
+                        Toast.makeText(context, "회원가입 성공!", Toast.LENGTH_SHORT).show()
+                        // 로그인 화면으로 이동
+                        val intent = Intent(context, SignInActivity::class.java)
+                        context.startActivity(intent)
+                    },
+                    onFailure = { throwable ->
+                        Toast.makeText(context, "회원가입 실패: ${throwable.message}", Toast.LENGTH_SHORT).show()
+                    }
+                )
+            },
             modifier = Modifier
                 .fillMaxWidth()
                 .height((screenWidthDp * 0.14f).dp),
@@ -216,13 +226,7 @@ fun SignUpScreen(
             ),
             elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp)
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.clickable {
-                    val intent = Intent(context, SignInActivity::class.java)
-                    context.startActivity(intent)
-                }
-            ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = "회원가입",
                     color = Color.White,
@@ -230,26 +234,22 @@ fun SignUpScreen(
                     fontWeight = FontWeight.SemiBold,
                     fontFamily = BrandFontFamily
                 )
-
-                Spacer(modifier = Modifier.width(4.dp)) // 텍스트와 이미지 사이 간격
-
+                Spacer(modifier = Modifier.width(4.dp))
                 Image(
-                    painter = painterResource(id = R.drawable.login_btn), // login_btn.png
-                    contentDescription = "로그인 버튼 이미지",
-                    modifier = Modifier
-                        .size((screenWidthDp * 0.05f).dp) // 적절한 크기 설정
+                    painter = painterResource(id = R.drawable.login_btn),
+                    contentDescription = "회원가입 버튼 이미지",
+                    modifier = Modifier.size((screenWidthDp * 0.05f).dp)
                 )
             }
-
         }
 
         Spacer(Modifier.height(20.dp))
 
-        // 회원가입 링크
+        // 로그인 링크
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
                 text = "아이디가 있으신가요? ",
-                color = Color( 0xFF7B6A5D),
+                color = Color(0xFF7B6A5D),
                 fontSize = (screenWidthDp * 0.035f).sp,
                 fontFamily = BrandFontFamily,
                 fontWeight = FontWeight.Bold
