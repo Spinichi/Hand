@@ -106,7 +106,13 @@ public class WeeklyReportService {
         biometricsForApi.put("userInfo", biometricData.getUserInfo());
 
         ReportAnalysisClient.ReportAnalysisResult analysisResult =
-                reportAnalysisClient.analyzeWeeklyReport(dailyDiaries, biometricsForApi);
+                reportAnalysisClient.analyzeWeeklyReport(
+                        userId,
+                        weekStart,
+                        weekEnd,
+                        dailyDiaries,
+                        biometricsForApi
+                );
 
         // 9. 통계 계산
         DoubleSummaryStatistics scoreStats = diaries.stream()
@@ -124,10 +130,8 @@ public class WeeklyReportService {
                 .userBaseline(biometricData.getUserBaseline())
                 .anomalies(biometricData.getAnomalies())
                 .userInfo(biometricData.getUserInfo())
-                .weeklySummary(analysisResult.getSummary())
+                .report(analysisResult.getReport())
                 .emotionalAdvice(analysisResult.getEmotionalAdvice())
-                .trendAnalysis(analysisResult.getTrendAnalysis())
-                .biometricInsights(analysisResult.getBiometricInsights())
                 .totalDiaryCount(diaries.size())
                 .averageDepressionScore(scoreStats.getAverage())
                 .maxDepressionScore(scoreStats.getMax())

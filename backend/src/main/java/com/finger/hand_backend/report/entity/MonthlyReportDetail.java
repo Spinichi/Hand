@@ -60,10 +60,16 @@ public class MonthlyReportDetail {
 
     // ========== AI 분석 결과 ==========
 
-    private String monthlySummary;
+    /**
+     * 월간 보고서 (통합)
+     * - 이전의 monthlySummary, trendAnalysis, biometricInsights 통합
+     */
+    private String report;
+
+    /**
+     * 감정 조언
+     */
     private String emotionalAdvice;
-    private String trendAnalysis;
-    private String biometricInsights;
 
     // ========== 통계 ==========
 

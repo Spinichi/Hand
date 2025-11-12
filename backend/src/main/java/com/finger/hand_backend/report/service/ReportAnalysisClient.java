@@ -11,6 +11,7 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -33,36 +34,53 @@ public class ReportAnalysisClient {
     @Value("${report.api.monthly.url:http://localhost:8000/analyze-month}")
     private String monthlyReportApiUrl;
 
+    @Value("${report.api.counseling.url:http://localhost:8000/analyze-counseling}")
+    private String counselingApiUrl;
+
     /**
      * 주간 보고서 분석
      *
+     * @param userId      사용자 ID
+     * @param startDate   시작일
+     * @param endDate     종료일
      * @param diaries     일별 다이어리 리스트 (긴 요약, 우울 점수 포함)
      * @param biometrics  생체 데이터
      * @return 분석 결과
      */
     public ReportAnalysisResult analyzeWeeklyReport(
+            Long userId,
+            LocalDate startDate,
+            LocalDate endDate,
             List<Map<String, Object>> diaries,
             Map<String, Object> biometrics) {
 
-        log.info("Analyzing weekly report (diaries: {})", diaries.size());
+        log.info("Analyzing weekly report for user {} ({} ~ {}, diaries: {})",
+                userId, startDate, endDate, diaries.size());
 
-        return callAnalysisApi(weeklyReportApiUrl, diaries, biometrics, "weekly");
+        return callAnalysisApi(weeklyReportApiUrl, userId, startDate, endDate, diaries, biometrics, "weekly");
     }
 
     /**
      * 월간 보고서 분석
      *
+     * @param userId      사용자 ID
+     * @param startDate   시작일
+     * @param endDate     종료일
      * @param diaries     일별 다이어리 리스트 (긴 요약, 우울 점수 포함)
      * @param biometrics  생체 데이터
      * @return 분석 결과
      */
     public ReportAnalysisResult analyzeMonthlyReport(
+            Long userId,
+            LocalDate startDate,
+            LocalDate endDate,
             List<Map<String, Object>> diaries,
             Map<String, Object> biometrics) {
 
-        log.info("Analyzing monthly report (diaries: {})", diaries.size());
+        log.info("Analyzing monthly report for user {} ({} ~ {}, diaries: {})",
+                userId, startDate, endDate, diaries.size());
 
-        return callAnalysisApi(monthlyReportApiUrl, diaries, biometrics, "monthly");
+        return callAnalysisApi(monthlyReportApiUrl, userId, startDate, endDate, diaries, biometrics, "monthly");
     }
 
     /**
@@ -70,6 +88,9 @@ public class ReportAnalysisClient {
      */
     private ReportAnalysisResult callAnalysisApi(
             String apiUrl,
+            Long userId,
+            LocalDate startDate,
+            LocalDate endDate,
             List<Map<String, Object>> diaries,
             Map<String, Object> biometrics,
             String reportType) {
@@ -77,6 +98,8 @@ public class ReportAnalysisClient {
         try {
             // 요청 바디 구성
             Map<String, Object> requestBody = new HashMap<>();
+            requestBody.put("userId", userId);
+            requestBody.put("period", Map.of("startDate", startDate, "endDate", endDate));
             requestBody.put("diaries", diaries);
             requestBody.put("biometrics", biometrics);
 
@@ -96,10 +119,8 @@ public class ReportAnalysisClient {
             JsonNode result = root.at("/result");
 
             return ReportAnalysisResult.builder()
-                    .summary(result.get("summary").asText())
+                    .report(result.get("report").asText())
                     .emotionalAdvice(result.get("emotional_advice").asText())
-                    .trendAnalysis(result.get("trend_analysis").asText())
-                    .biometricInsights(result.get("biometric_insights").asText())
                     .build();
 
         } catch (Exception e) {
@@ -107,11 +128,44 @@ public class ReportAnalysisClient {
 
             // Fallback: Mock 데이터 반환
             return ReportAnalysisResult.builder()
-                    .summary("분석 중 오류가 발생했습니다. 서버 상태를 확인해주세요.")
+                    .report("분석 중 오류가 발생했습니다. 서버 상태를 확인해주세요.")
                     .emotionalAdvice("FastAPI 서버와의 연결에 실패했습니다.")
-                    .trendAnalysis("데이터 분석을 완료하지 못했습니다.")
-                    .biometricInsights("생체 데이터 분석이 불가능합니다.")
                     .build();
+        }
+    }
+
+    /**
+     * 관리자 상담용 분석
+     *
+     * @param requestBody 전체 요청 데이터 (userId, period, totalSummary, diaries, biometrics)
+     * @return 상담 조언
+     */
+    public String analyzeCounseling(Map<String, Object> requestBody) {
+        log.info("Analyzing counseling");
+
+        try {
+            // FastAPI 호출
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+
+            String jsonRequestBody = objectMapper.writeValueAsString(requestBody);
+            HttpEntity<String> request = new HttpEntity<>(jsonRequestBody, headers);
+
+            log.debug("Counseling API Request: {}", jsonRequestBody);
+            String responseBody = restTemplate.postForObject(counselingApiUrl, request, String.class);
+            log.debug("Counseling API Response: {}", responseBody);
+
+            // 응답 파싱
+            JsonNode root = objectMapper.readTree(responseBody);
+            JsonNode result = root.at("/result");
+
+            return result.get("counselingAdvice").asText();
+
+        } catch (Exception e) {
+            log.warn("Counseling Analysis: FastAPI 호출 실패, Mock 데이터 반환", e);
+
+            // Fallback: Mock 데이터 반환
+            return "상담 분석 중 오류가 발생했습니다.\n\nFastAPI 서버와의 연결에 실패하여 상담 조언을 생성할 수 없습니다.\n서버 상태를 확인해주세요.";
         }
     }
 
@@ -121,9 +175,7 @@ public class ReportAnalysisClient {
     @lombok.Data
     @lombok.Builder
     public static class ReportAnalysisResult {
-        private String summary;           // 주간/월간 요약
-        private String emotionalAdvice;   // 감정 개선 조언
-        private String trendAnalysis;     // 트렌드 분석
-        private String biometricInsights; // 생체 인사이트
+        private String report;            // 보고서 (통합)
+        private String emotionalAdvice;   // 감정 조언
     }
 }

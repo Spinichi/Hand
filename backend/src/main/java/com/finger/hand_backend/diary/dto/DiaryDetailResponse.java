@@ -60,6 +60,11 @@ public class DiaryDetailResponse {
     private String longSummary;
 
     /**
+     * 감정 조언 (완료된 경우에만)
+     */
+    private String emotionalAdvice;
+
+    /**
      * 생성 시각
      */
     private LocalDateTime createdAt;
