@@ -460,6 +460,23 @@ object HealthDebugManager {
                         latestMutable["DISCOVERY:$trackerName"] = sb.toString()
                         latestByTracker = HashMap(latestMutable)
                         Log.d(TAG, "[DISCOVERY:$trackerName] update:\n$sb")
+
+                        // ⭐ 온도 데이터를 onSample 콜백으로 전달 (SKIN_TEMPERATURE 트래커만)
+                        if (trackerName.contains("SKIN_TEMPERATURE", ignoreCase = true)) {
+                            var objTemp: Float? = null
+                            try {
+                                objTemp = (latestPoint.getValue(ValueKey.SkinTemperatureSet.OBJECT_TEMPERATURE) as? Number)?.toFloat()
+                            } catch (_: Throwable) {}
+
+                            if (objTemp != null) {
+                                val extras = mapOf(
+                                    "tracker" to trackerName,
+                                    "src" to "HTS",
+                                    "ObjTemp(C)" to objTemp
+                                )
+                                onSample?.invoke(latestPoint.timestamp, null, null, null, extras)
+                            }
+                        }
                     }
 
                     override fun onFlushCompleted() { /* optional */ }
