@@ -11,15 +11,21 @@ API_KEY = os.getenv("GMS_KEY")
 EMB_MODEL = os.getenv("EMBEDDING_MODEL")
 EMB_URL = os.getenv("EMBEDDING_GMS_URL")
 
-# Weaviate랑 연결 - 이 부분 주소 맞춰줘야함
+# Weaviate랑 연결 - 환경 변수 사용
+WEAVIATE_HOST = os.getenv("WEAVIATE_HOST", "localhost")
+WEAVIATE_HTTP_PORT = int(os.getenv("WEAVIATE_PORT", "8080"))
+WEAVIATE_GRPC_PORT = int(os.getenv("WEAVIATE_GRPC_PORT", "50051"))
+
+print(f"🔗 Weaviate 연결: {WEAVIATE_HOST}:{WEAVIATE_HTTP_PORT}")
+
 client = weaviate.connect_to_custom(
-    http_host="localhost",
-    http_port=8080,
-    grpc_host="localhost",
-    grpc_port=50051,
+    http_host=WEAVIATE_HOST,
+    http_port=WEAVIATE_HTTP_PORT,
+    grpc_host=WEAVIATE_HOST,
+    grpc_port=WEAVIATE_GRPC_PORT,
     http_secure=False,
     grpc_secure=False,
-    )
+)
 
 # Class 생성 및 필드 설정
 existing = client.collections.list_all()
@@ -111,7 +117,7 @@ emb = Embedding()
 
 # 수정된 코드
 single_data = load_jsonl("./total_kor_counsel_bot.jsonl")
-single_colleciton = client.collections.get("SingleCounsel")
+single_collection = client.collections.get("SingleCounsel")
 
 for idx, d in enumerate(single_data):
     try:
