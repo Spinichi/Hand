@@ -1,9 +1,10 @@
 import os
+import time
 import weaviate
 import httpx
 from fastapi import HTTPException
 from dotenv import load_dotenv
-from app.core.vector_embedding import embed 
+from app.core.vector_embedding import embed
 from app.services.report import create_report
 
 load_dotenv()
@@ -12,17 +13,35 @@ WEAVIATE_URL = os.getenv("WEAVIATE_URL")
 ADVICE_URL = os.getenv("COUNSELING_GMS_URL")
 ADVICE_MODEL = os.getenv("COUNSELING_MODEL")
 GMS_KEY = os.getenv("GMS_KEY")
+WEAVIATE_HOST = os.getenv("WEAVIATE_HOST", "localhost")
+WEAVIATE_HTTP_PORT = int(os.getenv("WEAVIATE_PORT", "8080"))
+WEAVIATE_GRPC_PORT = int(os.getenv("WEAVIATE_GRPC_PORT", "50051"))
 
-# Weaviate 연결
-# 여기를 db_setting.py 에서 맞춰둔 주소랑 일치하게 해줘야 함. 바꾸기 전에는 로컬이랑 연결된 상태
-client = weaviate.connect_to_custom(
-    http_host="localhost",
-    http_port=8080,
-    grpc_host="localhost",
-    grpc_port=50051,
-    http_secure=False,
-    grpc_secure=False,
-    )
+# Weaviate 연결 with retry logic
+def connect_weaviate_with_retry(max_retries=5, delay=2):
+    """Weaviate 연결을 재시도하는 함수"""
+    for attempt in range(max_retries):
+        try:
+            print(f"[WEAVIATE] 연결 시도 {attempt + 1}/{max_retries}...")
+            client = weaviate.connect_to_custom(
+                http_host=WEAVIATE_HOST,
+                http_port=WEAVIATE_HTTP_PORT,
+                grpc_host=WEAVIATE_HOST,
+                grpc_port=WEAVIATE_GRPC_PORT,
+                http_secure=False,
+                grpc_secure=False,
+            )
+            print(f"[WEAVIATE] 연결 성공: {WEAVIATE_HOST}:{WEAVIATE_HTTP_PORT}")
+            return client
+        except Exception as e:
+            print(f"[WEAVIATE] 연결 실패 (시도 {attempt + 1}/{max_retries}): {e}")
+            if attempt < max_retries - 1:
+                print(f"[WEAVIATE] {delay}초 후 재시도...")
+                time.sleep(delay)
+            else:
+                raise Exception(f"Weaviate 연결 실패: {max_retries}회 시도 후 실패")
+
+client = connect_weaviate_with_retry()
 
 # 유사 상담내용 검색
 async def retrieve_similar_cases(query: str, top_k: int = 2):
