@@ -42,6 +42,11 @@ import com.hand.hand.ui.common.BrandWaveHeader
 import com.hand.hand.ui.theme.BrandFontFamily
 import com.hand.hand.ui.theme.Green60
 
+import android.widget.Toast
+import com.hand.hand.api.Login.LoginManager
+import com.hand.hand.api.Login.LoginResponse
+
+
 class SignInActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -65,6 +70,12 @@ fun SignInScreen(
 
     var id by remember { mutableStateOf("") }
     var pw by remember { mutableStateOf("") }
+
+    // api 로딩/에러 상태
+    var loading by remember { mutableStateOf(false) }
+    var errorMsg by remember { mutableStateOf<String?>(null) }
+
+
     var showPw by remember { mutableStateOf(false) }
 
     Column(
@@ -215,8 +226,42 @@ fun SignInScreen(
         // 로그인 버튼
         Button(
             onClick = {
-                val intent = Intent(context, SignInTypeActivity::class.java)
-                context.startActivity(intent)
+                // 1) 기본 유효성 검사
+                if (id.isBlank() || pw.isBlank()) {
+                    Toast.makeText(context, "아이디(이메일)와 비밀번호를 입력하세요.", Toast.LENGTH_SHORT).show()
+                    return@Button
+                }
+
+                // 2) 로딩 상태 ON
+                loading = true
+                errorMsg = null
+
+                // 3) 로그인 API 호출
+                LoginManager.login(
+                    email = id,
+                    password = pw,
+                    onSuccess = { res: LoginResponse ->
+                        loading = false
+                        if (res.success) {
+                            Toast.makeText(context, res.message ?: "로그인 성공", Toast.LENGTH_SHORT).show()
+
+                            // 로그인 성공 → 기존처럼 화면 이동
+                            val intent = Intent(context, SignInTypeActivity::class.java)
+                            context.startActivity(intent)
+                            // (필요하면) 현재 액티비티 종료: (context as? Activity)?.finish()
+                        } else {
+                            errorMsg = res.message ?: "로그인 실패"
+                            Toast.makeText(context, errorMsg, Toast.LENGTH_SHORT).show()
+                        }
+                    },
+                    onFailure = { e ->
+                        loading = false
+                        errorMsg = e.message ?: "네트워크 오류"
+                        Toast.makeText(context, errorMsg, Toast.LENGTH_SHORT).show()
+                        // Log 찍고 싶으면:
+                        // Log.e("SignIn", "login error", e)
+                    }
+                )
             },
             modifier = Modifier
                 .fillMaxWidth()
@@ -228,25 +273,37 @@ fun SignInScreen(
             ),
             elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp)
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "로그인",
-                    color = Color.White,
-                    fontSize = (screenWidthDp * 0.04f).sp,
-                    fontWeight = FontWeight.SemiBold,
-                    fontFamily = BrandFontFamily
-                )
+            if (loading) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        strokeWidth = 2.dp,
+                        color = Color.White
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text("로그인 중...", fontFamily = BrandFontFamily)
+                }
+            } else {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "로그인",
+                        color = Color.White,
+                        fontSize = (screenWidthDp * 0.04f).sp,
+                        fontWeight = FontWeight.SemiBold,
+                        fontFamily = BrandFontFamily
+                    )
 
-                Spacer(modifier = Modifier.width(4.dp)) // 텍스트와 이미지 사이 간격
+                    Spacer(modifier = Modifier.width(4.dp)) // 텍스트와 이미지 사이 간격
 
-                Image(
-                    painter = painterResource(id = R.drawable.login_btn), // login_btn.png
-                    contentDescription = "로그인 버튼 이미지",
-                    modifier = Modifier
-                        .size((screenWidthDp * 0.05f).dp) // 적절한 크기 설정
-                )
+                    Image(
+                        painter = painterResource(id = R.drawable.login_btn), // login_btn.png
+                        contentDescription = "로그인 버튼 이미지",
+                        modifier = Modifier
+                            .size((screenWidthDp * 0.05f).dp) // 적절한 크기 설정
+                    )
+                }
             }
         }
 
