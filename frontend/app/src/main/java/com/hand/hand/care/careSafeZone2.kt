@@ -32,6 +32,8 @@ import androidx.compose.foundation.layout.imePadding
 class CareSafeZone2Activity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+//        sessionId = intent.getLongExtra("sessionId", -1L)
         setContent {
             CareSafeZone2Screen(
                 onBackClick = { finish() },

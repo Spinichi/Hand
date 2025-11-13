@@ -90,7 +90,7 @@ class IndividualUserManager {
          *    → 나중에 '있으면 스킵 / 없으면 설문으로' 할 때 쓸 예정
          */
         fun hasIndividualUser(
-            onResult: (Boolean) -> Unit,
+            onResult: (exists: Boolean, data: IndividualUserData?) -> Unit,
             onFailure: (Throwable) -> Unit
         ) {
             httpCall.getMyIndividualUser().enqueue(object :
@@ -109,10 +109,11 @@ class IndividualUserManager {
 
 
                     if (response.isSuccessful) {
-                        onResult(body?.data != null)
+                        val exists = body?.data != null
+                        onResult(exists, body?.data)
                     } else if (response.code() == 404) {
                         // 백엔드에서 "아직 없음"을 404로 주면 이렇게 처리
-                        onResult(false)
+                        onResult(false, null)
                     } else {
                         onFailure(
                             RuntimeException(

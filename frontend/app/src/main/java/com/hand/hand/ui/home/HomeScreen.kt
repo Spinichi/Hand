@@ -35,6 +35,9 @@ import com.hand.hand.diary.DiaryHomeActivity       // ✅ 글쓰기 이동용
 import com.hand.hand.AiDocument.PrivateAiDocumentHomeActivity  // ✅ 다이어리 이동용
 import com.hand.hand.ui.test.WearTestActivity      // ✅ 워치 테스트용
 
+import com.hand.hand.api.SignUp.IndividualUserManager
+
+
 @Composable
 fun HomeScreen() {
     var showDialog by rememberSaveable { mutableStateOf(false) }
@@ -42,7 +45,21 @@ fun HomeScreen() {
     val context = LocalContext.current
 
     // 개인용 헤더 데이터
-    val userName = "싸피님"
+    var userName by remember { mutableStateOf("싸피님") }
+    LaunchedEffect(Unit) {
+        IndividualUserManager.hasIndividualUser(
+            onResult = { exists, data ->
+                if (exists && data != null) {
+                    userName = data.name.ifBlank { "싸피님" }
+                }
+            },
+            onFailure = { e ->
+                e.printStackTrace()
+                // 실패 시엔 그냥 기본 이름 유지
+            }
+        )
+    }
+
     val isWritten = false
     val heartRateBpm = 75
     val personalMoodScore = 79
@@ -141,7 +158,7 @@ fun HomeScreen() {
         }
     }
 
-    // ✅ 관리자/조직 진입 다이얼로그
+    // 관리자/조직 진입 다이얼로그
     if (showDialog) {
         HomeLoginDialog(
             onClose = { showDialog = false },

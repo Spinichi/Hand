@@ -1,3 +1,5 @@
+// careSafeZone1.kt
+
 package com.hand.hand.care
 
 import android.content.Intent
@@ -25,17 +27,76 @@ import androidx.compose.ui.text.style.TextAlign
 import com.hand.hand.R
 import com.hand.hand.ui.theme.BrandFontFamily
 
+import com.hand.hand.api.Relief.ReliefManager
+import android.widget.Toast
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import java.util.TimeZone
+
 class CareSafeZone1Activity : ComponentActivity() {
+
+    companion object {
+        // 앱 실행 중 어디서든 접근 가능한 세션 ID 저장소
+        var safeZoneSessionId: Long? = null
+    }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
             CareSafeZone1Screen(
                 onBackClick = { finish() },
                 onStartClick = {
-                    startActivity(Intent(this, CareSafeZone2Activity::class.java))
+                    startSafeZoneSession()
+//                    startActivity(Intent(this, CareSafeZone2Activity::class.java))
                 }
             )
         }
+    }
+    private fun startSafeZoneSession() {
+        // 1) 토큰 가져오기 (예시: SharedPreferences에 저장해둔 경우)
+//        val prefs = getSharedPreferences("auth", MODE_PRIVATE)
+//        val token = prefs.getString("accessToken", null)
+//
+//        if (token == null) {
+//            Toast.makeText(this, "로그인 정보가 없습니다.", Toast.LENGTH_SHORT).show()
+//            return
+//        }
+
+        // 2) 현재 시간을 ISO 형식으로 만들기
+        val startedAt = nowIsoUtc()
+
+        // 3) ReliefManager로 API 호출
+        ReliefManager.startSession(
+//            token = token,
+            interventionId = 2,          // ✅ 안전지대 연습의 DB id
+            triggerType = "AUTO_SUGGEST",  // 직접 눌렀으니까 이런 값으로 약속
+            anomalyDetectionId = 0,
+            gestureCode = "SAFE_ZONE",
+            startedAt = startedAt,
+            onSuccess = { res ->
+                val sessionId = res.data?.sessionId
+                // 세션 id 잘 받았는지 확인
+                // Log.d("Care", "safe zone sessionId = $sessionId")
+
+                safeZoneSessionId = sessionId
+                // 4) 다음 화면으로 이동 + 필요하면 sessionId도 같이 넘기기
+                val intent = Intent(this, CareSafeZone2Activity::class.java).apply {
+                    putExtra("sessionId", sessionId ?: -1L)
+                }
+                startActivity(intent)
+            },
+            onFailure = { e ->
+                e.printStackTrace()
+                Toast.makeText(this, "세션 시작에 실패했습니다.", Toast.LENGTH_SHORT).show()
+            }
+        )
+    }
+
+    // UTC 현재시간을 "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'" 형태로
+    private fun nowIsoUtc(): String {
+        val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault())
+        sdf.timeZone = TimeZone.getTimeZone("UTC")
+        return sdf.format(Date())
     }
 }
 

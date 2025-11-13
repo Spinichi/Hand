@@ -85,7 +85,7 @@ fun SignInTypeScreen(
 
     LaunchedEffect(Unit) {
         IndividualUserManager.hasIndividualUser(
-            onResult = { exists ->
+            onResult = { exists, _ ->
                 isPersonalRegistered = exists
                 isCheckingPersonal = false
             },
