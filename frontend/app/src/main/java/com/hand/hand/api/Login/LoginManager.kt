@@ -1,3 +1,4 @@
+// LoginManager.kt
 package com.hand.hand.api.Login
 
 import android.util.Log
