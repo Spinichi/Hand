@@ -17,6 +17,7 @@ import com.google.gson.Gson
 import com.hand.hand.R
 import com.hand.hand.wear.model.BioSampleBatch
 import com.hand.hand.wear.model.BioSample
+import com.hand.hand.api.Measurements.MeasurementsManager
 
 /**
  * 백그라운드에서 Wear 앱으로부터 데이터를 수신하는 Foreground Service
@@ -120,8 +121,16 @@ class WearListenerForegroundService : Service() {
             // ⭐ 테스트 화면용: 데이터 업데이트
             WearDataReceiver.updateData(sample)
 
-            // TODO: 여기서 백엔드 서버로 전송
-            // sendToBackend(sample)
+            // ⭐ 백엔드 서버로 전송 (Bearer 토큰 자동 포함)
+            MeasurementsManager.sendBioData(
+                sample = sample,
+                onSuccess = { response ->
+                    Log.d(TAG, "✅ DB 저장 성공: ID=${response.id}, 이상치=${response.isAnomaly}")
+                },
+                onFailure = { error ->
+                    Log.e(TAG, "❌ DB 저장 실패: ${error.message}")
+                }
+            )
 
         } catch (e: Exception) {
             Log.e(TAG, "Error parsing bio data", e)
