@@ -25,6 +25,9 @@ import com.mim.watch.sensors.SensorCollector
 import android.provider.Settings
 import com.mim.watch.services.SensorGatewayImpl
 import com.mim.watch.core.measurement.SensorSample
+import com.google.android.gms.wearable.MessageClient
+import com.google.android.gms.wearable.Wearable
+import com.hand.wear.BeforeRelaxActivity
 
 class BioForegroundService : Service() {
 
@@ -49,6 +52,20 @@ class BioForegroundService : Service() {
     // ⭐ IBI 버퍼 (스트레스 계산용 - 최근 10개 저장)
     private val ibiBuffer = mutableListOf<Double>()
 
+    // ⭐ Phone으로부터 메시지 수신
+    private lateinit var messageClient: MessageClient
+    private val messageListener = MessageClient.OnMessageReceivedListener { messageEvent ->
+        val path = messageEvent.path
+        val command = String(messageEvent.data)
+        Log.d(TAG, "📩 Message received from phone: path=$path, command=$command")
+
+        // ⭐ /relief/command 경로만 처리
+        if (path == "/relief/command" && command == "START_RELIEF") {
+            Log.d(TAG, "🎯 Starting relief activity automatically")
+            startBeforeRelaxActivity(isAutomatic = true)
+        }
+    }
+
     override fun onCreate() {
         super.onCreate()
         if (created.compareAndSet(false, true)) {
@@ -59,6 +76,11 @@ class BioForegroundService : Service() {
             val deviceId = Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID)
             DataBufferManager.setDeviceId(deviceId)
             messageSender = WearMessageSender(applicationContext)
+
+            // ⭐ MessageClient 초기화 (Phone으로부터 명령 수신)
+            messageClient = Wearable.getMessageClient(applicationContext)
+            messageClient.addListener(messageListener)
+            Log.d(TAG, "✅ MessageClient listener registered")
 
             // ⭐ Stress 계산 Gateway 초기화
             stressGateway = SensorGatewayImpl(applicationContext)
@@ -153,6 +175,17 @@ class BioForegroundService : Service() {
                             Log.d(TAG, "✅ Sample sent to Phone")
                         } else {
                             Log.w(TAG, "❌ Failed to send sample")
+                        }
+
+                        // ⭐ 이상치 감지 시 Phone으로 알림 전송
+                        if (repSample.isAnomaly) {
+                            Log.w(TAG, "🚨 Anomaly detected! Sending alert to Phone")
+                            scope.launch {
+                                messageSender.sendAnomalyAlert(
+                                    stressLevel = repSample.stressLevel ?: 0,
+                                    stressIndex = repSample.stressIndex ?: 0.0
+                                )
+                            }
                         }
                     }
                 }
@@ -281,6 +314,41 @@ class BioForegroundService : Service() {
         try {
             WristShakeTrigger.stop()
         } catch (_: Throwable) { /* no-op */ }
+    }
+
+    /**
+     * BeforeRelaxActivity 시작 (자동 또는 수동)
+     * @param isAutomatic true면 자동 실행 (이상치 감지), false면 수동 실행 (버튼 클릭)
+     */
+    private fun startBeforeRelaxActivity(isAutomatic: Boolean) {
+        try {
+            // 진동
+            val vibrator = getSystemService(Vibrator::class.java)
+            vibrator?.vibrate(
+                VibrationEffect.createOneShot(200, VibrationEffect.DEFAULT_AMPLITUDE)
+            )
+
+            val intent = Intent(this, BeforeRelaxActivity::class.java).apply {
+                addFlags(
+                    Intent.FLAG_ACTIVITY_NEW_TASK or
+                    Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                    Intent.FLAG_ACTIVITY_SINGLE_TOP
+                )
+                // ⭐ 자동/수동 구분 전달
+                putExtra("triggerType", if (isAutomatic) "AUTO_SUGGEST" else "MANUAL")
+            }
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+                // 화면 깨우기 (Deprecated flags 대신 setShowWhenLocked/setTurnScreenOn 사용)
+                // BeforeRelaxActivity에서 설정 필요
+            }
+
+            startActivity(intent)
+            Log.d(TAG, "✅ BeforeRelaxActivity started (triggerType=${if (isAutomatic) "AUTO" else "MANUAL"})")
+
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ Failed to start BeforeRelaxActivity", e)
+        }
     }
 
     // 신규 파일 없이 서비스 자체를 예약 재시작 (AlarmManager 사용)

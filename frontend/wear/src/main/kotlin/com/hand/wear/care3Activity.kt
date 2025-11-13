@@ -152,15 +152,23 @@ fun Care3Screen(tts: TextToSpeech?, ttsReady: Boolean) {
                     modifier = Modifier.fillMaxWidth(0.85f)
                 )
 
-                // ✅ TTS 실행 (음소거 아닐 때만)
+                // ✅ TTS 실행 또는 타이머
                 val audioManager =
                     context.getSystemService(android.content.Context.AUDIO_SERVICE) as? AudioManager
                 val isMuted =
                     (audioManager?.getStreamVolume(AudioManager.STREAM_MUSIC) ?: 0) == 0
 
                 LaunchedEffect(ttsReady) {
-                    if (ttsReady && !isMuted) {
-                        tts?.readText3(displayText)
+                    if (ttsReady) {
+                        if (!isMuted) {
+                            // 음소거 아닐 때: TTS 실행 (onDone 콜백으로 자동 넘어감)
+                            tts?.readText3(displayText)
+                        } else {
+                            // 음소거일 때: 6초 후 강제 이동
+                            kotlinx.coroutines.delay(6000L)
+                            context.startActivity(Intent(context, Care4Activity::class.java))
+                            (context as? ComponentActivity)?.finish()
+                        }
                     }
                 }
             }

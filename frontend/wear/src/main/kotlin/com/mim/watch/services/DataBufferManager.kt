@@ -25,6 +25,13 @@ object DataBufferManager {
     }
 
     /**
+     * 현재 버퍼의 샘플 목록 반환 (디버깅용)
+     */
+    fun getBufferSamples(): List<BioSample> {
+        return buffer.toList()
+    }
+
+    /**
      * 샘플 추가
      * @return 10개 모였으면 대표 BioSample 1개 반환, 아니면 null
      */
@@ -70,9 +77,14 @@ object DataBufferManager {
         val validTotalSteps = samples.mapNotNull { it.totalSteps }
         val validStepsPerMinute = samples.mapNotNull { it.stepsPerMinute }
 
-        // ⭐ 이상치 판정: 원본 10개 샘플 중 stressLevel 4 이상이 6개 이상인지 체크
+        // ⭐ 이상치 판정: 유효한 stressLevel 중 레벨 4 이상이 90% 이상인지 체크
+        val validCount = validStressLevel.size
         val highStressCount = validStressLevel.count { it >= 4 }
-        val isAnomaly = highStressCount >= 6
+        val isAnomaly = if (validCount > 0) {
+            (highStressCount.toDouble() / validCount) >= 0.9  // 90%
+        } else {
+            false
+        }
 
         // 대표 샘플 생성 (평균값 사용, 최신 타임스탬프)
         return BioSample(

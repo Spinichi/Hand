@@ -67,11 +67,18 @@ class CareSafeZone8Activity : ComponentActivity() {
             return
         }
 
-        val endedAt = nowIsoUtc()
+        // ⭐ 완화법 종료 시점의 스트레스 점수 가져오기
+        val afterStressLevel = com.hand.hand.wear.WearListenerForegroundService.getLatestStressLevel()
+        val afterStressTimestamp = com.hand.hand.wear.WearListenerForegroundService.getLatestStressTimestamp()
 
-        ReliefManager.endSession(
+        val beforeStressLevel = CareSafeZone1Activity.beforeStressLevel
+        val beforeStressTimestamp = CareSafeZone1Activity.beforeStressTimestamp
+
+        android.util.Log.d("CareSafeZone8", "📊 Before: $beforeStressLevel (ts: $beforeStressTimestamp)")
+        android.util.Log.d("CareSafeZone8", "📊 After: $afterStressLevel (ts: $afterStressTimestamp)")
+
+        ReliefManager.endReliefSession(
             sessionId = sessionId,
-            endedAt = endedAt,
             userRating = userRating,
             onSuccess = {
                 // 성공하면 CareActivity로 이동
@@ -85,10 +92,10 @@ class CareSafeZone8Activity : ComponentActivity() {
         )
     }
 
-    // UTC 현재시간을 "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'" 형태로
+    // KST 현재시간을 "yyyy-MM-dd'T'HH:mm:ss" 형태로
     private fun nowIsoUtc(): String {
-        val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault())
-        sdf.timeZone = TimeZone.getTimeZone("UTC")
+        val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
+        sdf.timeZone = TimeZone.getTimeZone("Asia/Seoul")
         return sdf.format(Date())
     }
 }

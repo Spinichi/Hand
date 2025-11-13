@@ -148,8 +148,16 @@ fun Care5Screen(tts: TextToSpeech?, ttsReady: Boolean) {
                     (audioManager?.getStreamVolume(AudioManager.STREAM_MUSIC) ?: 0) == 0
 
                 LaunchedEffect(ttsReady) {
-                    if (ttsReady && !isMuted) {
-                        tts?.readText5(displayText)
+                    if (ttsReady) {
+                        if (!isMuted) {
+                            // 음소거 아닐 때: TTS 실행 (onDone 콜백으로 자동 넘어감)
+                            tts?.readText5(displayText)
+                        } else {
+                            // 음소거일 때: 6초 후 강제 이동
+                            kotlinx.coroutines.delay(6000L)
+                            context.startActivity(Intent(context, Care6Activity::class.java))
+                            (context as? ComponentActivity)?.finish()
+                        }
                     }
                 }
             }

@@ -25,14 +25,34 @@ import androidx.compose.runtime.remember
 import androidx.wear.compose.material.Button
 import androidx.wear.compose.material.ButtonDefaults
 import com.hand.hand.R
+import androidx.lifecycle.lifecycleScope
+import com.mim.watch.services.WearMessageSender
+import kotlinx.coroutines.launch
+import android.util.Log
 
 class CareComplete : ComponentActivity() {
+
+    private lateinit var messageSender: WearMessageSender
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // ⭐ MessageSender 초기화
+        messageSender = WearMessageSender(applicationContext)
+
         setContent {
             CareCompleteScreen(
                 onConfirm1 = {
-                    // ✅ Check 버튼 눌렀을 때: CareEx1Activity 로 이동
+                    // ✅ 완화법 완료: 종료 이벤트 전송 후 홈으로 이동
+                    lifecycleScope.launch {
+                        // sessionId는 폰에서 관리하고 있으므로 null로 전송 (폰에서 currentSessionId 사용)
+                        messageSender.sendReliefEndEvent(
+                            sessionId = 0L,  // 폰에서 currentSessionId 사용
+                            userRating = null  // 별점 없음 (추후 확장 가능)
+                        )
+                        Log.d("CareComplete", "Relief END event sent")
+                    }
+
                     startActivity(Intent(this, WearHomeActivity::class.java))
                     finish()
                 }

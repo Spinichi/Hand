@@ -141,13 +141,27 @@ fun Care1Screen(tts: TextToSpeech?, ttsReady: Boolean) {
                     modifier = Modifier.fillMaxWidth(0.85f)
                 )
 
-                // ✅ TTS 실행
+                // ✅ TTS 실행 또는 타이머
                 val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
                 val isMuted = (audioManager?.getStreamVolume(AudioManager.STREAM_MUSIC) ?: 0) == 0
 
                 LaunchedEffect(ttsReady) {
-                    if (ttsReady && !isMuted) {
-                        tts?.readText1(displayText)
+                    android.util.Log.d("Care1Activity", "LaunchedEffect: ttsReady=$ttsReady, isMuted=$isMuted")
+                    if (ttsReady) {
+                        if (!isMuted) {
+                            // 음소거 아닐 때: TTS 실행 (onDone 콜백으로 자동 넘어감)
+                            android.util.Log.d("Care1Activity", "Starting TTS")
+                            tts?.readText1(displayText)
+                        } else {
+                            // 음소거일 때: 6초 후 강제 이동
+                            android.util.Log.d("Care1Activity", "Muted, waiting 6 seconds...")
+                            kotlinx.coroutines.delay(6000L)
+                            android.util.Log.d("Care1Activity", "Moving to Care2Activity")
+                            context.startActivity(Intent(context, Care2Activity::class.java))
+                            (context as? ComponentActivity)?.finish()
+                        }
+                    } else {
+                        android.util.Log.d("Care1Activity", "TTS not ready yet")
                     }
                 }
             }

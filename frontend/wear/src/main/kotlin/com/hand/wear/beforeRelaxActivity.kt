@@ -35,11 +35,40 @@ import androidx.wear.compose.material.Scaffold
 import com.hand.hand.R
 import com.hand.wear.components.BackgroundCircles
 import ui.theme.HandTheme
+import android.os.Build
+import android.util.Log
+import androidx.lifecycle.lifecycleScope
+import com.mim.watch.services.WearMessageSender
+import kotlinx.coroutines.launch
 
 
 class BeforeRelaxActivity : ComponentActivity() {
+
+    private var triggerType: String = "MANUAL"  // 기본값: 수동
+    private lateinit var messageSender: WearMessageSender
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // ⭐ 화면 깨우기 (자동 실행 시)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+            setShowWhenLocked(true)
+            setTurnScreenOn(true)
+        } else {
+            @Suppress("DEPRECATION")
+            window.addFlags(
+                android.view.WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
+                android.view.WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON
+            )
+        }
+
+        // ⭐ Intent에서 triggerType 받기
+        triggerType = intent.getStringExtra("triggerType") ?: "MANUAL"
+        Log.d("BeforeRelaxActivity", "Started with triggerType: $triggerType")
+
+        // ⭐ MessageSender 초기화
+        messageSender = WearMessageSender(applicationContext)
+
         setContent {
             HandTheme {
                 BeforeRelaxScreen(
@@ -49,8 +78,18 @@ class BeforeRelaxActivity : ComponentActivity() {
                         finish() // 현재 화면 종료
                     },
                     onConfirm = {
-                        // ✅ Check 버튼 눌렀을 때: CareEx1Activity 로 이동
-                        startActivity(Intent(this, CareEx1Activity::class.java))
+                        // ✅ Check 버튼 눌렀을 때: 완화법 시작 이벤트 전송 후 CareEx1Activity로 이동
+                        lifecycleScope.launch {
+                            messageSender.sendReliefStartEvent(
+                                interventionId = 1L,  // 호흡법
+                                triggerType = triggerType,
+                                gestureCode = "breathing"
+                            )
+                        }
+
+                        val intent = Intent(this, CareEx1Activity::class.java)
+                        intent.putExtra("triggerType", triggerType)  // 다음 Activity로 전달
+                        startActivity(intent)
                         finish()
                     }
                 )

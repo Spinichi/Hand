@@ -23,7 +23,9 @@ class WearMessageSender(private val context: Context) {
 
     companion object {
         private const val TAG = "WearMessageSender"
-        private const val DATA_PATH = "/mim/bio_data"  // 고유 경로
+        private const val DATA_PATH = "/mim/bio_data"  // 생체 데이터 경로
+        private const val ANOMALY_PATH = "/mim/anomaly_alert"  // 이상치 알림 경로
+        private const val RELIEF_EVENT_PATH = "/mim/relief_event"  // 완화법 이벤트 경로
     }
 
     /**
@@ -87,6 +89,107 @@ class WearMessageSender(private val context: Context) {
 
         } catch (e: Exception) {
             Log.e(TAG, "❌ sendBatch failed: ${e.message}", e)
+            false
+        }
+    }
+
+    /**
+     * 이상치 감지 알림을 Phone으로 전송
+     * Phone이 완화법 진행 중인지 확인 후 워치로 명령 전송
+     */
+    suspend fun sendAnomalyAlert(stressLevel: Int, stressIndex: Double): Boolean {
+        return try {
+            val data = mapOf(
+                "stressLevel" to stressLevel,
+                "stressIndex" to stressIndex,
+                "timestamp" to System.currentTimeMillis()
+            )
+            val json = gson.toJson(data)
+
+            Log.d(TAG, "🚨 Sending anomaly alert: stressLevel=$stressLevel, stressIndex=$stressIndex")
+
+            val putDataReq = PutDataMapRequest.create(ANOMALY_PATH).apply {
+                dataMap.putString("json", json)
+                dataMap.putLong("timestamp", System.currentTimeMillis())
+            }.asPutDataRequest()
+                .setUrgent()
+
+            val result = dataClient.putDataItem(putDataReq).await()
+            Log.d(TAG, "✅ Anomaly alert sent, uri=${result.uri}")
+            true
+
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ sendAnomalyAlert failed: ${e.message}", e)
+            false
+        }
+    }
+
+    /**
+     * 완화법 시작 이벤트를 Phone으로 전송
+     */
+    suspend fun sendReliefStartEvent(
+        interventionId: Long,
+        triggerType: String,
+        gestureCode: String?
+    ): Boolean {
+        return try {
+            val data = mapOf(
+                "eventType" to "START",
+                "interventionId" to interventionId,
+                "triggerType" to triggerType,
+                "gestureCode" to gestureCode,
+                "timestamp" to System.currentTimeMillis()
+            )
+            val json = gson.toJson(data)
+
+            Log.d(TAG, "🏁 Sending relief START event: interventionId=$interventionId, triggerType=$triggerType")
+
+            val putDataReq = PutDataMapRequest.create(RELIEF_EVENT_PATH).apply {
+                dataMap.putString("json", json)
+                dataMap.putLong("timestamp", System.currentTimeMillis())
+            }.asPutDataRequest()
+                .setUrgent()
+
+            val result = dataClient.putDataItem(putDataReq).await()
+            Log.d(TAG, "✅ Relief START event sent, uri=${result.uri}")
+            true
+
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ sendReliefStartEvent failed: ${e.message}", e)
+            false
+        }
+    }
+
+    /**
+     * 완화법 종료 이벤트를 Phone으로 전송
+     */
+    suspend fun sendReliefEndEvent(
+        sessionId: Long,
+        userRating: Int?
+    ): Boolean {
+        return try {
+            val data = mapOf(
+                "eventType" to "END",
+                "sessionId" to sessionId,
+                "userRating" to userRating,
+                "timestamp" to System.currentTimeMillis()
+            )
+            val json = gson.toJson(data)
+
+            Log.d(TAG, "🏁 Sending relief END event: sessionId=$sessionId, userRating=$userRating")
+
+            val putDataReq = PutDataMapRequest.create(RELIEF_EVENT_PATH).apply {
+                dataMap.putString("json", json)
+                dataMap.putLong("timestamp", System.currentTimeMillis())
+            }.asPutDataRequest()
+                .setUrgent()
+
+            val result = dataClient.putDataItem(putDataReq).await()
+            Log.d(TAG, "✅ Relief END event sent, uri=${result.uri}")
+            true
+
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ sendReliefEndEvent failed: ${e.message}", e)
             false
         }
     }

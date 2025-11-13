@@ -39,6 +39,10 @@ class CareSafeZone1Activity : ComponentActivity() {
     companion object {
         // 앱 실행 중 어디서든 접근 가능한 세션 ID 저장소
         var safeZoneSessionId: Long? = null
+
+        // ⭐ 완화법 시작 시점의 스트레스 점수 저장
+        var beforeStressLevel: Int? = null
+        var beforeStressTimestamp: Long? = null
     }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -62,15 +66,20 @@ class CareSafeZone1Activity : ComponentActivity() {
 //            return
 //        }
 
-        // 2) 현재 시간을 ISO 형식으로 만들기
+        // 2) ⭐ 완화법 시작 시점의 스트레스 점수 저장
+        beforeStressLevel = com.hand.hand.wear.WearListenerForegroundService.getLatestStressLevel()
+        beforeStressTimestamp = com.hand.hand.wear.WearListenerForegroundService.getLatestStressTimestamp()
+        android.util.Log.d("CareSafeZone1", "📊 Before stress level: $beforeStressLevel (timestamp: $beforeStressTimestamp)")
+
+        // 3) 현재 시간을 ISO 형식으로 만들기
         val startedAt = nowIsoUtc()
 
-        // 3) ReliefManager로 API 호출
-        ReliefManager.startSession(
+        // 4) ReliefManager로 API 호출
+        ReliefManager.startReliefSession(
 //            token = token,
             interventionId = 2,          // ✅ 안전지대 연습의 DB id
-            triggerType = "AUTO_SUGGEST",  // 직접 눌렀으니까 이런 값으로 약속
-            anomalyDetectionId = 0,
+            triggerType = "MANUAL",  // 수동으로 실행
+            anomalyDetectionId = null,
             gestureCode = "SAFE_ZONE",
             startedAt = startedAt,
             onSuccess = { res ->
@@ -92,10 +101,10 @@ class CareSafeZone1Activity : ComponentActivity() {
         )
     }
 
-    // UTC 현재시간을 "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'" 형태로
+    // KST 현재시간을 "yyyy-MM-dd'T'HH:mm:ss" 형태로
     private fun nowIsoUtc(): String {
-        val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault())
-        sdf.timeZone = TimeZone.getTimeZone("UTC")
+        val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
+        sdf.timeZone = TimeZone.getTimeZone("Asia/Seoul")
         return sdf.format(Date())
     }
 }
