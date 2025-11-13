@@ -4,6 +4,7 @@ import com.finger.hand_backend.group.dto.*;
 import com.finger.hand_backend.group.entity.*;
 import com.finger.hand_backend.group.repository.*;
 import com.finger.hand_backend.group.util.InviteCodeGenerator;
+import com.finger.hand_backend.risk.DailyRiskScoreService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -14,6 +15,7 @@ import java.util.List;
 public class GroupServiceImpl implements GroupService {
     private final GroupRepository groupRepo;
     private final GroupMemberRepository memberRepo;
+    private final DailyRiskScoreService riskScoreService;
 
     private Group getOr404(Long id){
         return groupRepo.findById(id).orElseThrow(() -> new IllegalArgumentException("GROUP_NOT_FOUND"));
@@ -29,6 +31,33 @@ public class GroupServiceImpl implements GroupService {
         throw new IllegalArgumentException("INVITE_GENERATE_FAILED");
     }
 
+    /**
+     * 그룹 멤버들의 평균 위험 점수 계산 (요청자 제외)
+     */
+    private Double calculateAvgMemberRiskScore(Long groupId, Long excludeUserId) {
+        List<GroupMember> members = memberRepo.findByGroupId(groupId).stream()
+                .filter(gm -> !gm.getUserId().equals(excludeUserId))
+                .toList();
+
+        if (members.isEmpty()) {
+            return null; // 멤버가 없음
+        }
+
+        List<Double> riskScores = members.stream()
+                .map(gm -> riskScoreService.getWeeklyAverageRiskScore(gm.getUserId()))
+                .filter(score -> score != null)
+                .toList();
+
+        if (riskScores.isEmpty()) {
+            return null; // 데이터 없음
+        }
+
+        return riskScores.stream()
+                .mapToDouble(Double::doubleValue)
+                .average()
+                .orElse(0.0);
+    }
+
     @Override
     public GroupResponse create(Long userId, CreateGroupRequest req) {
         Group g = new Group();
@@ -41,7 +70,7 @@ public class GroupServiceImpl implements GroupService {
         memberRepo.save(owner);
 
         return new GroupResponse(g.getId(), g.getName(), g.getGroupType(), g.getInviteCode(),
-                g.getCreatedBy(), g.getCreatedAt(), g.getUpdatedAt());
+                g.getCreatedBy(), g.getCreatedAt(), g.getUpdatedAt(), null); // 본인만 있으므로 null
     }
 
     @Override @Transactional(readOnly = true)
@@ -49,17 +78,22 @@ public class GroupServiceImpl implements GroupService {
         memberRepo.findByGroupIdAndUserId(groupId, userId)
                 .orElseThrow(() -> new IllegalArgumentException("NOT_GROUP_MEMBER"));
         Group g = getOr404(groupId);
+        Double avgRiskScore = calculateAvgMemberRiskScore(groupId, userId);
         return new GroupResponse(g.getId(), g.getName(), g.getGroupType(), g.getInviteCode(),
-                g.getCreatedBy(), g.getCreatedAt(), g.getUpdatedAt());
+                g.getCreatedBy(), g.getCreatedAt(), g.getUpdatedAt(), avgRiskScore);
     }
 
     @Override @Transactional(readOnly = true)
     public List<GroupResponse> myGroups(Long userId) {
-        return memberRepo.findByUserId(userId).stream()
+        // 내가 MANAGER인 그룹만 조회
+        return memberRepo.findByUserIdAndRole(userId, GroupRole.MANAGER).stream()
                 .map(GroupMember::getGroup)
                 .distinct()
-                .map(g -> new GroupResponse(g.getId(), g.getName(), g.getGroupType(), g.getInviteCode(),
-                        g.getCreatedBy(), g.getCreatedAt(), g.getUpdatedAt()))
+                .map(g -> {
+                    Double avgRiskScore = calculateAvgMemberRiskScore(g.getId(), userId);
+                    return new GroupResponse(g.getId(), g.getName(), g.getGroupType(), g.getInviteCode(),
+                            g.getCreatedBy(), g.getCreatedAt(), g.getUpdatedAt(), avgRiskScore);
+                })
                 .toList();
     }
 
@@ -69,8 +103,9 @@ public class GroupServiceImpl implements GroupService {
         Group g = getOr404(groupId);
         g.setName(req.name()); g.setGroupType(req.groupType());
         groupRepo.save(g);
+        Double avgRiskScore = calculateAvgMemberRiskScore(groupId, userId);
         return new GroupResponse(g.getId(), g.getName(), g.getGroupType(), g.getInviteCode(),
-                g.getCreatedBy(), g.getCreatedAt(), g.getUpdatedAt());
+                g.getCreatedBy(), g.getCreatedAt(), g.getUpdatedAt(), avgRiskScore);
     }
 
     @Override public void delete(Long userId, Long groupId) {
@@ -95,7 +130,10 @@ public class GroupServiceImpl implements GroupService {
         GroupMember gm = new GroupMember();
         gm.setGroup(g); gm.setUserId(userId); gm.setRole(GroupRole.MEMBER); gm.setSpecialNotes("");
         memberRepo.save(gm);
-        return new MemberResponse(gm.getUserId(), gm.getRole(), gm.getSpecialNotes(), gm.getJoinedAt());
+
+        Double weeklyAvg = riskScoreService.getWeeklyAverageRiskScore(userId);
+        return new MemberResponse(gm.getUserId(), gm.getRole(), gm.getSpecialNotes(),
+                                 gm.getJoinedAt(), weeklyAvg);
     }
 
     @Override
@@ -120,7 +158,11 @@ public class GroupServiceImpl implements GroupService {
     public List<MemberResponse> members(Long userId, Long groupId) {
         requireManager(groupId, userId);
         return memberRepo.findByGroupId(groupId).stream()
-                .map(gm -> new MemberResponse(gm.getUserId(), gm.getRole(), gm.getSpecialNotes(), gm.getJoinedAt()))
+                .map(gm -> {
+                    Double weeklyAvg = riskScoreService.getWeeklyAverageRiskScore(gm.getUserId());
+                    return new MemberResponse(gm.getUserId(), gm.getRole(), gm.getSpecialNotes(),
+                                             gm.getJoinedAt(), weeklyAvg);
+                })
                 .toList();
     }
 
@@ -142,7 +184,10 @@ public class GroupServiceImpl implements GroupService {
                 .orElseThrow(() -> new IllegalArgumentException("MEMBER_NOT_FOUND"));
         gm.setSpecialNotes(req.specialNotes()==null? "" : req.specialNotes().trim());
         memberRepo.save(gm);
-        return new MemberResponse(gm.getUserId(), gm.getRole(), gm.getSpecialNotes(), gm.getJoinedAt());
+
+        Double weeklyAvg = riskScoreService.getWeeklyAverageRiskScore(targetUserId);
+        return new MemberResponse(gm.getUserId(), gm.getRole(), gm.getSpecialNotes(),
+                                 gm.getJoinedAt(), weeklyAvg);
     }
 }
 

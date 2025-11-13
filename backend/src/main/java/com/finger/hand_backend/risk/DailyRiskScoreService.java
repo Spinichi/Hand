@@ -136,4 +136,31 @@ public class DailyRiskScoreService {
     public List<DailyRiskScore> getRecentRiskScores(Long userId) {
         return riskScoreRepository.findTop30ByUserIdOrderByScoreDateDesc(userId);
     }
+
+    /**
+     * 일주일간(오늘 기준) 평균 위험 점수 계산
+     *
+     * @param userId 사용자 ID
+     * @return 일주일 평균 riskScore (0-100), 데이터 없으면 null
+     */
+    @Transactional(readOnly = true)
+    public Double getWeeklyAverageRiskScore(Long userId) {
+        LocalDate today = LocalDate.now();
+        LocalDate sevenDaysAgo = today.minusDays(6); // 오늘 포함 7일
+
+        List<DailyRiskScore> weeklyScores = riskScoreRepository
+                .findByUserIdAndScoreDateBetweenOrderByScoreDateAsc(userId, sevenDaysAgo, today);
+
+        if (weeklyScores.isEmpty()) {
+            return null; // 데이터 없음
+        }
+
+        // riskScore 평균 계산 (null 제외)
+        return weeklyScores.stream()
+                .map(DailyRiskScore::getRiskScore)
+                .filter(score -> score != null)
+                .mapToDouble(Double::doubleValue)
+                .average()
+                .orElse(0.0);
+    }
 }
