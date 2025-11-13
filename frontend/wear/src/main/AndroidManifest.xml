@@ -37,9 +37,9 @@
             android:name="com.google.android.wearable.standalone"
             android:value="true" />
 
-        <!-- 디버깅용: MainActivity를 시작 화면으로 -->
+        <!-- 완화법 화면을 시작 화면으로 -->
         <activity
-            android:name="com.mim.watch.presentation.MainActivity"
+            android:name="com.hand.wear.WearHomeActivity"
             android:exported="true"
             android:taskAffinity=""
             android:theme="@style/MainActivityTheme.Starting">
@@ -49,51 +49,51 @@
             </intent-filter>
         </activity>
 
-        <!-- 기존 완화법 화면 (디버깅 후 다시 원복 가능) -->
+        <!-- 디버깅용 MainActivity (필요시 수동 실행 가능) -->
         <activity
-            android:name=".WearHomeActivity"
+            android:name="com.mim.watch.presentation.MainActivity"
             android:exported="false"
             android:taskAffinity=""
             android:theme="@style/MainActivityTheme.Starting">
         </activity>
         <activity
-            android:name=".BeforeRelaxActivity"
+            android:name="com.hand.wear.BeforeRelaxActivity"
             android:exported="false"
             android:theme="@style/MainActivityTheme.Starting" />
         <activity
-            android:name=".CareEx1Activity"
+            android:name="com.hand.wear.CareEx1Activity"
             android:exported="false"
             android:theme="@style/MainActivityTheme.Starting" />
         <activity
-            android:name=".CareEx2Activity"
+            android:name="com.hand.wear.CareEx2Activity"
             android:exported="false"
             android:theme="@style/MainActivityTheme.Starting" />
         <activity
-            android:name=".Care1Activity"
+            android:name="com.hand.wear.Care1Activity"
             android:exported="false"
             android:theme="@style/MainActivityTheme.Starting" />
         <activity
-            android:name=".Care2Activity"
+            android:name="com.hand.wear.Care2Activity"
             android:exported="false"
             android:theme="@style/MainActivityTheme.Starting" />
         <activity
-            android:name=".Care3Activity"
+            android:name="com.hand.wear.Care3Activity"
             android:exported="false"
             android:theme="@style/MainActivityTheme.Starting" />
         <activity
-            android:name=".Care4Activity"
+            android:name="com.hand.wear.Care4Activity"
             android:exported="false"
             android:theme="@style/MainActivityTheme.Starting" />
         <activity
-            android:name=".Care5Activity"
+            android:name="com.hand.wear.Care5Activity"
             android:exported="false"
             android:theme="@style/MainActivityTheme.Starting" />
         <activity
-            android:name=".Care6Activity"
+            android:name="com.hand.wear.Care6Activity"
             android:exported="false"
             android:theme="@style/MainActivityTheme.Starting" />
         <activity
-            android:name=".CareComplete"
+            android:name="com.hand.wear.CareComplete"
             android:exported="false"
             android:theme="@style/MainActivityTheme.Starting" />
 

@@ -17,7 +17,7 @@ import androidx.core.app.NotificationCompat
 import kotlinx.coroutines.*
 import java.util.concurrent.atomic.AtomicBoolean
 import com.mim.watch.healthdebug.HealthDebugManager
-import com.mim.watch.presentation.MainActivity
+import com.hand.wear.WearHomeActivity
 import com.mim.watch.sensors.WristShakeTrigger
 import android.util.Log
 import com.mim.watch.data.model.BioSample
@@ -265,7 +265,7 @@ class BioForegroundService : Service() {
                 )
             } catch (_: Throwable) {}
 
-            val intent = Intent(this, MainActivity::class.java).apply {
+            val intent = Intent(this, WearHomeActivity::class.java).apply {
                 addFlags(
                     Intent.FLAG_ACTIVITY_NEW_TASK or
                             Intent.FLAG_ACTIVITY_CLEAR_TOP or

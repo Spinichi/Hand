@@ -20,10 +20,36 @@ import android.content.Intent
 import androidx.compose.ui.platform.LocalContext
 import ui.theme.HandTheme
 import com.hand.hand.R
+import android.os.Build
+import com.mim.watch.services.BioForegroundService
+import com.mim.watch.healthdebug.HealthDebugManager
 
 class WearHomeActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // ⭐ 화면 깨우기 (손목 흔들기로 실행 시)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+            setShowWhenLocked(true)
+            setTurnScreenOn(true)
+        } else {
+            @Suppress("DEPRECATION")
+            window.addFlags(
+                android.view.WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
+                android.view.WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON
+            )
+        }
+
+        // ⭐ Samsung Health SDK 연결 및 서비스 시작
+        HealthDebugManager.connect(applicationContext, this)
+
+        val serviceIntent = Intent(this, BioForegroundService::class.java)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            startForegroundService(serviceIntent)
+        } else {
+            startService(serviceIntent)
+        }
+
         setContent {
             HandTheme {
                 WearHomeScreen(score = 85) // score 값 넣기}
