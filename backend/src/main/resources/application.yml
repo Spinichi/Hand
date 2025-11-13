@@ -20,6 +20,8 @@ spring:
         mongodb:
             uri: mongodb://${MONGO_USERNAME}:${MONGO_PASSWORD}@${MONGO_HOST}:${MONGO_PORT}/${MONGO_DB}?authSource=${MONGO_USERNAME}
             auto-index-creation: true
+    jackson:
+        time-zone: Asia/Seoul
 server:
     port: 8080
     servlet:
