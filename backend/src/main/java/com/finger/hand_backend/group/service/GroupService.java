@@ -18,5 +18,7 @@ public interface GroupService {
     List<MemberResponse> members(Long userId, Long groupId);
     void expel(Long userId, Long groupId, Long targetUserId);
     MemberResponse updateNotes(Long userId, Long groupId, Long targetUserId, UpdateMemberNotesRequest req);
+
+    GroupAnomalyStatisticsResponse getGroupAnomalyStatistics(Long userId, Long groupId);
 }
 

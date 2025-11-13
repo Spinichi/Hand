@@ -4,18 +4,27 @@ import com.finger.hand_backend.group.dto.*;
 import com.finger.hand_backend.group.entity.*;
 import com.finger.hand_backend.group.repository.*;
 import com.finger.hand_backend.group.util.InviteCodeGenerator;
+import com.finger.hand_backend.measurement.Measurement;
+import com.finger.hand_backend.measurement.MeasurementRepository;
 import com.finger.hand_backend.risk.DailyRiskScoreService;
+import com.finger.hand_backend.user.entity.IndividualUser;
+import com.finger.hand_backend.user.repository.IndividualUserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service @RequiredArgsConstructor @Transactional
 public class GroupServiceImpl implements GroupService {
     private final GroupRepository groupRepo;
     private final GroupMemberRepository memberRepo;
     private final DailyRiskScoreService riskScoreService;
+    private final MeasurementRepository measurementRepo;
+    private final IndividualUserRepository individualUserRepo;
 
     private Group getOr404(Long id){
         return groupRepo.findById(id).orElseThrow(() -> new IllegalArgumentException("GROUP_NOT_FOUND"));
@@ -191,6 +200,111 @@ public class GroupServiceImpl implements GroupService {
         Double weeklyAvg = riskScoreService.getWeeklyAverageRiskScore(targetUserId);
         return new MemberResponse(gm.getUserId(), gm.getRole(), gm.getSpecialNotes(),
                                  gm.getJoinedAt(), weeklyAvg);
+    }
+
+    @Override @Transactional(readOnly = true)
+    public GroupAnomalyStatisticsResponse getGroupAnomalyStatistics(Long userId, Long groupId) {
+        // 1. 권한 확인 (MANAGER만 가능)
+        requireManager(groupId, userId);
+
+        Group group = getOr404(groupId);
+
+        // 2. 그룹 멤버 조회 (본인 제외)
+        List<GroupMember> members = memberRepo.findByGroupId(groupId).stream()
+                .filter(gm -> !gm.getUserId().equals(userId))
+                .toList();
+
+        if (members.isEmpty()) {
+            // 멤버가 없는 경우
+            return GroupAnomalyStatisticsResponse.builder()
+                    .groupId(groupId)
+                    .groupName(group.getName())
+                    .memberCount(0)
+                    .weeklyStatistics(null)
+                    .topRiskMember(null)
+                    .build();
+        }
+
+        // 3. 날짜 범위 설정 (오늘 기준 최근 7일)
+        LocalDate today = LocalDate.now();
+        LocalDate sevenDaysAgo = today.minusDays(6);
+
+        // 4. 일별 평균 계산
+        List<DailyAverageAnomaly> dailyAverages = new ArrayList<>();
+        double totalSum = 0.0;
+
+        for (LocalDate date = sevenDaysAgo; !date.isAfter(today); date = date.plusDays(1)) {
+            LocalDateTime startOfDay = date.atStartOfDay();
+            LocalDateTime endOfDay = date.plusDays(1).atStartOfDay();
+
+            int totalAnomaliesForDay = 0;
+
+            // 각 멤버의 해당 날짜 이상치 개수 합산
+            for (GroupMember member : members) {
+                List<Measurement> anomalies = measurementRepo
+                        .findByUserIdAndIsAnomalyTrueAndMeasuredAtBetweenOrderByMeasuredAtAsc(
+                                member.getUserId(), startOfDay, endOfDay);
+                totalAnomaliesForDay += anomalies.size();
+            }
+
+            // 일별 평균 = 해당 날짜 전체 이상치 / 멤버 수
+            double dailyAverage = (double) totalAnomaliesForDay / members.size();
+            totalSum += dailyAverage;
+
+            dailyAverages.add(DailyAverageAnomaly.builder()
+                    .date(date)
+                    .averageAnomalyCount(dailyAverage)
+                    .build());
+        }
+
+        // 5. 주간 전체 평균 계산
+        double weeklyAverage = totalSum / 7.0;
+
+        // 6. 최고 위험 멤버 찾기 (주간 평균 이상치 횟수가 가장 높은 멤버)
+        TopRiskMember topRiskMember = null;
+        double maxAverage = 0.0;
+
+        for (GroupMember member : members) {
+            LocalDateTime weekStart = sevenDaysAgo.atStartOfDay();
+            LocalDateTime weekEnd = today.plusDays(1).atStartOfDay();
+
+            List<Measurement> weeklyAnomalies = measurementRepo
+                    .findByUserIdAndIsAnomalyTrueAndMeasuredAtBetweenOrderByMeasuredAtAsc(
+                            member.getUserId(), weekStart, weekEnd);
+
+            double memberAverage = weeklyAnomalies.size() / 7.0;
+
+            if (memberAverage > maxAverage) {
+                maxAverage = memberAverage;
+
+                // 사용자 이름 조회
+                String userName = individualUserRepo.findByUserId(member.getUserId())
+                        .map(IndividualUser::getName)
+                        .orElse("Unknown");
+
+                topRiskMember = TopRiskMember.builder()
+                        .userId(member.getUserId())
+                        .userName(userName)
+                        .weeklyAverageAnomalyCount(memberAverage)
+                        .build();
+            }
+        }
+
+        // 7. 응답 생성
+        WeeklyAnomalyStatistics weeklyStats = WeeklyAnomalyStatistics.builder()
+                .startDate(sevenDaysAgo)
+                .endDate(today)
+                .totalAverageAnomalyCount(weeklyAverage)
+                .dailyAverages(dailyAverages)
+                .build();
+
+        return GroupAnomalyStatisticsResponse.builder()
+                .groupId(groupId)
+                .groupName(group.getName())
+                .memberCount(members.size())
+                .weeklyStatistics(weeklyStats)
+                .topRiskMember(topRiskMember)
+                .build();
     }
 }
 

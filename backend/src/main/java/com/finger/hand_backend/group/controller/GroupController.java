@@ -74,5 +74,14 @@ public class GroupController {
                                                                    @Valid @RequestBody UpdateMemberNotesRequest req){
         return ResponseEntity.ok(ApiResponse.success(service.updateNotes(userId(a), groupId, target, req), "ok"));
     }
+
+    @GetMapping("/{groupId}/statistics/anomalies")
+    public ResponseEntity<ApiResponse<GroupAnomalyStatisticsResponse>> getGroupAnomalyStatistics(
+            Authentication a,
+            @PathVariable Long groupId
+    ) {
+        GroupAnomalyStatisticsResponse data = service.getGroupAnomalyStatistics(userId(a), groupId);
+        return ResponseEntity.ok(ApiResponse.success(data, "그룹 이상치 통계를 조회했습니다"));
+    }
 }
 
