@@ -179,4 +179,41 @@ public class MeasurementController {
 
         return ResponseEntity.ok(ApiResponse.success(data, "측정 데이터 개수를 조회했습니다"));
     }
+
+    /**
+     * 특정 날짜의 이상치 조회
+     *
+     * @param authentication 인증 정보
+     * @param date           조회 날짜 (선택, 기본값: 오늘)
+     * @return 해당 날짜의 이상치 데이터
+     */
+    @GetMapping("/anomalies/daily")
+    public ResponseEntity<ApiResponse<DailyAnomalyResponse>> getDailyAnomalies(
+            Authentication authentication,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date
+    ) {
+        Long userId = Long.valueOf(authentication.getName());
+        LocalDate targetDate = date != null ? date : LocalDate.now();
+
+        DailyAnomalyResponse data = measurementService.getDailyAnomalies(userId, targetDate);
+
+        return ResponseEntity.ok(ApiResponse.success(data, "일일 이상치 데이터를 조회했습니다"));
+    }
+
+    /**
+     * 최근 일주일간 이상치 조회 (날짜별 그룹화)
+     *
+     * @param authentication 인증 정보
+     * @return 일주일간 날짜별 이상치 데이터
+     */
+    @GetMapping("/anomalies/weekly")
+    public ResponseEntity<ApiResponse<WeeklyAnomalyResponse>> getWeeklyAnomalies(
+            Authentication authentication
+    ) {
+        Long userId = Long.valueOf(authentication.getName());
+
+        WeeklyAnomalyResponse data = measurementService.getWeeklyAnomalies(userId);
+
+        return ResponseEntity.ok(ApiResponse.success(data, "주간 이상치 데이터를 조회했습니다"));
+    }
 }

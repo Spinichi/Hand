@@ -1,6 +1,9 @@
 package com.finger.hand_backend.measurement;
 
+import com.finger.hand_backend.measurement.dto.DailyAnomalyResponse;
 import com.finger.hand_backend.measurement.dto.MeasurementRequest;
+import com.finger.hand_backend.measurement.dto.MeasurementResponse;
+import com.finger.hand_backend.measurement.dto.WeeklyAnomalyResponse;
 import com.finger.hand_backend.relief.ReliefAfterBackfill;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -10,7 +13,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Measurement Service
@@ -138,5 +143,74 @@ public class MeasurementService {
         LocalDateTime start = startDate.atStartOfDay();
         LocalDateTime end = endDate.atTime(23, 59, 59);
         return measurementRepository.countByUserIdAndMeasuredAtBetween(userId, start, end);
+    }
+
+    /**
+     * 특정 날짜의 이상치 조회
+     *
+     * @param userId 사용자 ID
+     * @param date   조회 날짜
+     * @return 해당 날짜의 이상치 데이터
+     */
+    @Transactional(readOnly = true)
+    public DailyAnomalyResponse getDailyAnomalies(Long userId, LocalDate date) {
+        LocalDateTime startOfDay = date.atStartOfDay();
+        LocalDateTime endOfDay = date.plusDays(1).atStartOfDay();
+
+        List<Measurement> anomalies = measurementRepository
+                .findByUserIdAndIsAnomalyTrueAndMeasuredAtBetweenOrderByMeasuredAtAsc(userId, startOfDay, endOfDay);
+
+        List<MeasurementResponse> anomalyResponses = anomalies.stream()
+                .map(MeasurementResponse::from)
+                .collect(Collectors.toList());
+
+        return DailyAnomalyResponse.builder()
+                .date(date)
+                .anomalyCount(anomalies.size())
+                .anomalies(anomalyResponses)
+                .build();
+    }
+
+    /**
+     * 최근 일주일간 이상치 조회 (날짜별 그룹화)
+     *
+     * @param userId 사용자 ID
+     * @return 일주일간 날짜별 이상치 데이터
+     */
+    @Transactional(readOnly = true)
+    public WeeklyAnomalyResponse getWeeklyAnomalies(Long userId) {
+        LocalDate today = LocalDate.now();
+        LocalDate sevenDaysAgo = today.minusDays(6); // 오늘 포함 7일
+
+        List<DailyAnomalyResponse> dailyAnomalies = new ArrayList<>();
+        int totalCount = 0;
+
+        // 각 날짜별로 이상치 개수만 조회 (상세 데이터 제외)
+        for (LocalDate date = sevenDaysAgo; !date.isAfter(today); date = date.plusDays(1)) {
+            LocalDateTime startOfDay = date.atStartOfDay();
+            LocalDateTime endOfDay = date.plusDays(1).atStartOfDay();
+
+            List<Measurement> anomalies = measurementRepository
+                    .findByUserIdAndIsAnomalyTrueAndMeasuredAtBetweenOrderByMeasuredAtAsc(userId, startOfDay, endOfDay);
+
+            int count = anomalies.size();
+            totalCount += count;
+
+            // anomalies 리스트는 빈 리스트로 설정 (데이터 경량화)
+            DailyAnomalyResponse dailyAnomaly = DailyAnomalyResponse.builder()
+                    .date(date)
+                    .anomalyCount(count)
+                    .anomalies(List.of()) // 빈 리스트
+                    .build();
+
+            dailyAnomalies.add(dailyAnomaly);
+        }
+
+        return WeeklyAnomalyResponse.builder()
+                .startDate(sevenDaysAgo)
+                .endDate(today)
+                .totalAnomalyCount(totalCount)
+                .dailyAnomalies(dailyAnomalies)
+                .build();
     }
 }
