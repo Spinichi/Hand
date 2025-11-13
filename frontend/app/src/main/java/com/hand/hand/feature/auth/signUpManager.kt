@@ -29,6 +29,8 @@ import androidx.compose.ui.unit.sp
 import com.hand.hand.R
 import com.hand.hand.ui.common.BrandWaveHeader
 import com.hand.hand.ui.theme.BrandFontFamily
+import com.hand.hand.api.Group.GroupManager
+import com.hand.hand.api.Group.GroupData
 
 class SignUpManagerActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -51,6 +53,7 @@ fun SignUpManagerScreen(
 
     var id by remember { mutableStateOf("") }
     var selectedType by remember { mutableStateOf("") }
+    var isLoading by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -170,6 +173,7 @@ fun SignUpManagerScreen(
                 ) {
                     rowOptions.forEach { option ->
                         val isSelected = selectedType == option
+
                         Surface(
                             color = if (isSelected) Color(0xFF9BB168) else Color.White,
                             shape = RoundedCornerShape(100.dp),
@@ -180,7 +184,10 @@ fun SignUpManagerScreen(
                                 .height((screenHeightDp * 0.065f).dp)
                                 .clickable { selectedType = option }
                         ) {
-                            Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                            Box(
+                                contentAlignment = Alignment.Center,
+                                modifier = Modifier.fillMaxSize()
+                            ) {
                                 Text(
                                     text = option,
                                     color = if (isSelected) Color.White else Color(0xFF4F3422),
@@ -200,10 +207,56 @@ fun SignUpManagerScreen(
         // ── 등록하기 버튼 ──
         Button(
             onClick = {
-                // ✅ SignInTypeActivity로 이동
-                val intent = Intent(context, SignInTypeActivity::class.java)
-                context.startActivity(intent)
+                val groupName = id.trim()
+                val groupType = selectedType.trim()
+
+                if (groupName.isEmpty()) {
+                    android.widget.Toast.makeText(
+                        context,
+                        "그룹 이름을 입력하세요.",
+                        android.widget.Toast.LENGTH_SHORT
+                    ).show()
+                    return@Button
+                }
+                if (groupType.isEmpty()) {
+                    android.widget.Toast.makeText(
+                        context,
+                        "그룹 유형을 선택하세요.",
+                        android.widget.Toast.LENGTH_SHORT
+                    ).show()
+                    return@Button
+                }
+
+                // 네트워크 요청 시작
+                isLoading = true
+
+                GroupManager.createGroup(
+                    name = groupName,
+                    groupType = groupType,
+                    onSuccess = { groupData: GroupData? ->
+                        isLoading = false
+                        android.widget.Toast.makeText(
+                            context,
+                            "그룹 생성되었습니다. invite=${groupData?.inviteCode}",
+                            android.widget.Toast.LENGTH_SHORT
+                        ).show()
+
+                        // 생성 후 이동 (기존대로 SignInTypeActivity로 이동)
+                        val intent = Intent(context, SignInTypeActivity::class.java)
+                        if (context !is android.app.Activity) intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        context.startActivity(intent)
+                    },
+                    onError = { errMsg ->
+                        isLoading = false
+                        android.widget.Toast.makeText(
+                            context,
+                            "그룹 생성 실패: $errMsg",
+                            android.widget.Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                )
             },
+            enabled = !isLoading, // 로딩 중에는 버튼 비활성
             modifier = Modifier
                 .fillMaxWidth()
                 .height((screenWidthDp * 0.14f).dp),
@@ -216,7 +269,7 @@ fun SignUpManagerScreen(
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    text = "등록하기",
+                    text = if (!isLoading) "등록하기" else "등록중...",
                     color = Color.White,
                     fontSize = (screenWidthDp * 0.04f).sp,
                     fontWeight = FontWeight.SemiBold,
