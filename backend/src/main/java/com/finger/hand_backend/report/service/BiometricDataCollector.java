@@ -123,10 +123,10 @@ public class BiometricDataCollector {
 
         result.put("age", user.getAge());
         result.put("gender", user.getGender().name());
-        result.put("job", user.getJob());
         result.put("height", user.getHeight());
         result.put("weight", user.getWeight());
         result.put("disease", user.getDisease());
+        result.put("residenceType", user.getResidenceType());
 
         return result;
     }
