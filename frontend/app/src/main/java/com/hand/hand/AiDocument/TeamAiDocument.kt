@@ -56,8 +56,8 @@ class TeamAiDocumentActivity : ComponentActivity() {
                 sevenDaysAgo = sevenDaysAgo,
                 today = today,
                 onBackClick = {
-                    val intent = Intent(this, com.hand.hand.ui.admin.AdminHomeActivity::class.java)
-                    startActivity(intent)
+//                    val intent = Intent(this, com.hand.hand.ui.admin.AdminHomeActivity::class.java)
+//                    startActivity(intent)
                     finish()
                 }
             )
@@ -199,7 +199,6 @@ fun TeamAiDocumentScreen(
 
                 Spacer(modifier = Modifier.height(screenHeight * 0.015f))
 
-                // 특이사항 입력창
                 // 특이사항 입력창
                 Box(
                     modifier = Modifier

@@ -239,13 +239,18 @@ private fun AdminHomeScreen(
                         val month = cal.get(java.util.Calendar.MONTH) + 1
                         val week = cal.get(java.util.Calendar.WEEK_OF_MONTH)
 
-                        val intent = Intent(context, com.hand.hand.AiDocument.TeamAiDocumentActivity::class.java).apply {
-                            putExtra("YEAR", year)
-                            putExtra("MONTH", month)
-                            putExtra("WEEK", week)
-                        }
-                        context.startActivity(intent)
-                    }
+                        context.startActivity(
+                            Intent(context, com.hand.hand.AiDocument.TeamAiDocumentActivity::class.java).apply {
+                                putExtra("YEAR", year)
+                                putExtra("MONTH", month)
+                                putExtra("WEEK", week)
+                                putExtra("ORG_ID", org.id)       // ✅ org.id 사용
+                                putExtra("MEMBER_ID", member.id)
+                                putExtra("MEMBER_NAME", member.name)
+                            }
+                        )
+                    },
+                    org = org
 
                 )
             }
