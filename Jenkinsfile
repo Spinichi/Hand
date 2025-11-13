@@ -128,11 +128,13 @@ pipeline {
 
                                                 # 새 컨테이너 실행
                                                 echo "🚀 Starting new container..."
-                                                docker run -d \\
-                                                    --name hand-backend \\
-                                                    -p 8080:8080 \\
-                                                    --env-file /home/ubuntu/.env \\
-                                                    --restart unless-stopped \\
+                                                docker run -d \
+                                                    --name hand-backend \
+                                                    -p 8080:8080 \
+                                                    --env-file /home/ubuntu/.env \
+                                                    --restart unless-stopped \
+                                                    -e TZ=Asia/Seoul \
+                                                    -v /etc/localtime:/etc/localtime:ro \
                                                     ${REGISTRY_PUBLIC}/${BACKEND_IMAGE}:latest
 
                                                 # 컨테이너 실행 확인
