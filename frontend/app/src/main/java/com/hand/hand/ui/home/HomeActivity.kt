@@ -90,12 +90,19 @@ class HomeActivity : ComponentActivity() {
     private fun fetchAndSyncBaseline() {
         com.hand.hand.api.Baseline.BaselineManager.getActiveBaseline(
             onSuccess = { baseline ->
-                Log.d("HomeActivity", "✅ Active Baseline found: version=${baseline.version}")
-                sendBaselineToWatch(baseline)
+                Log.d("HomeActivity", "✅ Active Baseline found: version=${baseline.version}, updatedAt=${baseline.updatedAt}")
+
+                // ⭐ Baseline 만료 체크 (30일 이상 지났으면 재계산)
+                if (isBaselineExpired(baseline.updatedAt)) {
+                    Log.w("HomeActivity", "⚠️ Baseline is expired (older than 30 days), recalculating with 30-day data...")
+                    calculateBaseline(days = 30)  // 30일치 데이터로 재계산
+                } else {
+                    sendBaselineToWatch(baseline)
+                }
             },
             onNotFound = {
-                Log.w("HomeActivity", "⚠️ No active Baseline, attempting to calculate...")
-                calculateBaseline()
+                Log.w("HomeActivity", "⚠️ No active Baseline, attempting to calculate with 3-day data...")
+                calculateBaseline(days = 3)  // 첫 생성은 3일치
             },
             onFailure = { error ->
                 Log.e("HomeActivity", "❌ Failed to fetch Baseline: ${error.message}")
@@ -103,9 +110,32 @@ class HomeActivity : ComponentActivity() {
         )
     }
 
-    private fun calculateBaseline() {
+    /**
+     * Baseline이 만료되었는지 확인 (30일 기준)
+     * @param updatedAt Baseline의 마지막 업데이트 시간 (ISO-8601 문자열)
+     * @return 30일 이상 지났으면 true
+     */
+    private fun isBaselineExpired(updatedAt: String?): Boolean {
+        if (updatedAt == null) return true
+
+        return try {
+            val formatter = java.time.format.DateTimeFormatter.ISO_DATE_TIME
+            val updated = java.time.LocalDateTime.parse(updatedAt, formatter)
+            val now = java.time.LocalDateTime.now()
+            val daysDiff = java.time.Duration.between(updated, now).toDays()
+
+            Log.d("HomeActivity", "📅 Baseline age: $daysDiff days")
+            daysDiff >= 30  // 30일 이상이면 만료
+        } catch (e: Exception) {
+            Log.e("HomeActivity", "❌ Failed to parse updatedAt: $updatedAt", e)
+            true  // 파싱 실패하면 만료로 간주
+        }
+    }
+
+    private fun calculateBaseline(days: Int = 3) {
+        Log.d("HomeActivity", "📊 Calculating Baseline with $days-day data...")
         com.hand.hand.api.Baseline.BaselineManager.calculateBaseline(
-            days = 3,
+            days = days,
             onSuccess = { baseline ->
                 Log.d("HomeActivity", "✅ Baseline calculated: version=${baseline.version}, count=${baseline.measurementCount}")
                 sendBaselineToWatch(baseline)
