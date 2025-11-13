@@ -1,5 +1,6 @@
 package com.hand.hand.ui.admin.sections
 
+import com.hand.hand.ui.model.Organization
 import android.content.Intent
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -47,7 +48,8 @@ fun AdminMembersSection(
     searchQuery: String,
     selectedMood: Mood?,
     onSelectMood: (Mood?) -> Unit,
-    onMemberClick: (GroupMember) -> Unit
+    onMemberClick: (GroupMember) -> Unit,
+    org: Organization
 ) {
     val context = LocalContext.current
     val Brown80 = Color(0xFF4B2E1E)
@@ -96,7 +98,7 @@ fun AdminMembersSection(
                     // 클릭 시 TeamAiDocumentActivity로 멤버 정보 전달
                     context.startActivity(
                         Intent(context, TeamAiDocumentActivity::class.java).apply {
-                            putExtra("ORG_ID", "multipampus") // 필요 시 실제 orgId 전달
+                            putExtra("ORG_ID", org.id) // 필요 시 실제 orgId 전달
                             putExtra("MEMBER_NAME", member.name) // 멤버 이름 전달
                             putExtra("MEMBER_ID", member.id) // 필요 시 멤버 ID 전달
                         }
