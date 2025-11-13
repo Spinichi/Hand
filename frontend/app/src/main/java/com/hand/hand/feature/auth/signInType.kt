@@ -8,7 +8,6 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
@@ -37,10 +36,14 @@ import com.hand.hand.ui.home.components.OrganizationCard
 import com.hand.hand.ui.theme.BrandFontFamily
 import com.hand.hand.ui.theme.Brown80
 import androidx.compose.ui.unit.TextUnit
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.SolidColor
 import com.hand.hand.ui.model.GroupCodeRepository   // ✅ 더미 검증
+import com.hand.hand.ui.model.toOrgMoodUi
+import com.hand.hand.ui.model.Organization
+import com.hand.hand.ui.model.OrgSource
+import com.hand.hand.ui.admin.AdminHomeActivity
+import androidx.compose.foundation.shape.CircleShape
 
 class SignInTypeActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -65,6 +68,9 @@ fun SignInTypeScreen(
     var isFocused by remember { mutableStateOf(false) }
     var verified by remember { mutableStateOf(false) }
     val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
+
+    // organizations 로컬로 준비 (이 줄이 없어서 Unresolved reference 발생함)
+    val organizations: List<Organization> = remember { OrgSource.organizations() }
 
     Column(
         modifier = Modifier
@@ -141,7 +147,6 @@ fun SignInTypeScreen(
                             if (GroupCodeRepository.verify(code)) {
                                 verified = true
                                 focusManager.clearFocus(force = true) // 포커스 해제
-                                // onEnterGroupCode(code) ❌ 여기서 호출하지 않음 (로컬 토글만)
                             } else {
                                 verified = false
                             }
@@ -157,43 +162,9 @@ fun SignInTypeScreen(
 
             val personalCardHeight = (screenHeightDp * 0.08f).dp
 
-            // ── 개인으로 로그인 ──
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 6.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
-                elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
-                onClick = {
-                    context.startActivity(Intent(context, HomeActivity::class.java))
-                },
-                shape = MaterialTheme.shapes.large
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(min = personalCardHeight)
-                        .padding(horizontal = 14.dp, vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "개인으로 로그인",
-                        color = Brown80,
-                        fontSize = 26.sp,
-                        fontWeight = FontWeight.Bold,
-                        fontFamily = BrandFontFamily,
-                        modifier = Modifier.weight(1f)
-                    )
-                    Icon(
-                        painter = painterResource(R.drawable.chevron_right),
-                        contentDescription = "이동",
-                        tint = Color.Unspecified,
-                        modifier = Modifier.size(30.dp)
-                    )
-                }
-            }
+            // TODO: 실제 조건으로 교체하세요 (예: viewModel.isPersonalRegistered.value)
+            val isPersonalRegistered = /* your condition here */ false
 
-            // ── 개인으로 등록 (SignUpManagerActivity로 이동) ──
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -201,7 +172,17 @@ fun SignInTypeScreen(
                 colors = CardDefaults.cardColors(containerColor = Color.White),
                 elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
                 onClick = {
-                    context.startActivity(Intent(context, SignUpPrivateActivity::class.java))
+                    if (isPersonalRegistered) {
+                        // 개인으로 로그인(이미 등록된 경우) -> HomeActivity로 이동
+                        val intent = Intent(context, HomeActivity::class.java)
+                        if (context !is android.app.Activity) intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        context.startActivity(intent)
+                    } else {
+                        // 개인으로 등록(등록되지 않은 경우) -> SignUpPrivateActivity로 이동
+                        val intent = Intent(context, SignUpPrivateActivity::class.java)
+                        if (context !is android.app.Activity) intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        context.startActivity(intent)
+                    }
                 },
                 shape = MaterialTheme.shapes.large
             ) {
@@ -213,7 +194,7 @@ fun SignInTypeScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "개인으로 등록",
+                        text = if (isPersonalRegistered) "개인으로 로그인" else "개인으로 등록",
                         color = Brown80,
                         fontSize = 26.sp,
                         fontWeight = FontWeight.Bold,
@@ -249,7 +230,10 @@ fun SignInTypeScreen(
                     color = Color.Transparent,
                     shape = CircleShape,
                     onClick = {
-                        context.startActivity(Intent(context, SignUpManagerActivity::class.java))
+                        // 기존처럼 매니저 등록으로 바로 가도 되고, 다이얼로그를 띄우려면 여기서 처리
+                        val intent = Intent(context, SignUpManagerActivity::class.java)
+                        if (context !is android.app.Activity) intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        context.startActivity(intent)
                     },
                     modifier = Modifier.size(30.dp)
                 ) {
@@ -264,32 +248,24 @@ fun SignInTypeScreen(
             Spacer(Modifier.height(16.dp))
 
             // ── 조직 예시 리스트 ──
-            OrganizationCard(
-                moodIconRes = R.drawable.ic_solid_mood_smile,
-                moodBg = Color(0xFFFFF1C7),
-                title = "멀티캠퍼스",
-                count = 20,
-                titleColor = Brown80,
-                metaColor = Color(0xFFA5A39F)
-            ) { onOrgClick("멀티캠퍼스") }
-
-            OrganizationCard(
-                moodIconRes = R.drawable.ic_solid_mood_depressed,
-                moodBg = Color(0xFFE7DBFF),
-                title = "강남 경찰서",
-                count = 20,
-                titleColor = Brown80,
-                metaColor = Color(0xFFA5A39F)
-            ) { onOrgClick("강남 경찰서") }
-
-            OrganizationCard(
-                moodIconRes = R.drawable.ic_solid_mood_sad,
-                moodBg = Color(0xFFFFE1CC),
-                title = "서초 경찰서",
-                count = 20,
-                titleColor = Brown80,
-                metaColor = Color(0xFFA5A39F)
-            ) { onOrgClick("서초 경찰서") }
+            // organizations 변수를 위에서 준비했으므로 여긴 에러 없이 동작합니다.
+            organizations.forEach { org ->
+                val ui = org.toOrgMoodUi()
+                OrganizationCard(
+                    moodIconRes = ui.moodIconRes,
+                    moodBg = ui.moodBg,
+                    title = org.name,
+                    count = org.memberCount,
+                    titleColor = Brown80,
+                    metaColor = Color(0xFFA5A39F)
+                ) {
+                    // 화면에서 조직을 클릭하면 AdminHomeActivity로 이동
+                    val intent = Intent(context, AdminHomeActivity::class.java)
+                    intent.putExtra("org_id", org.id)
+                    if (context !is android.app.Activity) intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    context.startActivity(intent)
+                }
+            }
 
             Spacer(Modifier.height(6.dp))
         }

@@ -1,0 +1,29 @@
+package com.hand.hand.api.Group
+
+// request models
+data class GroupCreateRequest(
+    val name: String,
+    val groupType: String
+)
+
+data class GroupJoinRequest(
+    val inviteCode: String
+)
+
+// response inner data (서버에서 반환한 data 필드의 구조)
+data class GroupData(
+    val id: Int?,
+    val name: String?,
+    val groupType: String?,
+    val inviteCode: String?,
+    val createdBy: Int?,
+    val createdAt: String?,
+    val updatedAt: String?
+)
+
+// 서버가 래핑해서 줌: { "success": true, "data": { ... }, "message": "ok" }
+data class WrappedResponse<T>(
+    val success: Boolean,
+    val data: T?,
+    val message: String?
+)
