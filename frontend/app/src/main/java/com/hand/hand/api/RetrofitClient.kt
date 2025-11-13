@@ -17,6 +17,10 @@ object RetrofitClient {
         accessToken = token
     }
 
+    fun isLoggedIn(): Boolean {
+        return !accessToken.isNullOrBlank()
+    }
+
     fun getClient(): Retrofit {
         if (retrofitClient == null) {
             // HTTP 로그 인터셉터

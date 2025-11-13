@@ -33,6 +33,10 @@ import com.hand.hand.R
 import com.hand.hand.ui.common.BrandWaveHeader
 import com.hand.hand.ui.theme.BrandFontFamily
 
+import android.widget.Toast
+import com.hand.hand.api.SignUp.IndividualUserManager
+
+
 class SignUpPrivateActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -204,10 +208,59 @@ fun SignUpPrivateScreen(
             Spacer(Modifier.height(28.dp))
 
             // 등록 버튼
+            // 등록 버튼
             Button(
                 onClick = {
-                    val intent = Intent(context,  SignUpPrivateSurveyActivity::class.java)
-                    context.startActivity(intent)
+                    // 1) 필수값 간단 체크
+                    if (name.isBlank() || age.isBlank() || selectedGender.isBlank()) {
+                        Toast.makeText(context, "이름 / 나이 / 성별은 필수입니다.", Toast.LENGTH_SHORT).show()
+                        return@Button
+                    }
+
+                    // 숫자 변환
+                    val ageInt = age.toIntOrNull() ?: 0
+                    val heightInt = height.toIntOrNull() ?: 0
+                    val weightInt = weight.toIntOrNull() ?: 0
+
+                    // 알림 켜져 있을 때만 시간 사용, 아니면 0
+                    val alarmHourInt = if (isAlarmEnabled) hour.toIntOrNull() ?: 0 else 0
+                    val alarmMinuteInt = if (isAlarmEnabled) minute.toIntOrNull() ?: 0 else 0
+
+                    // 성별 코드 변환 ("남성"/"여성" -> "M"/"F")
+                    val genderCode = when (selectedGender) {
+                        "남성" -> "M"
+                        "여성" -> "F"
+                        else -> ""
+                    }
+
+                    // 2) 백엔드에 개인정보 등록 요청
+                    IndividualUserManager.registerIndividualUser(
+                        name = name,
+                        age = ageInt,
+                        gender = genderCode,
+                        job = "",                    // 직업 필드 없으니 일단 빈 문자열로
+                        height = heightInt,
+                        weight = weightInt,
+                        disease = disease,
+                        residenceType = address,
+                        diaryReminderEnabled = isAlarmEnabled,
+                        hour = alarmHourInt,
+                        minute = alarmMinuteInt,
+                        onSuccess = { _ ->
+                            // 3) 성공하면 설문 페이지로 이동
+                            val intent = Intent(context, SignUpPrivateSurveyActivity::class.java)
+                            context.startActivity(intent)
+                        },
+                        onFailure = { e ->
+                            e.printStackTrace()
+
+                            Toast.makeText(
+                                context,
+                                "개인 정보 등록 실패: ${e.message}",
+                                Toast.LENGTH_LONG
+                            ).show()
+                        }
+                    )
                 },
                 modifier = Modifier
                     .fillMaxWidth()
@@ -237,6 +290,7 @@ fun SignUpPrivateScreen(
                     )
                 }
             }
+
 
             Spacer(Modifier.height(40.dp))
         }

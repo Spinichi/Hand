@@ -45,6 +45,10 @@ import com.hand.hand.ui.model.OrgSource
 import com.hand.hand.ui.admin.AdminHomeActivity
 import androidx.compose.foundation.shape.CircleShape
 
+import com.hand.hand.api.SignUp.IndividualUserManager
+//import androidx.compose.material3.CircularProgressIndicator
+
+
 class SignInTypeActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -71,6 +75,27 @@ fun SignInTypeScreen(
 
     // organizations 로컬로 준비 (이 줄이 없어서 Unresolved reference 발생함)
     val organizations: List<Organization> = remember { OrgSource.organizations() }
+
+    // 개인 정보 등록 여부 상태
+    // null  = 아직 서버 확인 전
+    // true  = 개인정보 있음 → "개인으로 로그인"
+    // false = 개인정보 없음 → "개인으로 등록"
+    var isPersonalRegistered by remember { mutableStateOf<Boolean?>(null) }
+    var isCheckingPersonal by remember { mutableStateOf(true) }
+
+    LaunchedEffect(Unit) {
+        IndividualUserManager.hasIndividualUser(
+            onResult = { exists ->
+                isPersonalRegistered = exists
+                isCheckingPersonal = false
+            },
+            onFailure = { e ->
+                e.printStackTrace()
+                isPersonalRegistered = false
+                isCheckingPersonal = false
+            }
+        )
+    }
 
     Column(
         modifier = Modifier
@@ -163,7 +188,7 @@ fun SignInTypeScreen(
             val personalCardHeight = (screenHeightDp * 0.08f).dp
 
             // TODO: 실제 조건으로 교체하세요 (예: viewModel.isPersonalRegistered.value)
-            val isPersonalRegistered = /* your condition here */ false
+//            val isPersonalRegistered = /* your condition here */ false
 
             Card(
                 modifier = Modifier
@@ -172,17 +197,35 @@ fun SignInTypeScreen(
                 colors = CardDefaults.cardColors(containerColor = Color.White),
                 elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
                 onClick = {
-                    if (isPersonalRegistered) {
-                        // 개인으로 로그인(이미 등록된 경우) -> HomeActivity로 이동
+                    // 아직 서버 확인 중이면 클릭 무시
+                    if (isCheckingPersonal) return@Card
+
+                    if (isPersonalRegistered == true) {
+                        // 이미 개인정보 있음 → 개인 로그인 흐름 (예시로 HomeActivity로 보냄)
                         val intent = Intent(context, HomeActivity::class.java)
-                        if (context !is android.app.Activity) intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        if (context !is android.app.Activity) {
+                            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        }
                         context.startActivity(intent)
                     } else {
-                        // 개인으로 등록(등록되지 않은 경우) -> SignUpPrivateActivity로 이동
+                        // 개인정보 없음 → 개인 등록 화면으로
                         val intent = Intent(context, SignUpPrivateActivity::class.java)
-                        if (context !is android.app.Activity) intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        if (context !is android.app.Activity) {
+                            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        }
                         context.startActivity(intent)
                     }
+//                    if (isPersonalRegistered) {
+//                        // 개인으로 로그인(이미 등록된 경우) -> HomeActivity로 이동
+//                        val intent = Intent(context, HomeActivity::class.java)
+//                        if (context !is android.app.Activity) intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+//                        context.startActivity(intent)
+//                    } else {
+//                        // 개인으로 등록(등록되지 않은 경우) -> SignUpPrivateActivity로 이동
+//                        val intent = Intent(context, SignUpPrivateActivity::class.java)
+//                        if (context !is android.app.Activity) intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+//                        context.startActivity(intent)
+//                    }
                 },
                 shape = MaterialTheme.shapes.large
             ) {
@@ -192,9 +235,17 @@ fun SignInTypeScreen(
                         .heightIn(min = personalCardHeight)
                         .padding(horizontal = 14.dp, vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically
-                ) {
+                )
+                {
+                    // ★ 추가: 상태에 따라 텍스트 변경
+                    val buttonText = when {
+                        isCheckingPersonal -> "확인 중..."
+                        isPersonalRegistered == true -> "개인으로 로그인"
+                        else -> "개인으로 등록"
+                    }
+
                     Text(
-                        text = if (isPersonalRegistered) "개인으로 로그인" else "개인으로 등록",
+                        text = buttonText,
                         color = Brown80,
                         fontSize = 26.sp,
                         fontWeight = FontWeight.Bold,
