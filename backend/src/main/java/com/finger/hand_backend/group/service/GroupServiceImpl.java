@@ -70,7 +70,7 @@ public class GroupServiceImpl implements GroupService {
         memberRepo.save(owner);
 
         return new GroupResponse(g.getId(), g.getName(), g.getGroupType(), g.getInviteCode(),
-                g.getCreatedBy(), g.getCreatedAt(), g.getUpdatedAt(), null); // 본인만 있으므로 null
+                g.getCreatedBy(), g.getCreatedAt(), g.getUpdatedAt(), null, 1); // 본인만 있으므로 1명
     }
 
     @Override @Transactional(readOnly = true)
@@ -79,8 +79,9 @@ public class GroupServiceImpl implements GroupService {
                 .orElseThrow(() -> new IllegalArgumentException("NOT_GROUP_MEMBER"));
         Group g = getOr404(groupId);
         Double avgRiskScore = calculateAvgMemberRiskScore(groupId, userId);
+        Integer memberCount = (int) memberRepo.countByGroupId(groupId);
         return new GroupResponse(g.getId(), g.getName(), g.getGroupType(), g.getInviteCode(),
-                g.getCreatedBy(), g.getCreatedAt(), g.getUpdatedAt(), avgRiskScore);
+                g.getCreatedBy(), g.getCreatedAt(), g.getUpdatedAt(), avgRiskScore, memberCount);
     }
 
     @Override @Transactional(readOnly = true)
@@ -91,8 +92,9 @@ public class GroupServiceImpl implements GroupService {
                 .distinct()
                 .map(g -> {
                     Double avgRiskScore = calculateAvgMemberRiskScore(g.getId(), userId);
+                    Integer memberCount = (int) memberRepo.countByGroupId(g.getId());
                     return new GroupResponse(g.getId(), g.getName(), g.getGroupType(), g.getInviteCode(),
-                            g.getCreatedBy(), g.getCreatedAt(), g.getUpdatedAt(), avgRiskScore);
+                            g.getCreatedBy(), g.getCreatedAt(), g.getUpdatedAt(), avgRiskScore, memberCount);
                 })
                 .toList();
     }
@@ -104,8 +106,9 @@ public class GroupServiceImpl implements GroupService {
         g.setName(req.name()); g.setGroupType(req.groupType());
         groupRepo.save(g);
         Double avgRiskScore = calculateAvgMemberRiskScore(groupId, userId);
+        Integer memberCount = (int) memberRepo.countByGroupId(groupId);
         return new GroupResponse(g.getId(), g.getName(), g.getGroupType(), g.getInviteCode(),
-                g.getCreatedBy(), g.getCreatedAt(), g.getUpdatedAt(), avgRiskScore);
+                g.getCreatedBy(), g.getCreatedAt(), g.getUpdatedAt(), avgRiskScore, memberCount);
     }
 
     @Override public void delete(Long userId, Long groupId) {

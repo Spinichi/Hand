@@ -5,4 +5,4 @@ import java.time.Instant;
 public record GroupResponse(Long id, String name, String groupType,
                             String inviteCode, Long createdBy,
                             Instant createdAt, Instant updatedAt,
-                            Double avgMemberRiskScore) {}
+                            Double avgMemberRiskScore, Integer memberCount) {}
