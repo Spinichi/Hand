@@ -56,13 +56,20 @@ class BioForegroundService : Service() {
     private lateinit var messageClient: MessageClient
     private val messageListener = MessageClient.OnMessageReceivedListener { messageEvent ->
         val path = messageEvent.path
-        val command = String(messageEvent.data)
-        Log.d(TAG, "📩 Message received from phone: path=$path, command=$command")
+        val message = String(messageEvent.data)
+        Log.d(TAG, "📩 Message received from phone: path=$path")
 
-        // ⭐ /relief/command 경로만 처리
-        if (path == "/relief/command" && command == "START_RELIEF") {
-            Log.d(TAG, "🎯 Starting relief activity automatically")
-            startBeforeRelaxActivity(isAutomatic = true)
+        when (path) {
+            "/relief/command" -> {
+                if (message == "START_RELIEF") {
+                    Log.d(TAG, "🎯 Starting relief activity automatically")
+                    startBeforeRelaxActivity(isAutomatic = true)
+                }
+            }
+            "/baseline/update" -> {
+                Log.d(TAG, "📊 Baseline update received from phone")
+                handleBaselineUpdate(message)
+            }
         }
     }
 
@@ -315,6 +322,56 @@ class BioForegroundService : Service() {
             WristShakeTrigger.stop()
         } catch (_: Throwable) { /* no-op */ }
     }
+
+    /**
+     * Phone으로부터 받은 Baseline 데이터를 워치 DB에 저장
+     */
+    private fun handleBaselineUpdate(json: String) {
+        scope.launch {
+            try {
+                // JSON 파싱 (Gson 사용)
+                val gson = com.google.gson.Gson()
+                val baselineResponse = gson.fromJson(json, BaselineFromPhone::class.java)
+
+                // Phone 응답을 워치 BaseLine 모델로 변환
+                val baseline = com.mim.watch.core.baseline.BaseLine(
+                    hrvSdnnMean = baselineResponse.hrvSdnnMean ?: 50.0,
+                    hrvSdnnStd = baselineResponse.hrvSdnnStd ?: 25.0,
+                    hrvRmssdMean = baselineResponse.hrvRmssdMean ?: 40.0,
+                    hrvRmssdStd = baselineResponse.hrvRmssdStd ?: 20.0,
+                    hrMean = baselineResponse.heartRateMean ?: 70.0,
+                    hrStd = baselineResponse.heartRateStd ?: 10.0,
+                    objTempMean = baselineResponse.objectTempMean ?: 33.0,
+                    objTempStd = baselineResponse.objectTempStd ?: 1.5,
+                    version = baselineResponse.version,
+                    isActive = true
+                )
+
+                // BaselineRepository를 통해 DB에 저장
+                val repo = com.mim.watch.repo.BaselineRepository(applicationContext)
+                repo.updateActive(baseline)
+
+                Log.d(TAG, "✅ Baseline updated successfully: version=${baseline.version}")
+            } catch (e: Exception) {
+                Log.e(TAG, "❌ Failed to update baseline", e)
+            }
+        }
+    }
+
+    // Phone에서 받은 Baseline JSON 구조
+    private data class BaselineFromPhone(
+        val id: Long,
+        val version: Int,
+        val isActive: Boolean,
+        val hrvSdnnMean: Double?,
+        val hrvSdnnStd: Double?,
+        val hrvRmssdMean: Double?,
+        val hrvRmssdStd: Double?,
+        val heartRateMean: Double?,
+        val heartRateStd: Double?,
+        val objectTempMean: Double?,
+        val objectTempStd: Double?
+    )
 
     /**
      * BeforeRelaxActivity 시작 (자동 또는 수동)

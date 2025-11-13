@@ -72,8 +72,61 @@ class HomeActivity : ComponentActivity() {
                 startService(intent)
             }
             Log.d("HomeActivity", "✅ WearListenerForegroundService started")
+
+            // ⭐ Baseline 조회 및 워치로 전송
+            fetchAndSyncBaseline()
+
         } catch (e: Exception) {
             Log.e("HomeActivity", "❌ Failed to start WearListenerService", e)
+        }
+    }
+
+    /**
+     * Baseline 조회/계산/워치 전송 로직
+     * 1. 활성 Baseline 조회 → 있으면 워치로 전송
+     * 2. 없으면 Baseline 계산 → 성공하면 워치로 전송
+     * 3. 계산 실패 (데이터 부족) → 하드코딩 값 사용 (워치 기본값)
+     */
+    private fun fetchAndSyncBaseline() {
+        com.hand.hand.api.Baseline.BaselineManager.getActiveBaseline(
+            onSuccess = { baseline ->
+                Log.d("HomeActivity", "✅ Active Baseline found: version=${baseline.version}")
+                sendBaselineToWatch(baseline)
+            },
+            onNotFound = {
+                Log.w("HomeActivity", "⚠️ No active Baseline, attempting to calculate...")
+                calculateBaseline()
+            },
+            onFailure = { error ->
+                Log.e("HomeActivity", "❌ Failed to fetch Baseline: ${error.message}")
+            }
+        )
+    }
+
+    private fun calculateBaseline() {
+        com.hand.hand.api.Baseline.BaselineManager.calculateBaseline(
+            days = 3,
+            onSuccess = { baseline ->
+                Log.d("HomeActivity", "✅ Baseline calculated: version=${baseline.version}, count=${baseline.measurementCount}")
+                sendBaselineToWatch(baseline)
+            },
+            onInsufficientData = {
+                Log.w("HomeActivity", "⚠️ Insufficient data for Baseline calculation (< 3 days)")
+                Log.d("HomeActivity", "📊 Watch will use hardcoded default values")
+            },
+            onFailure = { error ->
+                Log.e("HomeActivity", "❌ Failed to calculate Baseline: ${error.message}")
+            }
+        )
+    }
+
+    private fun sendBaselineToWatch(baseline: com.hand.hand.api.Baseline.BaselineResponse) {
+        try {
+            // WearListenerForegroundService의 static 메소드 호출
+            WearListenerForegroundService.sendBaseline(baseline)
+            Log.d("HomeActivity", "📤 Baseline sent to watch: version=${baseline.version}")
+        } catch (e: Exception) {
+            Log.e("HomeActivity", "❌ Failed to send Baseline to watch", e)
         }
     }
 }

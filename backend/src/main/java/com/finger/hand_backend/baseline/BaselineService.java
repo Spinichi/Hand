@@ -94,8 +94,8 @@ public class BaselineService {
                 .objectTempMean(objectTempMean)
                 .objectTempStd(objectTempStd)
                 .measurementCount(measurements.size())
-                .dataStartDate(measurements.get(measurements.size() - 1).getMeasuredAt().toLocalDate())
-                .dataEndDate(measurements.get(0).getMeasuredAt().toLocalDate())
+                .dataStartDate(measurements.get(0).getMeasuredAt().toLocalDate())
+                .dataEndDate(measurements.get(measurements.size() - 1).getMeasuredAt().toLocalDate())
                 .build();
 
         return baselineRepository.save(baseline);

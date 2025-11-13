@@ -40,6 +40,10 @@ class WearListenerForegroundService : Service() {
         private const val ANOMALY_PATH = "/mim/anomaly_alert"
         private const val RELIEF_EVENT_PATH = "/mim/relief_event"
 
+        // ⭐ Service 인스턴스 저장 (Baseline 전송용)
+        @Volatile
+        private var serviceInstance: WearListenerForegroundService? = null
+
         // ⭐ 완화법 진행 중 플래그 및 세션 ID
         @Volatile
         private var isReliefInProgress = false
@@ -73,6 +77,14 @@ class WearListenerForegroundService : Service() {
         fun getLatestStressLevel(): Int? = latestStressLevel
 
         fun getLatestStressTimestamp(): Long = latestStressTimestamp
+
+        /**
+         * Baseline을 워치로 전송 (static method)
+         */
+        fun sendBaseline(baseline: com.hand.hand.api.Baseline.BaselineResponse) {
+            serviceInstance?.sendBaselineToWatch(baseline)
+                ?: Log.w(TAG, "⚠️ Service instance not available for baseline sync")
+        }
     }
 
     private lateinit var dataClient: DataClient
@@ -101,6 +113,9 @@ class WearListenerForegroundService : Service() {
     override fun onCreate() {
         super.onCreate()
         Log.d(TAG, "⭐ WearListenerForegroundService onCreate()")
+
+        // ⭐ Service 인스턴스 저장 (Baseline 전송용)
+        serviceInstance = this
 
         // Foreground 알림 시작
         createNotificationChannel()
@@ -131,6 +146,9 @@ class WearListenerForegroundService : Service() {
     override fun onDestroy() {
         super.onDestroy()
         Log.d(TAG, "⭐ WearListenerForegroundService onDestroy()")
+
+        // ⭐ Service 인스턴스 정리
+        serviceInstance = null
 
         // 리스너 해제
         dataClient.removeListener(dataListener)
@@ -257,6 +275,38 @@ class WearListenerForegroundService : Service() {
 
             } catch (e: Exception) {
                 Log.e(TAG, "❌ Failed to send start relief command", e)
+            }
+        }
+    }
+
+    /**
+     * 워치로 Baseline 데이터 전송
+     */
+    fun sendBaselineToWatch(baseline: com.hand.hand.api.Baseline.BaselineResponse) {
+        serviceScope.launch {
+            try {
+                val nodesTask = Wearable.getNodeClient(this@WearListenerForegroundService)
+                    .connectedNodes
+
+                val nodes = Tasks.await(nodesTask)
+
+                if (nodes.isEmpty()) {
+                    Log.w(TAG, "No connected watch found for baseline sync")
+                    return@launch
+                }
+
+                // Baseline 데이터를 JSON으로 변환
+                val json = gson.toJson(baseline)
+                val message = json.toByteArray()
+
+                for (node in nodes) {
+                    val sendTask = messageClient.sendMessage(node.id, "/baseline/update", message)
+                    Tasks.await(sendTask)
+                    Log.d(TAG, "✅ Baseline sent to watch: ${node.displayName}, version=${baseline.version}")
+                }
+
+            } catch (e: Exception) {
+                Log.e(TAG, "❌ Failed to send baseline to watch", e)
             }
         }
     }
