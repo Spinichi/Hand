@@ -143,8 +143,11 @@ public class GroupServiceImpl implements GroupService {
         gm.setGroup(g); gm.setUserId(userId); gm.setRole(GroupRole.MEMBER); gm.setSpecialNotes("");
         memberRepo.save(gm);
 
+        String userName = individualUserRepo.findByUserId(userId)
+                .map(IndividualUser::getName)
+                .orElse("Unknown");
         Double weeklyAvg = riskScoreService.getWeeklyAverageRiskScore(userId);
-        return new MemberResponse(gm.getUserId(), gm.getRole(), gm.getSpecialNotes(),
+        return new MemberResponse(gm.getUserId(), userName, gm.getRole(), gm.getSpecialNotes(),
                                  gm.getJoinedAt(), weeklyAvg);
     }
 
@@ -171,8 +174,11 @@ public class GroupServiceImpl implements GroupService {
         requireManager(groupId, userId);
         return memberRepo.findByGroupId(groupId).stream()
                 .map(gm -> {
+                    String userName = individualUserRepo.findByUserId(gm.getUserId())
+                            .map(IndividualUser::getName)
+                            .orElse("Unknown");
                     Double weeklyAvg = riskScoreService.getWeeklyAverageRiskScore(gm.getUserId());
-                    return new MemberResponse(gm.getUserId(), gm.getRole(), gm.getSpecialNotes(),
+                    return new MemberResponse(gm.getUserId(), userName, gm.getRole(), gm.getSpecialNotes(),
                                              gm.getJoinedAt(), weeklyAvg);
                 })
                 .toList();
@@ -197,8 +203,11 @@ public class GroupServiceImpl implements GroupService {
         gm.setSpecialNotes(req.specialNotes()==null? "" : req.specialNotes().trim());
         memberRepo.save(gm);
 
+        String userName = individualUserRepo.findByUserId(targetUserId)
+                .map(IndividualUser::getName)
+                .orElse("Unknown");
         Double weeklyAvg = riskScoreService.getWeeklyAverageRiskScore(targetUserId);
-        return new MemberResponse(gm.getUserId(), gm.getRole(), gm.getSpecialNotes(),
+        return new MemberResponse(gm.getUserId(), userName, gm.getRole(), gm.getSpecialNotes(),
                                  gm.getJoinedAt(), weeklyAvg);
     }
 
