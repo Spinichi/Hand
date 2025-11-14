@@ -52,7 +52,7 @@ class WearHomeActivity : ComponentActivity() {
 
         setContent {
             HandTheme {
-                WearHomeScreen(score = 85) // score 값 넣기}
+                WearHomeScreen(score = 65) // score 값 넣기}
 
             }
         }
@@ -82,11 +82,11 @@ class WearHomeActivity : ComponentActivity() {
                 val screenWidth = this@BoxWithConstraints.maxWidth
                 val screenHeight = this@BoxWithConstraints.maxHeight
 
-                val imageSize = screenHeight * 0.6f
+                val imageSize = screenHeight * 0.5f
                 val spacing = screenHeight * 0.05f
                 val buttonHeight = screenHeight * 0.15f
-                val buttonWidth = screenWidth * 0.6f
-                val fontSize = (buttonHeight.value * 0.5).sp
+                val buttonWidth = screenWidth * 0.65f
+                val fontSize = (buttonHeight.value * 0.45).sp
                 val iconSize = buttonHeight * 0.5f
 
 
@@ -103,36 +103,53 @@ class WearHomeActivity : ComponentActivity() {
 
                     Spacer(modifier = Modifier.height(spacing))
 
-                    // 버튼
-                    Button(
-                        onClick = {
-                            context.startActivity(Intent(context, BeforeRelaxActivity::class.java))
-                        },
-                        modifier = Modifier
-                            .height(buttonHeight)
-                            .width(buttonWidth),
-                        colors = androidx.wear.compose.material.ButtonDefaults.buttonColors(
-                            backgroundColor = Color(0xFF4F3422)
-                        )
+                    // 가로로 버튼 2개
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(12.dp), // 버튼 사이 간격
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.Center
+                        // 왼쪽 버튼: 측정하기
+                        Button(
+                            onClick = {
+                                // 측정하기 버튼 클릭 시 동작
+                                context.startActivity(Intent(context, StressTestActivity::class.java))
+                            },
+                            modifier = Modifier
+                                .height(buttonHeight)
+                                .width(buttonWidth / 2), // 버튼 반으로 나누기
+                            colors = androidx.wear.compose.material.ButtonDefaults.buttonColors(
+                                backgroundColor = Color(0xFF4F3422)
+                            )
                         ) {
                             Text(
-                                text = "긴장 풀기",
+                                text = "측정하기",
                                 color = Color.White,
-                                fontSize = fontSize,
-                                modifier = Modifier.padding(end = 6.dp)
+                                fontSize = fontSize
                             )
-                            Image(
-                                painter = painterResource(id = R.drawable.arrow_right),
-                                contentDescription = "화살표 아이콘",
-                                modifier = Modifier.size(iconSize)
+                        }
+
+                        // 오른쪽 버튼: 완화하기
+                        Button(
+                            onClick = {
+                                // 완화하기 버튼 클릭 시 동작
+                                context.startActivity(Intent(context, Care1Activity::class.java))
+                            },
+                            modifier = Modifier
+                                .height(buttonHeight)
+                                .width(buttonWidth / 2),
+                            colors = androidx.wear.compose.material.ButtonDefaults.buttonColors(
+                                backgroundColor = Color(0xFF4F3422)
+                            )
+                        ) {
+                            Text(
+                                text = "완화하기",
+                                color = Color.White,
+                                fontSize = fontSize
                             )
                         }
                     }
                 }
+
             }
         }
     }
