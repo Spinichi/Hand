@@ -24,6 +24,7 @@ public class IndividualUserService {
                 .name(req.name())
                 .age(req.age())
                 .gender(req.gender())
+                .job(req.job())
                 .height(req.height())
                 .weight(req.weight())
                 .disease(req.disease())
@@ -49,6 +50,7 @@ public class IndividualUserService {
         iu.setName(req.name());
         iu.setAge(req.age());
         iu.setGender(req.gender());
+        iu.setJob(req.job());
         iu.setHeight(req.height());
         iu.setWeight(req.weight());
         iu.setDisease(req.disease());
@@ -69,7 +71,7 @@ public class IndividualUserService {
     private static Response toResponse(IndividualUser iu) {
         return new Response(
                 iu.getId(), iu.getUserId(), iu.getName(), iu.getAge(), iu.getGender(),
-                iu.getHeight(), iu.getWeight(), iu.getDisease(),
+                iu.getJob(), iu.getHeight(), iu.getWeight(), iu.getDisease(),
                 iu.getResidenceType(), iu.getDiaryReminderEnabled(), iu.getNotificationTime()
         );
     }

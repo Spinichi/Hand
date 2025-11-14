@@ -42,6 +42,8 @@ public class IndividualUser {
     @Column(nullable = false, columnDefinition = "ENUM('M','F')")
     private Gender gender;
 
+    @Column(nullable = false, length = 50)
+    private String job;
 
     @Column(nullable = false, precision = 5, scale = 2)
     private BigDecimal height; // cm
