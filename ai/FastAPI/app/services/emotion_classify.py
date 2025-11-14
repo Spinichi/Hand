@@ -61,7 +61,8 @@ def emotionClassifying(texts: list[str]) -> dict:
         all_scores = {label: 0.0 for label in id2label.values()}
 
         for text in texts:
-            preds = clean(classifier(text)[0])
+            preds = classifier(clean(text))[0]
+
             for p in preds:
                 all_scores[p["label"]] += p["score"]
 
@@ -88,5 +89,6 @@ def emotionClassifying(texts: list[str]) -> dict:
 
     except Exception as e:
         print(f'"error": "감정 분석 중 오류 : {str(e)}')
+        print(texts)
 
         return { "sentiment": {}, "score": 60, "type": "error" }

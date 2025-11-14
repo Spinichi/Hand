@@ -241,7 +241,71 @@ async def private_advice(report: str, summary: str):
             result = response.json()
             
         advice = result["choices"][0]["message"]["content"].strip()
-        print(prompt)
+        client.close()
+        return advice
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"GMS 요청 중 오류 발생: {e}")
+
+# 개인용 조언 생성 함수
+async def daily_advice(text: str):
+    prompt = f"""
+        당신은 정서적으로 불안정할 수 있는 사람에게 매우 짧은 조언을 주는 역할입니다. 아래의 조건을 참고하세요.
+
+        [조건]
+        - 존댓말로 조언 작성
+        - 불필요한 감정 표현은 피하고, 현실적이고 따뜻하게 조언할 것
+        - 당신은 상담 전문가가 아니므로 보다 안전하고 조심스러운 접근 방법을 제시할 것.
+        - 유사한 상담 사례를 참고할 것.
+        - 답변은 아래의 예시를 참고하되, 각 조언 당 50글자를 넘지 않을 것.
+
+
+        [예시]
+
+        예시 다이어리 내용 : 오늘 회사를 다녀오는 길에 어떤 사람이 술에 취해서 시비를 걸었어. 너무 불쾌한데 어쩔 수 없다는게 화나. 계속 머릿속에 맴돌아서 고통스러워.
+
+        [출력]
+
+        오늘 술에 취한 사람 때문에 기분이 좋지 않으시군요. 이렇게 해보는건 어떠신가요?
+
+        조언 1 : 가볍게 산책하며 머리를 비우기.
+        조언 2 : 따듯하고 맛있는 음식 먹으며 소소한 행복 찾기.
+
+        [실제 사용자의 다이어리]
+        {text}
+
+        """
+
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {GMS_KEY}",
+    }
+
+    messages = [
+        {
+            "role": "system",
+            "content": "당신은 정서적으로 불안정한 사용자에게 조언을 해주는 친구입니다. 한국어로 대답해 주세요.",
+        },
+        {
+            "role": "user",
+            "content": prompt,
+        },
+    ]
+
+    payload = {
+        "model": ADVICE_MODEL,
+        "messages": messages,
+        "max_tokens": 200,
+        "temperature": 0.6,
+    }
+
+    try:
+        async with httpx.AsyncClient(verify=False, timeout=20.0) as cli:
+            response = await cli.post(ADVICE_URL, headers=headers, json=payload)
+            response.raise_for_status()
+            result = response.json()
+
+        advice = result["choices"][0]["message"]["content"].strip()
         client.close()
         return advice
 

@@ -42,7 +42,7 @@ async def shortSummarize(text:str):
     payload = {
         "model": SHORT_SUMMARY_MODEL,
         "messages": messages,
-        "max_tokens": 500,
+        "max_tokens": 300,
         "temperature": 0.5,
     }
     
