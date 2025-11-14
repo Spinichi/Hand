@@ -96,6 +96,14 @@
             android:name="com.hand.wear.CareComplete"
             android:exported="false"
             android:theme="@style/MainActivityTheme.Starting" />
+        <activity
+            android:name="com.hand.wear.StressTestActivity"
+            android:exported="false"
+            android:theme="@style/MainActivityTheme.Starting" />
+        <activity
+            android:name="com.hand.wear.StressScoreActivity"
+            android:exported="false"
+            android:theme="@style/MainActivityTheme.Starting" />
 
         <!-- ⭐ com.mim.watch 센서 수집 서비스 -->
         <service
