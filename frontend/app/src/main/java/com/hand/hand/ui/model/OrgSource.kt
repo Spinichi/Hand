@@ -164,7 +164,6 @@ object OrgSource {
             GroupMember(
                 id = seed.id,
                 name = seed.name,
-                mood = scoreToMood(avg),
                 avgScore = avg,
                 note = seed.specialNote     // ← 카드에는 특이사항을 노출
 //                mood = scoreToMood(seed.score), // ✅ 점수→무드

@@ -232,7 +232,7 @@ fun AdminGreetingHeader(
                                             else    -> R.drawable.ic_mini_okay
                                         }
                                     ),
-                                    contentDescription = "개인 무드",
+                                    contentDescription = "그룹 평균 점수 무드",
                                     tint = Color.Unspecified,
                                     modifier = Modifier.size(22.dp)
                                 )
