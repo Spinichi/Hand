@@ -11,17 +11,9 @@ object RetrofitClient {
     private const val BASE_URL = "https://gatewaytohand.store/api/"
     private var retrofitClient: Retrofit? = null
 
-    @Volatile
-    private var accessToken: String? = null
-
-    // 로그인 성공 시 토큰 저장용
-    fun setAccessToken(token: String?) {
-        accessToken = token
-    }
-
-    fun isLoggedIn(): Boolean {
-        return !accessToken.isNullOrBlank()
-    }
+    // 더 이상 RetrofitClient가 토큰을 직접 관리하지 않습니다.
+    // fun setAccessToken(token: String?) { ... }
+    // fun isLoggedIn(): Boolean { ... }
 
     fun getClient(): Retrofit {
         if (retrofitClient == null) {
@@ -36,8 +28,8 @@ object RetrofitClient {
                     val builder = original.newBuilder()
                         .addHeader("Accept", "application/json")
 
-                    // ★ 토큰이 있을 때 Authorization 헤더 추가
-                    accessToken?.takeIf { it.isNotBlank() }?.let {
+                    // ★ TokenManager에서 직접 토큰을 불러와 헤더에 추가
+                    TokenManager.loadToken()?.let {
                         builder.addHeader("Authorization", "Bearer $it")
                         android.util.Log.d("RetrofitClient", "Attach Authorization: Bearer ${it.take(12)}...")
                     }
@@ -45,7 +37,6 @@ object RetrofitClient {
                     val req = builder.build()
                     android.util.Log.d("RetrofitClient", "→ ${req.method} ${req.url}")
 
-                    // ★ proceed는 한 번만 호출해야 함
                     chain.proceed(req)
                 }
                 .addInterceptor(interceptor)

@@ -1,21 +1,24 @@
 // file: com/hand/hand/ui/model/Organization.kt
 package com.hand.hand.ui.model
 
+import android.os.Parcelable
 import androidx.annotation.DrawableRes
 import androidx.compose.ui.graphics.Color
 import com.hand.hand.R
 import com.hand.hand.ui.admin.sections.Mood // Mood enum 사용을 위해 import
+import kotlinx.parcelize.Parcelize
 
 /**
  * 그룹(조직) 표시용 공용 모델
  * averageScore: 0 ~ 100 (정수/실수 모두 허용)
  */
+@Parcelize
 data class Organization(
     val id: String,
     val name: String,
     val memberCount: Int,
     val averageScore: Float   // 0 ~ 100
-)
+) : Parcelable
 
 /**
  * 다이얼로그 카드에 쓰일 무드 아이콘/배경색 + 라벨
