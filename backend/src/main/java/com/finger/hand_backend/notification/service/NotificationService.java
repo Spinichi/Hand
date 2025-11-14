@@ -119,10 +119,8 @@ public class NotificationService {
             boolean success = fcmService.sendToToken(token.getDeviceToken(), title, body, fcmData);
 
             if (!success) {
-                // 전송 실패 시 토큰 비활성화
-                log.warn("Failed to send to token, deactivating: {}", token.getDeviceToken());
-                token.setIsActive(false);
-                deviceTokenRepository.save(token);
+                // 전송 실패 로그만 남기고 토큰은 유지 (서버 문제일 수 있음)
+                log.warn("Failed to send to token (token still active): {}", token.getDeviceToken());
             }
         }
     }
@@ -165,14 +163,10 @@ public class NotificationService {
 
         Map<String, Boolean> results = fcmService.sendToTokens(tokenStrings, title, body, null);
 
-        // 4. 실패한 토큰 비활성화
+        // 4. 실패한 토큰 로그만 기록 (비활성화하지 않음)
         results.forEach((token, success) -> {
             if (!success) {
-                deviceTokenRepository.findByDeviceToken(token).ifPresent(deviceToken -> {
-                    log.warn("Failed to send to token, deactivating: {}", token);
-                    deviceToken.setIsActive(false);
-                    deviceTokenRepository.save(deviceToken);
-                });
+                log.warn("Failed to send to token (token still active): {}", token);
             }
         });
     }

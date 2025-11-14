@@ -70,6 +70,9 @@ dependencies {
 
     implementation(platform("com.google.firebase:firebase-bom:34.5.0"))
 
+    // Firebase Cloud Messaging (BOM 34+ 부터 KTX 기능이 기본 포함)
+    implementation("com.google.firebase:firebase-messaging")
+
     // Wearable communication
     implementation("com.google.android.gms:play-services-wearable:18.0.0")
     implementation("com.google.code.gson:gson:2.10.1")

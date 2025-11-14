@@ -10,6 +10,8 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
+import com.google.firebase.messaging.FirebaseMessaging
+import com.hand.hand.fcm.FCMTokenManager
 import com.hand.hand.wear.WearListenerForegroundService
 
 class HomeActivity : ComponentActivity() {
@@ -31,6 +33,9 @@ class HomeActivity : ComponentActivity() {
 
         // ⭐ 로그인 후 HomeActivity 진입 시 Wear 데이터 수신 서비스 시작
         requestPermissionsAndStartService()
+
+        // ⭐ FCM 초기화 (알림 권한이 이미 요청되므로 바로 실행)
+        initializeFCM()
 
         setContent { HomeScreen() }
     }
@@ -157,6 +162,48 @@ class HomeActivity : ComponentActivity() {
             Log.d("HomeActivity", "📤 Baseline sent to watch: version=${baseline.version}")
         } catch (e: Exception) {
             Log.e("HomeActivity", "❌ Failed to send Baseline to watch", e)
+        }
+    }
+
+    /**
+     * FCM 초기화 및 토큰 등록
+     */
+    private fun initializeFCM() {
+        // 알림 권한 확인 (이미 requestPermissionsAndStartService에서 요청함)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.POST_NOTIFICATIONS
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
+                Log.w("HomeActivity", "⚠️ POST_NOTIFICATIONS permission not granted, FCM may not work")
+                return
+            }
+        }
+
+        // FCM 토큰 가져오기
+        FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
+            if (!task.isSuccessful) {
+                Log.w("HomeActivity", "❌ Failed to get FCM token", task.exception)
+                return@addOnCompleteListener
+            }
+
+            val token = task.result
+            Log.d("HomeActivity", "✅ FCM Token: ${token.take(20)}...")
+
+            // 1. 로컬에 저장
+            FCMTokenManager.saveToken(this, token)
+
+            // 2. 백엔드에 등록
+            com.hand.hand.api.Notification.NotificationManager.registerToken(
+                deviceToken = token,
+                onSuccess = {
+                    Log.d("HomeActivity", "✅ FCM token registered to backend")
+                },
+                onFailure = { error ->
+                    Log.e("HomeActivity", "❌ Failed to register FCM token: ${error.message}")
+                }
+            )
         }
     }
 }
