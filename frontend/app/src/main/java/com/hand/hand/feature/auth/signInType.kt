@@ -2,12 +2,15 @@ package com.hand.hand.feature.auth
 
 import android.content.Intent
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
@@ -27,27 +30,21 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.hand.hand.R
-import com.hand.hand.ui.home.HomeActivity
-import com.hand.hand.ui.common.BrandWaveHeader
-import com.hand.hand.ui.home.components.OrganizationCard
-import com.hand.hand.ui.theme.BrandFontFamily
-import com.hand.hand.ui.theme.Brown80
-import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.SolidColor
-import com.hand.hand.ui.model.GroupCodeRepository   // ✅ 더미 검증
-import com.hand.hand.ui.model.toOrgMoodUi
-import com.hand.hand.ui.model.Organization
-import com.hand.hand.ui.model.OrgSource
+import com.hand.hand.R
+import com.hand.hand.ui.home.HomeActivity
 import com.hand.hand.ui.admin.AdminHomeActivity
-import androidx.compose.foundation.shape.CircleShape
-
+import com.hand.hand.ui.common.BrandWaveHeader
+import com.hand.hand.ui.home.components.OrganizationCard
+import com.hand.hand.ui.model.*
+import com.hand.hand.api.Group.GroupManager
+import com.hand.hand.api.Group.GroupData
 import com.hand.hand.api.SignUp.IndividualUserManager
-//import androidx.compose.material3.CircularProgressIndicator
-
+import com.hand.hand.ui.theme.*
 
 class SignInTypeActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -73,24 +70,50 @@ fun SignInTypeScreen(
     var verified by remember { mutableStateOf(false) }
     val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
 
-    // organizations 로컬로 준비 (이 줄이 없어서 Unresolved reference 발생함)
-    val organizations: List<Organization> = remember { OrgSource.organizations() }
+    // ── 서버에서 조직 목록 가져오기 ──
+    var organizations by remember { mutableStateOf<List<Organization>>(emptyList()) }
+    var orgLoading by remember { mutableStateOf(true) }
+    var orgError by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(Unit) {
+        orgLoading = true
+        orgError = null
+        GroupManager.getGroups(
+            onSuccess = { list: List<GroupData>? ->
+                Handler(Looper.getMainLooper()).post {
+                    val apiList: List<GroupData> = list ?: emptyList()
+                    organizations = apiList.map { api: GroupData ->
+                        Organization(
+                            id = api.id?.toString() ?: "",          // null이면 빈 문자열
+                            name = api.name ?: "알 수 없음",
+                            memberCount = api.memberCount ?: 0,
+                            averageScore = api.avgMemberRiskScore?.toFloat() ?: 0f
+                        )
+                    }
+                    orgLoading = false
+                }
+            },
+            onError = { err ->
+                Handler(Looper.getMainLooper()).post {
+                    orgError = err
+                    orgLoading = false
+                }
+            }
+        )
+    }
 
     // 개인 정보 등록 여부 상태
-    // null  = 아직 서버 확인 전
-    // true  = 개인정보 있음 → "개인으로 로그인"
-    // false = 개인정보 없음 → "개인으로 등록"
     var isPersonalRegistered by remember { mutableStateOf<Boolean?>(null) }
     var isCheckingPersonal by remember { mutableStateOf(true) }
 
     LaunchedEffect(Unit) {
         IndividualUserManager.hasIndividualUser(
-            onResult = { exists, _ ->
+            // 👇 **수정 전:** onResult = { exists -> ... }
+            onResult = { exists, data -> // ✅ 수정: 두 번째 인자(data 또는 _ )를 추가합니다.
                 isPersonalRegistered = exists
                 isCheckingPersonal = false
             },
-            onFailure = { e ->
-                e.printStackTrace()
+            onFailure = {
                 isPersonalRegistered = false
                 isCheckingPersonal = false
             }
@@ -134,13 +157,11 @@ fun SignInTypeScreen(
             }
         }
 
-        // ── 본문 ──
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             // ── 단체 코드 입력 ──
             val groupInputHeight = (screenHeightDp * 0.06f).dp
             val groupInputPaddingHorizontal = (screenWidthDp * 0.05f).dp
             val iconSize = (screenHeightDp * 0.03f).dp
-            val spacerWidth = (screenWidthDp * 0.015f).dp
             val fontSize = (screenHeightDp * 0.023f).sp
 
             Row(
@@ -149,19 +170,13 @@ fun SignInTypeScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 GroupCodeInputChipSignIn(
-                    // 디자인 파라미터 유지
                     height = groupInputHeight,
                     widthFraction = 0.49f,
                     horizontalPad = groupInputPaddingHorizontal,
                     iconSize = iconSize,
                     textSize = fontSize,
-                    // 상태/동작
                     value = groupCode,
-                    onValueChange = {
-                        groupCode = it
-                        // 필요 시 입력 변경 시 검증 해제하려면 아래 주석 해제
-                        // verified = false
-                    },
+                    onValueChange = { groupCode = it },
                     isFocused = isFocused,
                     onFocusChange = { isFocused = it },
                     verified = verified,
@@ -169,14 +184,13 @@ fun SignInTypeScreen(
                     onCheckClick = {
                         if (!verified) {
                             val code = groupCode.trim()
-                            if (GroupCodeRepository.verify(code)) {
-                                verified = true
-                                focusManager.clearFocus(force = true) // 포커스 해제
-                            } else {
-                                verified = false
-                            }
+                            if (code.isEmpty()) return@GroupCodeInputChipSignIn
+                            GroupManager.joinGroup(
+                                inviteCode = code,
+                                onSuccess = { verified = true },
+                                onError = { verified = false }
+                            )
                         } else {
-                            // 토글 off
                             verified = false
                         }
                     }
@@ -186,10 +200,6 @@ fun SignInTypeScreen(
             Spacer(Modifier.height(16.dp))
 
             val personalCardHeight = (screenHeightDp * 0.08f).dp
-
-            // TODO: 실제 조건으로 교체하세요 (예: viewModel.isPersonalRegistered.value)
-//            val isPersonalRegistered = /* your condition here */ false
-
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -197,35 +207,14 @@ fun SignInTypeScreen(
                 colors = CardDefaults.cardColors(containerColor = Color.White),
                 elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
                 onClick = {
-                    // 아직 서버 확인 중이면 클릭 무시
                     if (isCheckingPersonal) return@Card
-
-                    if (isPersonalRegistered == true) {
-                        // 이미 개인정보 있음 → 개인 로그인 흐름 (예시로 HomeActivity로 보냄)
-                        val intent = Intent(context, HomeActivity::class.java)
-                        if (context !is android.app.Activity) {
-                            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                        }
-                        context.startActivity(intent)
+                    val intent = if (isPersonalRegistered == true) {
+                        Intent(context, HomeActivity::class.java)
                     } else {
-                        // 개인정보 없음 → 개인 등록 화면으로
-                        val intent = Intent(context, SignUpPrivateActivity::class.java)
-                        if (context !is android.app.Activity) {
-                            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                        }
-                        context.startActivity(intent)
+                        Intent(context, SignUpPrivateActivity::class.java)
                     }
-//                    if (isPersonalRegistered) {
-//                        // 개인으로 로그인(이미 등록된 경우) -> HomeActivity로 이동
-//                        val intent = Intent(context, HomeActivity::class.java)
-//                        if (context !is android.app.Activity) intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-//                        context.startActivity(intent)
-//                    } else {
-//                        // 개인으로 등록(등록되지 않은 경우) -> SignUpPrivateActivity로 이동
-//                        val intent = Intent(context, SignUpPrivateActivity::class.java)
-//                        if (context !is android.app.Activity) intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-//                        context.startActivity(intent)
-//                    }
+                    if (context !is android.app.Activity) intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    context.startActivity(intent)
                 },
                 shape = MaterialTheme.shapes.large
             ) {
@@ -235,15 +224,12 @@ fun SignInTypeScreen(
                         .heightIn(min = personalCardHeight)
                         .padding(horizontal = 14.dp, vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically
-                )
-                {
-                    // ★ 추가: 상태에 따라 텍스트 변경
+                ) {
                     val buttonText = when {
                         isCheckingPersonal -> "확인 중..."
                         isPersonalRegistered == true -> "개인으로 로그인"
                         else -> "개인으로 등록"
                     }
-
                     Text(
                         text = buttonText,
                         color = Brown80,
@@ -281,7 +267,6 @@ fun SignInTypeScreen(
                     color = Color.Transparent,
                     shape = CircleShape,
                     onClick = {
-                        // 기존처럼 매니저 등록으로 바로 가도 되고, 다이얼로그를 띄우려면 여기서 처리
                         val intent = Intent(context, SignUpManagerActivity::class.java)
                         if (context !is android.app.Activity) intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                         context.startActivity(intent)
@@ -298,8 +283,7 @@ fun SignInTypeScreen(
 
             Spacer(Modifier.height(16.dp))
 
-            // ── 조직 예시 리스트 ──
-            // organizations 변수를 위에서 준비했으므로 여긴 에러 없이 동작합니다.
+            // ── 조직 리스트 (API 연동 완료) ──
             organizations.forEach { org ->
                 val ui = org.toOrgMoodUi()
                 OrganizationCard(
@@ -310,7 +294,6 @@ fun SignInTypeScreen(
                     titleColor = Brown80,
                     metaColor = Color(0xFFA5A39F)
                 ) {
-                    // 화면에서 조직을 클릭하면 AdminHomeActivity로 이동
                     val intent = Intent(context, AdminHomeActivity::class.java)
                     intent.putExtra("org_id", org.id)
                     if (context !is android.app.Activity) intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -325,23 +308,17 @@ fun SignInTypeScreen(
     }
 }
 
-/* ─────────────────────────────────────────────────────────────────────────────
+/* ───────────────────────────────────────────────────────────────
    GroupCodeInputChipSignIn
-   - 디자인은 SignInTypeScreen의 기존 값(높이/폭/폰트/패딩) 그대로 사용
-   - 동작은 Home/Admin 칩과 동일(토글, 배경 9AB067, "가입되었습니다")
-   - 체크는 오버레이(오른쪽), 레이아웃 폭에 영향 없음
-   - 좌우 간격/폰트/크기 절대 변경하지 않음
-   ───────────────────────────────────────────────────────────────────────────── */
+   (디자인 완전히 유지)
+────────────────────────────────────────────────────────────── */
 @Composable
 private fun GroupCodeInputChipSignIn(
-    // 디자인 파라미터
     height: Dp,
     widthFraction: Float,
     horizontalPad: Dp,
     iconSize: Dp,
     textSize: TextUnit,
-
-    // 상태/동작
     value: String,
     onValueChange: (String) -> Unit,
     isFocused: Boolean,
@@ -350,9 +327,8 @@ private fun GroupCodeInputChipSignIn(
     completeLength: Int = 6,
     onCheckClick: () -> Unit
 ) {
-    val trailingSize = 24.dp   // 체크 원 지름 (동일)
-    val trailingGap  = 8.dp    // 텍스트와 체크 사이 간격 (동일)
-
+    val trailingSize = 24.dp
+    val trailingGap = 8.dp
     val isComplete = value.length >= completeLength
     val chipBg = if (verified) Color(0xFF9AB067) else Brown80
 
@@ -363,9 +339,8 @@ private fun GroupCodeInputChipSignIn(
         modifier = Modifier
             .height(height)
             .fillMaxWidth(widthFraction),
-        onClick = { /* no-op: 디자인 유지 */ }
+        onClick = { /* no-op */ }
     ) {
-        // 체크 유무와 무관하게 오른쪽 예약공간 유지 → 겹침/흔들림 없음
         Box(
             modifier = Modifier
                 .fillMaxHeight()
@@ -382,7 +357,7 @@ private fun GroupCodeInputChipSignIn(
                         tint = Color.Unspecified,
                         modifier = Modifier.size(iconSize)
                     )
-                    Spacer(Modifier.width((iconSize.value * 0.5f).dp)) // 기존 spacerWidth 비율 유지감
+                    Spacer(Modifier.width((iconSize.value * 0.5f).dp))
                 }
 
                 val displayText = if (verified) "가입되었습니다" else value
@@ -394,7 +369,7 @@ private fun GroupCodeInputChipSignIn(
                     textStyle = TextStyle(
                         color = Color.White,
                         fontSize = textSize,
-                        fontWeight = FontWeight.Bold,       // 기존 굵기 유지
+                        fontWeight = FontWeight.Bold,
                         fontFamily = BrandFontFamily
                     ),
                     readOnly = verified,
@@ -426,7 +401,6 @@ private fun GroupCodeInputChipSignIn(
                 }
             }
 
-            // 체크 아이콘(오버레이)
             if (isComplete || verified) {
                 Surface(
                     shape = CircleShape,

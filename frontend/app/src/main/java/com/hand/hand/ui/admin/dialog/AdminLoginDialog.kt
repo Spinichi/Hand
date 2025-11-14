@@ -40,6 +40,10 @@ import com.hand.hand.ui.model.Organization
 import com.hand.hand.ui.model.toOrgMoodUi
 import com.hand.hand.ui.theme.*
 import com.hand.hand.ui.model.GroupCodeRepository // 더미 검증
+import android.os.Handler
+import android.os.Looper
+import android.widget.Toast
+import com.hand.hand.api.Group.GroupManager
 
 @Composable
 fun AdminLoginDialog(
@@ -96,6 +100,10 @@ fun AdminLoginDialog(
                             horizontalArrangement = Arrangement.Center,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
+                            // context와 focusManager는 Composable 스코프에서 미리 가져오기 (이미 defined)
+                            val context = LocalContext.current
+                            val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
+
                             GroupCodeInputChip(
                                 value = groupCode,
                                 onValueChange = {
@@ -105,22 +113,40 @@ fun AdminLoginDialog(
                                 },
                                 isFocused = isFocused,
                                 onFocusChange = { isFocused = it },
+
+                                // 여기서 서버에 가입 요청을 보냄 — 성공하면 verified = true, 실패하면 false 및 토스트
                                 onCheckClick = {
                                     if (!verified) {
                                         val code = groupCode.trim()
-                                        if (GroupCodeRepository.verify(code)) {
-                                            // ✅ 부모 호출 없이 로컬 토글만
-                                            verified = true
-                                            focusManager.clearFocus(force = true)
-                                            // onEnterGroupCode(code)  // ← 호출하지 않음
-                                        } else {
-                                            verified = false
+                                        if (code.isEmpty()) {
+                                            Toast.makeText(context, "코드를 입력하세요.", Toast.LENGTH_SHORT).show()
+                                            return@GroupCodeInputChip
                                         }
+
+                                        // 네트워크 호출 (GroupManager.joinGroup 사용)
+                                        GroupManager.joinGroup(
+                                            inviteCode = code,
+                                            onSuccess = { groupData ->
+                                                // 콜백은 백그라운드 스레드일 수 있으니 메인 스레드에서 상태 업데이트
+                                                Handler(Looper.getMainLooper()).post {
+                                                    verified = true
+                                                    focusManager.clearFocus(force = true)
+                                                    Toast.makeText(context, "가입 완료", Toast.LENGTH_SHORT).show()
+                                                }
+                                            },
+                                            onError = { errMsg ->
+                                                Handler(Looper.getMainLooper()).post {
+                                                    verified = false
+                                                    Toast.makeText(context, "가입 실패: $errMsg", Toast.LENGTH_SHORT).show()
+                                                }
+                                            }
+                                        )
                                     } else {
-                                        // 토글 off
+                                        // 이미 가입된 상태면 토글 오프
                                         verified = false
                                     }
                                 },
+
                                 verified = verified,
                                 completeLength = 6
                             )

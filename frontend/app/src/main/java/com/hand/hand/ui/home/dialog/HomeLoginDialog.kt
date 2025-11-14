@@ -41,6 +41,9 @@ import com.hand.hand.ui.model.Organization
 import com.hand.hand.ui.model.toOrgMoodUi
 import com.hand.hand.ui.theme.*
 import com.hand.hand.ui.model.GroupCodeRepository // ★ 더미 검증
+import android.widget.Toast
+import com.hand.hand.api.Group.GroupManager
+import com.hand.hand.api.Group.GroupData
 
 @Composable
 fun HomeLoginDialog(
@@ -56,6 +59,7 @@ fun HomeLoginDialog(
 
     // ✨ 여기 추가
     val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
+    val context = LocalContext.current
 
     Dialog(
         onDismissRequest = onClose,
@@ -94,33 +98,32 @@ fun HomeLoginDialog(
                             horizontalArrangement = Arrangement.Center,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
+
                             GroupCodeInputChip(
                                 value = groupCode,
-                                onValueChange = {
-                                    groupCode = it
-                                    // 필요시 검증 해제 로직: verified = false
-                                },
+                                onValueChange = { groupCode = it },
                                 isFocused = isFocused,
                                 onFocusChange = { isFocused = it },
-
-                                // ✨ 체크 눌렀을 때 포커스 해제
+                                verified = verified,
                                 onCheckClick = {
                                     if (!verified) {
                                         val code = groupCode.trim()
-                                        val ok = GroupCodeRepository.verify(code)
-                                        if (ok) {
-//                                            onEnterGroupCode(code)
-                                            verified = true
-                                            focusManager.clearFocus(force = true) // ← 여기!
-                                        } else {
-                                            verified = false
-                                        }
+                                        GroupManager.joinGroup(
+                                            inviteCode = code,
+                                            onSuccess = {
+                                                verified = true
+                                                focusManager.clearFocus(force = true)
+                                                Toast.makeText(context, "가입 완료", Toast.LENGTH_SHORT).show()
+                                            },
+                                            onError = { msg ->
+                                                verified = false
+                                                Toast.makeText(context, "가입 실패: $msg", Toast.LENGTH_SHORT).show()
+                                            }
+                                        )
                                     } else {
                                         verified = false
                                     }
                                 },
-
-                                verified = verified,
                                 completeLength = 6
                             )
                         }

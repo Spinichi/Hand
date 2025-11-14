@@ -34,10 +34,20 @@ enum class Mood { GREAT, HAPPY, OKAY, DOWN, SAD }
 data class GroupMember(
     val id: String,
     val name: String,
-    val mood: Mood,
     val avgScore: Int,
     val note: String? = null
 )
+
+fun scoreToMood(score: Int): Mood {
+    val s = score.toFloat().coerceIn(0f, 100f)
+    return when {
+        s >= 80f -> Mood.GREAT // 80~100
+        s >= 60f -> Mood.HAPPY // 60~79
+        s >= 40f -> Mood.OKAY  // 40~59
+        s >= 20f -> Mood.DOWN  // 20~39
+        else     -> Mood.SAD   // 0~19
+    }
+}
 
 /* ---------- 섹션 컴포저블 ---------- */
 
@@ -84,7 +94,8 @@ fun AdminMembersSection(
         val filtered = remember(members, selectedMood, searchQuery) {
             members
                 .asSequence()
-                .filter { m -> selectedMood == null || m.mood == selectedMood }
+                // ✅ 수정: member.mood 대신 member.avgScore를 Mood로 변환하여 비교
+                .filter { m -> selectedMood == null || scoreToMood(m.avgScore) == selectedMood }
                 .filter { m ->
                     val q = searchQuery.trim()
                     q.isEmpty() || m.name.contains(q, ignoreCase = true)
@@ -226,7 +237,10 @@ fun MemberCard(
 ) {
     val Brown80 = Color(0xFF4B2E1E)
 
-    val moodIcon = when (member.mood) {
+    // ✅ 수정: member.mood 대신 member.avgScore로 Mood 결정
+    val mood = scoreToMood(member.avgScore)
+
+    val moodIcon = when (mood) {
         Mood.GREAT -> R.drawable.ic_great
         Mood.HAPPY -> R.drawable.ic_happy
         Mood.OKAY -> R.drawable.ic_okay
@@ -236,7 +250,6 @@ fun MemberCard(
 
     val chipBg = chipBgForScore(member.avgScore)
     val chipText = chipTextColorForScore(member.avgScore)
-
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = Color.White),

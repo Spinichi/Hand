@@ -18,7 +18,18 @@ data class GroupData(
     val inviteCode: String?,
     val createdBy: Int?,
     val createdAt: String?,
-    val updatedAt: String?
+    val updatedAt: String?,
+    val avgMemberRiskScore : Double?,
+    val memberCount : Int?
+)
+
+data class GroupMemberData(
+    val userId: Int,
+    val name: String,
+    val role: String,
+    val specialNotes: String?,
+    val joinedAt: String?,
+    val weeklyAvgRiskScore: Double? = null
 )
 
 // 서버가 래핑해서 줌: { "success": true, "data": { ... }, "message": "ok" }
