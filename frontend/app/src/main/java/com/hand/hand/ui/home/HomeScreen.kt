@@ -3,6 +3,8 @@
 package com.hand.hand.ui.home
 
 import android.content.Intent
+import android.os.Handler
+import android.os.Looper
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -36,6 +38,8 @@ import com.hand.hand.AiDocument.PrivateAiDocumentHomeActivity  // ✅ 다이어�
 import com.hand.hand.ui.test.WearTestActivity      // ✅ 워치 테스트용
 
 import com.hand.hand.api.SignUp.IndividualUserManager
+import com.hand.hand.api.Group.GroupManager // ✅ 추가된 Import
+import com.hand.hand.api.Group.GroupData // ✅ 추가된 Import
 
 
 @Composable
@@ -67,8 +71,37 @@ fun HomeScreen() {
     val recommendation = "봉인 연습"
     val moodChangeCount = 7 // TODO: 나중에 실제 값으로 교체
 
-    // 조직 리스트(관리자 다이얼로그용)
-    val organizations: List<Organization> = remember { OrgSource.organizations() }
+    // 조직 리스트(관리자 다이얼로그용) - ❌ 기존 더미 데이터 제거
+    // val organizations: List<Organization> = remember { OrgSource.organizations() }
+
+    // ── 서버에서 조직 목록 가져오기 로직 추가 ──
+    var organizations by remember { mutableStateOf<List<Organization>>(emptyList()) }
+
+    LaunchedEffect(Unit) {
+        com.hand.hand.api.Group.GroupManager.getGroups(
+            onSuccess = { list: List<GroupData>? ->
+                // Compose 상태 업데이트를 위해 메인 스레드로 전달
+                Handler(Looper.getMainLooper()).post {
+                    val apiList: List<GroupData> = list ?: emptyList()
+                    organizations = apiList.mapNotNull { api: GroupData ->
+                        // 현재 Organization 모델(memberCount 존재)을 사용하여 객체 생성
+                        if (api.id == null || api.name == null) return@mapNotNull null
+                        Organization(
+                            id = api.id.toString(),
+                            name = api.name,
+                            memberCount = api.memberCount ?: 0,
+                            averageScore = api.avgMemberRiskScore?.toFloat() ?: 50f
+                        )
+                    }
+                }
+            },
+            onError = { err ->
+                // 에러 처리 (로그 출력 등)
+            }
+        )
+    }
+    // ───────────────────────────────────────────
+
 
     // 반응형 스케일러
     val cfg = LocalConfiguration.current
@@ -170,7 +203,7 @@ fun HomeScreen() {
                 context.startActivity(intent)
                 showDialog = false
             },
-            organizations = organizations
+            organizations = organizations // ✅ API 로드된 organizations 전달
         )
     }
 }

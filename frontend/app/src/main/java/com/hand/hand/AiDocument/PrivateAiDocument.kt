@@ -32,7 +32,11 @@ import com.hand.hand.api.Report.WeeklyReportDetail
 import com.hand.hand.api.Report.MonthlyReportDetail
 import com.hand.hand.ui.model.MonthlyReport
 import com.hand.hand.ui.model.PersonalReportSource
+import com.hand.hand.ui.model.WeeklyReport
 import com.hand.hand.ui.theme.BrandFontFamily
+import androidx.compose.foundation.Canvas
+
+import androidx.compose.ui.graphics.nativeCanvas
 import java.util.Calendar
 
 class PrivateAiDocumentActivity : ComponentActivity() {

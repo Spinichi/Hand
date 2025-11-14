@@ -5,6 +5,7 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
     id("com.google.gms.google-services")
     id("com.google.firebase.appdistribution") version "5.2.0"
+    id("kotlin-parcelize")
 }
 
 android {
