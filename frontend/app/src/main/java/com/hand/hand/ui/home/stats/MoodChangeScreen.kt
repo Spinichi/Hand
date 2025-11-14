@@ -15,8 +15,13 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+        import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
@@ -38,8 +43,11 @@ import com.hand.hand.ui.model.MoodChangeRecord
 import com.hand.hand.ui.model.MoodChangeSource
 import com.hand.hand.ui.model.withTodayCount
 import com.hand.hand.ui.theme.BrandFontFamily
+import com.hand.hand.api.Anomaly.AnomalyManager
+import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
+import java.util.Locale
 
 // ----- 공통 색(디자인 유지) -----
 private val Brown80   = Color(0xFF4B2E1E)
@@ -246,11 +254,46 @@ fun MoodChangeScreen(
     onBack: () -> Unit = {},
     moodChangeCount: Int = 2,
 ) {
+    val context = LocalContext.current
     val cfg = LocalConfiguration.current
     val density = LocalDensity.current
 
     val screenH = cfg.screenHeightDp.dp
     val screenW = cfg.screenWidthDp.dp
+
+    // ⭐ 이상치 히스토리 데이터 (API에서 조회)
+    var historyRecords by remember { mutableStateOf<List<MoodChangeRecord>>(emptyList()) }
+
+    LaunchedEffect(Unit) {
+        val anomalyManager = AnomalyManager()
+        val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+
+        anomalyManager.getWeeklyAnomalies(
+            onSuccess = { weeklyResponse ->
+                // DailyAnomalyResponse를 MoodChangeRecord로 변환
+                val records = weeklyResponse.dailyAnomalies.mapNotNull { daily ->
+                    try {
+                        val date = dateFormat.parse(daily.date) ?: return@mapNotNull null
+                        val cal = Calendar.getInstance().apply { time = date }
+
+                        MoodChangeRecord(
+                            year = cal.get(Calendar.YEAR),
+                            month = cal.get(Calendar.MONTH) + 1,  // Calendar.MONTH는 0부터 시작
+                            day = cal.get(Calendar.DAY_OF_MONTH),
+                            count = daily.anomalyCount,
+                            score = 0  // 점수는 나중에 추가 가능
+                        )
+                    } catch (e: Exception) {
+                        null
+                    }
+                }
+                historyRecords = records
+            },
+            onError = { error ->
+                // 실패 시 빈 리스트 유지
+            }
+        )
+    }
 
     // 헤더(디자인 유지)
     val headerHeight: Dp = screenH * 0.20f
@@ -387,11 +430,9 @@ fun MoodChangeScreen(
         }
 
         // ── 감정 변화 히스토리 섹션 ──
-        val rawHistory = MoodChangeSource.sample() // 백 연동 전 더미
-
-        // 오늘 카운트는 데이터에 반영하되…
-        val historyWithToday: List<MoodChangeRecord> = remember(moodChangeCount) {
-            rawHistory.withTodayCount(todayCount = moodChangeCount, defaultScoreIfNew = 0)
+        // ⭐ API에서 가져온 실제 데이터 사용
+        val historyWithToday: List<MoodChangeRecord> = remember(moodChangeCount, historyRecords) {
+            historyRecords.withTodayCount(todayCount = moodChangeCount, defaultScoreIfNew = 0)
         }
 
         // …목록에서는 오늘을 숨김

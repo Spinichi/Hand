@@ -1,9 +1,10 @@
 package com.hand.hand.api.Measurements
 
 import com.hand.hand.wear.model.BioSample
-import java.time.Instant
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import java.util.TimeZone
 
 /**
  * 측정 데이터 저장 요청 DTO
@@ -31,15 +32,21 @@ data class MeasurementRequest(
          */
         fun from(sample: BioSample): MeasurementRequest {
             // timestampMs를 ISO-8601 문자열로 변환 (yyyy-MM-dd'T'HH:mm:ss)
-            // 워치 시간이 미래일 수 있으므로 현재 시각과 비교해서 더 작은 값 사용
-            val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss")
-            val sampleTime = Instant.ofEpochMilli(sample.timestampMs)
-            val now = Instant.now()
-            val actualTime = if (sampleTime.isAfter(now)) now else sampleTime
+            // 서버 시간 검증을 통과하기 위해 현재 시각보다 2초 전으로 설정
+            val formatter = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.KOREA).apply {
+                timeZone = TimeZone.getTimeZone("Asia/Seoul")
+            }
+            val now = System.currentTimeMillis()
+            val sampleTime = sample.timestampMs
 
-            val measuredAt = actualTime
-                .atZone(ZoneId.systemDefault())
-                .format(formatter)
+            // 워치 시간이 현재보다 미래거나 너무 가까우면 현재-2초 사용
+            val actualTime = if (sampleTime > now - 2000) {
+                now - 2000
+            } else {
+                sampleTime
+            }
+
+            val measuredAt = formatter.format(Date(actualTime))
 
             return MeasurementRequest(
                 heartRate = sample.heartRate?.toDouble(),

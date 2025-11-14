@@ -298,20 +298,20 @@ class BioForegroundService : Service() {
                 signThreshold = 0.5f
             )
         ) {
-            // 제스처 감지 시 진동 & 액티비티 실행
+            // 제스처 감지 시 진동 & BeforeRelaxActivity 실행 (수동 트리거)
             try {
                 vibrator?.vibrate(
                     VibrationEffect.createOneShot(160, VibrationEffect.DEFAULT_AMPLITUDE)
                 )
             } catch (_: Throwable) {}
 
-            val intent = Intent(this, WearHomeActivity::class.java).apply {
+            val intent = Intent(this, BeforeRelaxActivity::class.java).apply {
                 addFlags(
                     Intent.FLAG_ACTIVITY_NEW_TASK or
                             Intent.FLAG_ACTIVITY_CLEAR_TOP or
-                            Intent.FLAG_ACTIVITY_SINGLE_TOP or
-                            Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
+                            Intent.FLAG_ACTIVITY_SINGLE_TOP
                 )
+                putExtra("triggerType", "MANUAL")  // 손목 흔들기는 수동 트리거로 분류
             }
             startActivity(intent)
         }

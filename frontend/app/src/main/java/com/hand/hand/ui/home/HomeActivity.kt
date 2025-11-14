@@ -124,10 +124,13 @@ class HomeActivity : ComponentActivity() {
         if (updatedAt == null) return true
 
         return try {
-            val formatter = java.time.format.DateTimeFormatter.ISO_DATE_TIME
-            val updated = java.time.LocalDateTime.parse(updatedAt, formatter)
-            val now = java.time.LocalDateTime.now()
-            val daysDiff = java.time.Duration.between(updated, now).toDays()
+            // SimpleDateFormat 사용 (API 24 호환)
+            val format = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", java.util.Locale.getDefault())
+            val updatedDate = format.parse(updatedAt) ?: return true
+            val now = java.util.Date()
+
+            val diffMs = now.time - updatedDate.time
+            val daysDiff = diffMs / (1000 * 60 * 60 * 24)  // ms -> days
 
             Log.d("HomeActivity", "📅 Baseline age: $daysDiff days")
             daysDiff >= 30  // 30일 이상이면 만료

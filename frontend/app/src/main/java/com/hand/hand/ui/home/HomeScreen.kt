@@ -38,6 +38,7 @@ import com.hand.hand.AiDocument.PrivateAiDocumentHomeActivity  // ✅ 다이어�
 import com.hand.hand.ui.test.WearTestActivity      // ✅ 워치 테스트용
 
 import com.hand.hand.api.SignUp.IndividualUserManager
+import com.hand.hand.api.Anomaly.AnomalyManager
 import com.hand.hand.api.Group.GroupManager // ✅ 추가된 Import
 import com.hand.hand.api.Group.GroupData // ✅ 추가된 Import
 
@@ -54,7 +55,7 @@ fun HomeScreen() {
         IndividualUserManager.hasIndividualUser(
             onResult = { exists, data ->
                 if (exists && data != null) {
-                    userName = data.name.ifBlank { "싸피님" }
+                    userName = data.name.ifBlank { "싸피" } + "님"
                 }
             },
             onFailure = { e ->
@@ -69,12 +70,22 @@ fun HomeScreen() {
     val personalMoodScore = 79
     val mood = moodFromScore(personalMoodScore)
     val recommendation = "봉인 연습"
-    val moodChangeCount = 7 // TODO: 나중에 실제 값으로 교체
 
-    // 조직 리스트(관리자 다이얼로그용) - ❌ 기존 더미 데이터 제거
-    // val organizations: List<Organization> = remember { OrgSource.organizations() }
+    // ⭐ 오늘의 이상치 개수 조회
+    var todayAnomalyCount by remember { mutableStateOf(0) }
+    LaunchedEffect(Unit) {
+        val anomalyManager = AnomalyManager()
+        anomalyManager.getAnomalyCount(
+            onSuccess = { count ->
+                android.util.Log.d("HomeScreen", "✅ 오늘 이상치 개수: $count")
+                todayAnomalyCount = count
+            },
+            onError = { error ->
+                android.util.Log.e("HomeScreen", "❌ 이상치 조회 실패: $error")
+            }
+        )
+    }
 
-    // ── 서버에서 조직 목록 가져오기 로직 추가 ──
     var organizations by remember { mutableStateOf<List<Organization>>(emptyList()) }
 
     LaunchedEffect(Unit) {
@@ -100,8 +111,6 @@ fun HomeScreen() {
             }
         )
     }
-    // ───────────────────────────────────────────
-
 
     // 반응형 스케일러
     val cfg = LocalConfiguration.current
@@ -175,9 +184,9 @@ fun HomeScreen() {
             item {
                 MyRecordsSection(
                     horizontalPadding = gutter,
-                    moodChangeCount = moodChangeCount,
+                    moodChangeCount = todayAnomalyCount,
                     onMoodChangeClick = {
-                        context.startActivity(MoodChangeActivity.intent(context, moodChangeCount))
+                        context.startActivity(MoodChangeActivity.intent(context, todayAnomalyCount))
                     }
                 )
             }
@@ -203,7 +212,7 @@ fun HomeScreen() {
                 context.startActivity(intent)
                 showDialog = false
             },
-            organizations = organizations // ✅ API 로드된 organizations 전달
+            organizations = organizations
         )
     }
 }

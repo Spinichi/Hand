@@ -27,9 +27,14 @@ import com.hand.hand.R
 class StressScoreActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // ⭐ Intent에서 스트레스 점수 받기 (기본값 54.0)
+        val stressScore = intent.getDoubleExtra("stressScore", 54.0)
+
         setContent {
             HandTheme {
                 StressScoreScreen(
+                    stressScore = stressScore,
                     onCancel = {
                         // ❌ X 버튼 눌렀을 때: WearHomeActivity 로 이동
                         startActivity(Intent(this, WearHomeActivity::class.java))
@@ -48,6 +53,7 @@ class StressScoreActivity : ComponentActivity() {
 
 @Composable
 fun StressScoreScreen(
+    stressScore: Double = 54.0,
     onCancel: () -> Unit = {},
     onConfirm: () -> Unit = {}
 ) {
@@ -85,7 +91,7 @@ fun StressScoreScreen(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
-                        text = "54",
+                        text = "${stressScore.toInt()}",
                         color = Color(0xFF4F3422),
                         fontSize = (screenHeight.value * 0.3).sp, // 큰 숫자
                         fontWeight = FontWeight.Bold,

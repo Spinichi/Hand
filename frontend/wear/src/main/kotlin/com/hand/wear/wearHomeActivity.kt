@@ -131,8 +131,10 @@ class WearHomeActivity : ComponentActivity() {
                         // 오른쪽 버튼: 완화하기
                         Button(
                             onClick = {
-                                // 완화하기 버튼 클릭 시 동작
-                                context.startActivity(Intent(context, Care1Activity::class.java))
+                                // 완화하기 버튼 클릭 시 BeforeRelaxActivity로 이동 (수동 트리거)
+                                val intent = Intent(context, BeforeRelaxActivity::class.java)
+                                intent.putExtra("triggerType", "MANUAL")
+                                context.startActivity(intent)
                             },
                             modifier = Modifier
                                 .height(buttonHeight)

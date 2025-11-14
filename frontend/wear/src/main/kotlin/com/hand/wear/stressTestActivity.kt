@@ -69,10 +69,14 @@ class StressTestActivity : ComponentActivity() {
                     val animatedProgress = remember { Animatable(0f) }
 
                     LaunchedEffect(Unit) {
-                        // 4초 뒤 다른 화면으로 이동
+                        // 10초 뒤 다른 화면으로 이동
                         launch {
                             delay(10000)
-                            startActivity(Intent(this@StressTestActivity, StressScoreActivity::class.java))
+                            // ⭐ 현재 스트레스 점수(인덱스)를 StressScoreActivity로 전달
+                            val currentStressScore = com.mim.watch.services.SensorGatewayImpl.currentStressIndex
+                            val intent = Intent(this@StressTestActivity, StressScoreActivity::class.java)
+                            intent.putExtra("stressScore", currentStressScore)
+                            startActivity(intent)
                             finish()
                         }
 
