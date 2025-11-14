@@ -10,13 +10,16 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.Canvas
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -24,12 +27,15 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.hand.hand.R
+import com.hand.hand.api.Report.ReportManager
+import com.hand.hand.api.Report.WeeklyReportDetail
+import com.hand.hand.api.Report.MonthlyReportDetail
 import com.hand.hand.ui.model.MonthlyReport
 import com.hand.hand.ui.model.PersonalReportSource
 import com.hand.hand.ui.model.WeeklyReport
 import com.hand.hand.ui.theme.BrandFontFamily
 import androidx.compose.foundation.Canvas
-import androidx.compose.ui.graphics.drawscope.Stroke
+
 import androidx.compose.ui.graphics.nativeCanvas
 import java.util.Calendar
 
@@ -41,6 +47,8 @@ class PrivateAiDocumentActivity : ComponentActivity() {
         val year = intent.getIntExtra("YEAR", 0)
         val month = intent.getIntExtra("MONTH", 0)
         val week = intent.getIntExtra("WEEK", 0)
+        // 주간/월간 공통으로 쓰는 리포트 id
+        val reportId = intent.getLongExtra("REPORT_ID", -1L)
 
         val selectedDate = if (week == 0) "${year}년 ${month}월"
         else "${year}년 ${month}월 ${week}주차"
@@ -51,6 +59,7 @@ class PrivateAiDocumentActivity : ComponentActivity() {
                 week = week,
                 year = year,
                 month = month,
+                reportId = reportId,   // 🔹 여기!
                 onBackClick = {
                     startActivity(Intent(this, PrivateAiDocumentHomeActivity::class.java))
                     finish()
@@ -60,7 +69,7 @@ class PrivateAiDocumentActivity : ComponentActivity() {
     }
 }
 
-// 월의 실제 주 수 계산
+// 월의 실제 주 수 계산 (지금은 안 써도 됨)
 fun getWeeksInMonth(year: Int, month: Int): Int {
     val cal = Calendar.getInstance()
     cal.set(Calendar.YEAR, year)
@@ -77,6 +86,7 @@ fun PrivateAiDocumentScreen(
     week: Int,
     year: Int,
     month: Int,
+    reportId: Long,              // 🔹 weeklyReportId → reportId 로 통일
     onBackClick: () -> Unit
 ) {
     val configuration = LocalConfiguration.current
@@ -93,47 +103,163 @@ fun PrivateAiDocumentScreen(
     val imageWidth: Dp = screenWidth * 0.25f
     val imageHeight: Dp = screenHeight * 0.15f
 
-    // MonthlyReport 가져오기
+    // 월간 더미 데이터 (그래프/점수용)
     val monthlyReport: MonthlyReport? = PersonalReportSource.reportOrNull(year, month)
 
+    // 주간 상세 리포트 상태
+    var weeklyDetail by remember { mutableStateOf<WeeklyReportDetail?>(null) }
+    var isWeeklyDetailLoading by remember { mutableStateOf(false) }
+    var weeklyDetailError by remember { mutableStateOf<String?>(null) }
+
+    // 월간 상세 리포트 상태
+    var monthlyDetail by remember { mutableStateOf<MonthlyReportDetail?>(null) }
+    var isMonthlyDetailLoading by remember { mutableStateOf(false) }
+    var monthlyDetailError by remember { mutableStateOf<String?>(null) }
+
+    // 주간 상세 리포트 API 호출 (week > 0 && id가 있을 때만)
+    LaunchedEffect(reportId, week) {
+        if (week > 0 && reportId > 0L) {
+            isWeeklyDetailLoading = true
+            weeklyDetailError = null
+
+            ReportManager.fetchWeeklyReportDetail(
+                reportId = reportId,
+                onSuccess = { detail ->
+                    weeklyDetail = detail
+                    isWeeklyDetailLoading = false
+                },
+                onFailure = { t ->
+                    weeklyDetailError = t.message
+                    isWeeklyDetailLoading = false
+                }
+            )
+        }
+    }
+
+    // 월간 상세 리포트 API 호출 (week == 0 && id가 있을 때만)
+    LaunchedEffect(reportId, week) {
+        if (week == 0 && reportId > 0L) {
+            isMonthlyDetailLoading = true
+            monthlyDetailError = null
+
+            ReportManager.fetchMonthlyReportDetail(
+                reportId = reportId,
+                onSuccess = { detail ->
+                    monthlyDetail = detail
+                    isMonthlyDetailLoading = false
+                },
+                onFailure = { t ->
+                    monthlyDetailError = t.message
+                    isMonthlyDetailLoading = false
+                }
+            )
+        }
+    }
+
+    // ─────────────────────────────────────
+    // 그래프 / 요약 / 조언에 쓸 값 결정
+    // ─────────────────────────────────────
     val scores: List<Int>
     val xLabels: List<String>
     val summaryText: String
     val adviceText: String
     val avgScore: Int
 
-    if (week > 0 && monthlyReport != null && week <= monthlyReport.weeks.size) {
-        // 주간 데이터
-        val weekly = monthlyReport.weeks[week - 1]
-        xLabels = listOf("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat")
-        scores = weekly.dailyScores.map { it ?: 0 }
-        summaryText = weekly.weeklySummary
-        adviceText = weekly.weeklyAdvice
-        avgScore = weekly.avgScore
-    } else if (monthlyReport != null) {
-        // 월간 데이터
-        val weeksInMonth = monthlyReport.weeks.size
-        xLabels = List(weeksInMonth) { "${it + 1}주" }
-        scores = monthlyReport.weeks.map { it.avgScore }
-        summaryText = monthlyReport.monthlySummary
-        adviceText = monthlyReport.monthlyAdvice
-        avgScore = monthlyReport.monthAvg
-    } else {
-        // 데이터 없는 경우
-        xLabels = listOf()
-        scores = listOf()
-        summaryText = "데이터가 없습니다."
-        adviceText = "데이터가 없습니다."
-        avgScore = 0
-    }
+    if (week > 0) {
+        // ── 주간 모드 ──
+        when {
+            weeklyDetail != null -> {
+                val d = weeklyDetail!!
+                xLabels = listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
 
-    val imageRes = when (avgScore) {
-        in 0..19 -> R.drawable.ai_document_sad
-        in 20..39 -> R.drawable.ai_document_down
-        in 40..59 -> R.drawable.ai_document_okay
-        in 60..79 -> R.drawable.ai_document_happy
-        in 80..100 -> R.drawable.ai_document_great
-        else -> R.drawable.ai_document_okay
+                val avgAsInt = d.averageDepressionScore.toInt()  // Double → Int
+                scores = List(xLabels.size) { avgAsInt }
+
+                summaryText = d.report ?: "주간 요약이 없지롱."
+                adviceText = d.emotionalAdvice ?: "감정 개선 조언이 없지롱."
+                avgScore = avgAsInt
+            }
+
+            isWeeklyDetailLoading -> {
+                xLabels = emptyList()
+                scores = emptyList()
+                summaryText = "주간 리포트 못불러옴~"
+                adviceText = ""
+                avgScore = 0
+            }
+
+            weeklyDetailError != null -> {
+                xLabels = emptyList()
+                scores = emptyList()
+                summaryText = "주간 리포트 못불러옴~"
+                adviceText = weeklyDetailError ?: ""
+                avgScore = 0
+            }
+
+            else -> {
+                xLabels = emptyList()
+                scores = emptyList()
+                summaryText = "데이터 없다고!!"
+                adviceText = "데이터 없다고!!"
+                avgScore = 0
+            }
+        }
+    } else {
+        // ── 월간 모드 (week == 0) ──
+        when {
+            isMonthlyDetailLoading -> {
+                xLabels = emptyList()
+                scores = emptyList()
+                summaryText = "월간 리포트를 불러오는 중이다.....기달 ㅠ"
+                adviceText = ""
+                avgScore = 0
+            }
+
+            monthlyDetailError != null -> {
+                xLabels = emptyList()
+                scores = emptyList()
+                summaryText = "월간 리포트를 불러오지 못했다닼."
+                adviceText = monthlyDetailError ?: ""
+                avgScore = 0
+            }
+
+            monthlyDetail != null -> {
+                val d = monthlyDetail!!
+
+                // 그래프/점수는 기존 더미 월간 데이터 사용 (필요하면 나중에 API 값으로 교체)
+                if (monthlyReport != null) {
+                    val weeksInMonth = monthlyReport.weeks.size
+                    xLabels = List(weeksInMonth) { "${it + 1}주" }
+                    scores = monthlyReport.weeks.map { it.avgScore }
+                    avgScore = monthlyReport.monthAvg
+                } else {
+                    xLabels = emptyList()
+                    scores = emptyList()
+                    avgScore = 0
+                }
+
+                summaryText = d.report ?: "월간 요약 없다 엌ㅋ."
+                adviceText = d.emotionalAdvice ?: "감정 개선 조언 없다 엌ㅋ.."
+            }
+
+            monthlyReport != null -> {
+                // 월간 상세 API는 아직 없지만, 더미 데이터는 있을 때
+                val weeksInMonth = monthlyReport.weeks.size
+                xLabels = List(weeksInMonth) { "${it + 1}주" }
+                scores = monthlyReport.weeks.map { it.avgScore }
+                summaryText = monthlyReport.monthlySummary
+                adviceText = monthlyReport.monthlyAdvice
+                avgScore = monthlyReport.monthAvg
+            }
+
+            else -> {
+                xLabels = emptyList()
+                scores = emptyList()
+                summaryText = "데이터가 없다고..."
+                adviceText = "데이터가 없다고..."
+                avgScore = 0
+            }
+        }
     }
 
     Box(
@@ -314,7 +440,6 @@ fun PrivateAiDocumentScreen(
     }
 }
 
-
 @Composable
 fun EmotionLineChart(
     scores: List<Int>,
@@ -339,7 +464,10 @@ fun EmotionLineChart(
                 start = Offset(0f, y),
                 end = Offset(size.width, y),
                 strokeWidth = 4f,
-                pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(10f, 10f), 0f)
+                pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(
+                    floatArrayOf(10f, 10f),
+                    0f
+                )
             )
         }
 

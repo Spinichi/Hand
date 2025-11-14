@@ -1,3 +1,5 @@
+// PrivateAiDocumentHome.kt
+
 package com.hand.hand.AiDocument
 
 import android.content.Intent
@@ -24,9 +26,14 @@ import androidx.compose.ui.unit.sp
 import com.hand.hand.care.CareActivity
 import com.hand.hand.diary.DiaryHomeActivity
 import com.hand.hand.ui.home.*
-import com.hand.hand.ui.model.PersonalReportSource
 import com.hand.hand.ui.theme.BrandFontFamily
 import java.util.*
+
+import androidx.compose.runtime.LaunchedEffect
+import com.hand.hand.api.Report.ReportManager
+import com.hand.hand.api.Report.WeeklyReportItem
+import com.hand.hand.api.Report.MonthlyReportItem
+import android.util.Log
 
 class PrivateAiDocumentHomeActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -46,8 +53,65 @@ fun PrivateAiDocumentHomeScreen() {
     val screenHeight = configuration.screenHeightDp.dp
     val screenWidth = configuration.screenWidthDp.dp
 
-    val isDisplayMonth = calendar.get(Calendar.YEAR) < today.get(Calendar.YEAR) ||
-            (calendar.get(Calendar.YEAR) == today.get(Calendar.YEAR) && calendar.get(Calendar.MONTH) < today.get(Calendar.MONTH))
+    // 현재 헤더에 보이는 연/월
+    val currentYear = calendar.get(Calendar.YEAR)
+    val currentMonthIndex = calendar.get(Calendar.MONTH) // 0~11
+
+    val isDisplayMonth = currentYear < today.get(Calendar.YEAR) ||
+            (currentYear == today.get(Calendar.YEAR) &&
+                    currentMonthIndex <= today.get(Calendar.MONTH))
+
+
+    // 주간 리포트 상태
+    var weeklyReports by remember { mutableStateOf<List<WeeklyReportItem>>(emptyList()) }
+    var isWeeklyLoading by remember { mutableStateOf(false) }
+    var weeklyError by remember { mutableStateOf<String?>(null) }
+
+    // 월간 리포트 상태
+    var monthlyReports by remember { mutableStateOf<List<MonthlyReportItem>>(emptyList()) }
+    var isMonthlyLoading by remember { mutableStateOf(false) }
+    var monthlyError by remember { mutableStateOf<String?>(null) }
+
+    // 달이 바뀔 때마다 주간 다시 요청
+    LaunchedEffect(currentYear, currentMonthIndex) {
+        isWeeklyLoading = true
+        weeklyError = null
+
+        ReportManager.fetchWeeklyReports(
+            page = 0,
+            size = 20,
+            onSuccess = { list ->
+                weeklyReports = list
+                isWeeklyLoading = false
+            },
+            onFailure = { t ->
+                Log.e("PrivateAiDocument", "주간 리포트 불러오기 실패", t)
+                weeklyError = t.message
+                isWeeklyLoading = false
+            }
+        )
+    }
+
+    // 달이 바뀔 때마다 월간 다시 요청
+    LaunchedEffect(currentYear, currentMonthIndex) {
+        Log.d("PrivateAiDocument", "월간 리포트 요청: year=$currentYear, month=$currentMonthIndex")
+        isMonthlyLoading = true
+        monthlyError = null
+
+        ReportManager.fetchMonthlyReports(
+            page = 0,
+            size = 20,
+            onSuccess = { list ->
+                monthlyReports = list
+                isMonthlyLoading = false
+            },
+            onFailure = { t ->
+                Log.e("PrivateAiDocument", "월간 리포트 불러오기 실패", t)
+                monthlyError = t.message
+                isMonthlyLoading = false
+            }
+        )
+    }
 
     Scaffold(
         bottomBar = {
@@ -108,7 +172,42 @@ fun PrivateAiDocumentHomeScreen() {
 
             // ── 월간 보고서 카드 ──
             if (isDisplayMonth) {
-                MonthlyReportCard(calendar, today, screenHeight, screenWidth)
+                when {
+                    // 월간 로딩 상태
+                    isMonthlyLoading -> {
+                        CircularProgressIndicator(
+                            modifier = Modifier
+                                .padding(horizontal = screenWidth * 0.05f)
+                                .size(32.dp),
+                            color = Color(0xFF4F3422)
+                        )
+                    }
+
+                    // 에러 상태
+                    monthlyError != null -> {
+                        Text(
+                            text = "월간보고서를 불러오지 못했다",
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = screenWidth * 0.05f),
+                            fontFamily = BrandFontFamily,
+                            fontWeight = FontWeight.Normal,
+                            fontSize = (screenHeight * 0.02f).value.sp,
+                            color = Color.Red
+                        )
+                    }
+
+                    // 정상 데이터 있을 때
+                    else -> {
+                        MonthlyReportCard(
+                            calendar = calendar,
+                            today = today,
+                            screenHeight = screenHeight,
+                            screenWidth = screenWidth,
+                            monthlyReports = monthlyReports
+                        )
+                    }
+                }
             }
 
             Spacer(modifier = Modifier.height(screenHeight * 0.03f))
@@ -127,24 +226,67 @@ fun PrivateAiDocumentHomeScreen() {
 
             Spacer(modifier = Modifier.height(screenHeight * 0.02f))
 
-            // ── 주간 보고서 카드 ──
-            WeeklyReportCards(calendar, today, screenHeight, screenWidth)
+            // ── 주간 보고서: 로딩 / 에러 / 성공 ──
+            when {
+                isWeeklyLoading -> {
+                    CircularProgressIndicator(
+                        modifier = Modifier
+                            .padding(horizontal = screenWidth * 0.05f)
+                            .size(32.dp),
+                        color = Color(0xFF4F3422)
+                    )
+                }
+
+                weeklyError != null -> {
+                    Text(
+                        text = "주간보고서를 불러오지 못했다",
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = screenWidth * 0.05f),
+                        fontFamily = BrandFontFamily,
+                        fontWeight = FontWeight.Normal,
+                        fontSize = (screenHeight * 0.02f).value.sp,
+                        color = Color.Red
+                    )
+                }
+
+                else -> {
+                    WeeklyReportCards(
+                        calendar = calendar,
+                        today = today,
+                        screenHeight = screenHeight,
+                        screenWidth = screenWidth,
+                        weeklyReports = weeklyReports
+                    )
+                }
+            }
 
             Spacer(modifier = Modifier.height(screenHeight * 0.03f))
         }
     }
 }
 
-// MonthlyReportCard, WeeklyReportCards는 기존 코드 그대로 사용
-
+// ─────────────────────────────────────────────
+// 월간 카드
+// ─────────────────────────────────────────────
 
 @Composable
-fun MonthlyReportCard(calendar: Calendar, today: Calendar, screenHeight: Dp, screenWidth: Dp) {
+fun MonthlyReportCard(
+    calendar: Calendar,
+    today: Calendar,
+    screenHeight: Dp,
+    screenWidth: Dp,
+    monthlyReports: List<MonthlyReportItem>
+) {
     val context = LocalContext.current
     val year = calendar.get(Calendar.YEAR)
-    val month = calendar.get(Calendar.MONTH)
+    val monthIndex = calendar.get(Calendar.MONTH)   // 0~11
+    val month = monthIndex + 1                      // 1~12
 
-    val report = PersonalReportSource.reportOrNull(year, month + 1)
+    // 한 달에 하나만: 현재 연/월과 같은 첫 번째 리포트
+    val report = monthlyReports.firstOrNull {
+        it.year == year && it.month == month
+    }
 
     Card(
         shape = RoundedCornerShape(screenHeight * 0.03f),
@@ -152,11 +294,14 @@ fun MonthlyReportCard(calendar: Calendar, today: Calendar, screenHeight: Dp, scr
             .fillMaxWidth()
             .padding(horizontal = screenWidth * 0.05f, vertical = screenHeight * 0.005f)
             .clickable {
-                val intent = Intent(context, PrivateAiDocumentActivity::class.java)
-                intent.putExtra("YEAR", year)
-                intent.putExtra("MONTH", month + 1)
-                intent.putExtra("WEEK", 0)
-                context.startActivity(intent)
+                report?.let { monthly ->
+                    val intent = Intent(context, PrivateAiDocumentActivity::class.java)
+                    intent.putExtra("YEAR", year)
+                    intent.putExtra("MONTH", month)
+                    intent.putExtra("WEEK", 0)                 // 월간 모드 표시
+                    intent.putExtra("REPORT_ID", monthly.id)    // 월간 보고서 id
+                    context.startActivity(intent)
+                }
             },
         colors = CardDefaults.cardColors(containerColor = Color.White)
     ) {
@@ -177,7 +322,7 @@ fun MonthlyReportCard(calendar: Calendar, today: Calendar, screenHeight: Dp, scr
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = "${month + 1}월",
+                    text = "${month}월",
                     fontFamily = BrandFontFamily,
                     fontWeight = FontWeight.Bold,
                     fontSize = (screenHeight * 0.025f).value.sp,
@@ -188,7 +333,7 @@ fun MonthlyReportCard(calendar: Calendar, today: Calendar, screenHeight: Dp, scr
             Spacer(modifier = Modifier.width(screenWidth * 0.03f))
 
             Text(
-                text = report?.let { "AI 분석 감정 보고서" } ?: "데이터가 없습니다",
+                text = report?.let { "AI 분석 감정 보고서" } ?: "데이터 없음 헤에엑",
                 fontFamily = BrandFontFamily,
                 fontWeight = FontWeight.Bold,
                 fontSize = (screenHeight * 0.025f).value.sp,
@@ -198,41 +343,63 @@ fun MonthlyReportCard(calendar: Calendar, today: Calendar, screenHeight: Dp, scr
     }
 }
 
+
+// 주간 카드 (기존과 같고, 데이터만 API 기반)
+
+
 @Composable
-fun WeeklyReportCards(calendar: Calendar, today: Calendar, screenHeight: Dp, screenWidth: Dp) {
+fun WeeklyReportCards(
+    calendar: Calendar,
+    today: Calendar,
+    screenHeight: Dp,
+    screenWidth: Dp,
+    weeklyReports: List<WeeklyReportItem>
+) {
     val context = LocalContext.current
     val year = calendar.get(Calendar.YEAR)
-    val month = calendar.get(Calendar.MONTH)
-    val report = PersonalReportSource.reportOrNull(year, month + 1)
+    val monthIndex = calendar.get(Calendar.MONTH)    // 0~11
+    val month = monthIndex + 1                       // 1~12
 
+    // 미래 달이면 그냥 안 보이게 처리
     if (calendar.get(Calendar.YEAR) > today.get(Calendar.YEAR) ||
-        (calendar.get(Calendar.YEAR) == today.get(Calendar.YEAR) && calendar.get(Calendar.MONTH) > today.get(Calendar.MONTH))
-    ) return
-
-    val lastDisplayDay = if (year == today.get(Calendar.YEAR) && month == today.get(Calendar.MONTH)) {
-        today.get(Calendar.DAY_OF_MONTH) - 1
-    } else {
-        calendar.getActualMaximum(Calendar.DAY_OF_MONTH)
+        (calendar.get(Calendar.YEAR) == today.get(Calendar.YEAR) &&
+                calendar.get(Calendar.MONTH) > today.get(Calendar.MONTH))
+    ) {
+        return
     }
 
-    val weekList = mutableListOf<Int>()
-    val firstDay = Calendar.getInstance().apply {
-        set(Calendar.YEAR, year)
-        set(Calendar.MONTH, month)
-        set(Calendar.DAY_OF_MONTH, 1)
-    }
-
-    var week = 1
-    for (day in 1..lastDisplayDay) {
-        firstDay.set(Calendar.DAY_OF_MONTH, day)
-        if (firstDay.get(Calendar.DAY_OF_WEEK) == Calendar.SUNDAY && day != 1) {
-            week++
+    // 이 달에 해당하는 주간 리포트만 추출
+    val reportsForMonth = weeklyReports.filter { report ->
+        try {
+            val parts = report.weekStartDate.split("-")  // "2025-11-11"
+            val y = parts[0].toInt()
+            val m = parts[1].toInt()
+            y == year && m == month
+        } catch (_: Exception) {
+            false
         }
-        if (!weekList.contains(week)) weekList.add(week)
+    }.sortedBy { it.weekNumber }   // 연 기준 주차로 정렬
+
+    if (reportsForMonth.isEmpty()) {
+        Text(
+            text = "데이터 없음 엌",
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = screenWidth * 0.05f),
+            fontFamily = BrandFontFamily,
+            fontWeight = FontWeight.Normal,
+            fontSize = (screenHeight * 0.02f).value.sp,
+            color = Color(0xFF4F3422)
+        )
+        return
     }
 
-    weekList.forEach { w ->
-        val hasData = report?.weeks?.getOrNull(w - 1)?.hasData == true
+    // 월 기준 주차로 다시 번호 매기기
+    reportsForMonth.forEachIndexed { index, report ->
+        val hasData = report.diaryCount > 0 && report.status != "EMPTY"
+
+        // 1주차, 2주차, 3주차…
+        val displayWeek = index + 1
 
         Card(
             shape = RoundedCornerShape(screenHeight * 0.03f),
@@ -241,9 +408,10 @@ fun WeeklyReportCards(calendar: Calendar, today: Calendar, screenHeight: Dp, scr
                 .padding(horizontal = screenWidth * 0.05f, vertical = screenHeight * 0.005f)
                 .clickable {
                     val intent = Intent(context, PrivateAiDocumentActivity::class.java)
-                    intent.putExtra("YEAR", year)
-                    intent.putExtra("MONTH", month + 1)
-                    intent.putExtra("WEEK", w)
+                    intent.putExtra("YEAR", report.year)
+                    intent.putExtra("MONTH", month)
+                    intent.putExtra("REPORT_ID", report.id)   // 상세는 id로 조회
+                    intent.putExtra("WEEK", displayWeek)      // 화면에 보여줄 주차는 월 기준
                     context.startActivity(intent)
                 },
             colors = CardDefaults.cardColors(containerColor = Color.White)
@@ -265,7 +433,7 @@ fun WeeklyReportCards(calendar: Calendar, today: Calendar, screenHeight: Dp, scr
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = "${w}주차",
+                        text = "${displayWeek}주차",   // 여기도 월 기준 주차
                         fontFamily = BrandFontFamily,
                         fontWeight = FontWeight.Bold,
                         fontSize = (screenHeight * 0.025f).value.sp,
@@ -276,7 +444,7 @@ fun WeeklyReportCards(calendar: Calendar, today: Calendar, screenHeight: Dp, scr
                 Spacer(modifier = Modifier.width(screenWidth * 0.03f))
 
                 Text(
-                    text = if (hasData) "AI 분석 감정 보고서" else "데이터가 없습니다",
+                    text = if (hasData) "AI 분석 감정 보고서" else "데이터 없~다",
                     fontFamily = BrandFontFamily,
                     fontWeight = FontWeight.Bold,
                     fontSize = (screenHeight * 0.022f).value.sp,
@@ -286,4 +454,3 @@ fun WeeklyReportCards(calendar: Calendar, today: Calendar, screenHeight: Dp, scr
         }
     }
 }
-

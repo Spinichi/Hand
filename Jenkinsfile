@@ -86,8 +86,8 @@ pipeline {
                                         sh """
                                             # FCM 키 파일을 resources 폴더에 복사
                                             echo "📋 Copying FCM service account key..."
-                                            cp \${FCM_KEY_FILE} src/main/resources/fcm-key.json
-                                            chmod 600 src/main/resources/fcm-key.json
+                                            cp \${FCM_KEY_FILE} src/main/resources/firebase-service-account.json
+                                            chmod 600 src/main/resources/firebase-service-account.json
 
                                             # Docker Multi-stage build로 Gradle 빌드 포함 (cache-from으로 캐시 재사용)
                                             docker pull ${REGISTRY_LOCAL}/${BACKEND_IMAGE}:latest || true
