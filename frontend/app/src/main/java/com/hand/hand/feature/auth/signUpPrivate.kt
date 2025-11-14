@@ -36,7 +36,6 @@ import com.hand.hand.ui.theme.BrandFontFamily
 import android.widget.Toast
 import com.hand.hand.api.SignUp.IndividualUserManager
 
-
 class SignUpPrivateActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -50,7 +49,8 @@ class SignUpPrivateActivity : ComponentActivity() {
 fun SignUpPrivateScreen(
     onClickLogin: (String, String) -> Unit = { _, _ -> },
     onClickSignUp: () -> Unit = {}
-) {
+)
+ {
     val context = LocalContext.current
     val screenWidthDp = LocalConfiguration.current.screenWidthDp
     val screenHeightDp = LocalConfiguration.current.screenHeightDp
@@ -61,14 +61,15 @@ fun SignUpPrivateScreen(
     var age by remember { mutableStateOf("") }
     var height by remember { mutableStateOf("") }
     var weight by remember { mutableStateOf("") }
-    var disease by remember { mutableStateOf("") }   // ✅ 질병 입력용
-    var address by remember { mutableStateOf("") }   // ✅ 거주지 입력용
+    var disease by remember { mutableStateOf("") }
     var isAlarmEnabled by remember { mutableStateOf(false) }
     var hour by remember { mutableStateOf("") }
     var minute by remember { mutableStateOf("") }
+     var job by remember { mutableStateOf("") }
+     var familyCount by remember { mutableStateOf("") }
 
 
-    val edgeY = (screenHeightDp * 0.08f).dp
+     val edgeY = (screenHeightDp * 0.08f).dp
     val centerY = (screenHeightDp * 0.25f).dp
     val overhang = (screenWidthDp * 0.06f).dp
     val headerHeight = centerY * 0.9f
@@ -80,12 +81,12 @@ fun SignUpPrivateScreen(
     ) {
         val scrollState = rememberScrollState()
 
-        // ── 헤더 (고정) ──
+        // ── 헤더 ──
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(screenHeightDp.dp * 0.28f) // 헤더 높이
-                .zIndex(1f) // 항상 맨 위
+                .height(screenHeightDp.dp * 0.28f)
+                .zIndex(1f)
         ) {
             BrandWaveHeader(
                 fillColor = Color(0xFF9BB168),
@@ -105,13 +106,13 @@ fun SignUpPrivateScreen(
             }
         }
 
-        // ── 본문 (스크롤) ──
+        // ── 본문 ──
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(scrollState)
                 .padding(horizontal = horizontalPadding)
-                .padding(top = screenHeightDp.dp * 0.23f), // 헤더 높이만큼 아래에서 시작
+                .padding(top = screenHeightDp.dp * 0.23f),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
@@ -147,8 +148,9 @@ fun SignUpPrivateScreen(
 
             Spacer(Modifier.height(16.dp))
 
-            // 나이 & 성별
+            // 나이 + 성별
             AgeGenderRow(
+
                 screenWidthDp = screenWidthDp,
                 screenHeightDp = screenHeightDp,
                 age = age,
@@ -171,29 +173,30 @@ fun SignUpPrivateScreen(
 
             Spacer(Modifier.height(16.dp))
 
-            // 질병
+            // 질병 입력
             LabeledTextField(
                 label = "질병 - 신체/정신",
-                value = disease,                  // ✅ name → disease
-                onValueChange = { disease = it }, // ✅ name → disease
+                value = disease,
+                onValueChange = { disease = it },
                 placeholder = "병명을 입력하세요.",
                 iconRes = R.drawable.signup_private_sick
             )
 
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(20.dp))
 
-            // 거주지
-            LabeledTextField(
-                label = "거주지",
-                value = address,                  // ✅ name → address
-                onValueChange = { address = it }, // ✅ name → address
-                placeholder = "거주지를 입력하세요.",
-                iconRes = R.drawable.signup_private_home
+            JobFamilyRow(
+                screenWidthDp = screenWidthDp,
+                screenHeightDp = screenHeightDp,
+                job = job,
+                onJobChange = { job = it },
+                familyCount = familyCount,
+                onFamilySelected = { familyCount = it }
             )
 
             Spacer(Modifier.height(20.dp))
 
-            // 다이어리 알림 여부
+
+            // 다이어리 알림
             DiaryAlarmSection(
                 isAlarmEnabled = isAlarmEnabled,
                 onToggle = { isAlarmEnabled = it },
@@ -208,52 +211,44 @@ fun SignUpPrivateScreen(
             Spacer(Modifier.height(28.dp))
 
             // 등록 버튼
-            // 등록 버튼
             Button(
                 onClick = {
-                    // 1) 필수값 간단 체크
                     if (name.isBlank() || age.isBlank() || selectedGender.isBlank()) {
                         Toast.makeText(context, "이름 / 나이 / 성별은 필수입니다.", Toast.LENGTH_SHORT).show()
                         return@Button
                     }
 
-                    // 숫자 변환
                     val ageInt = age.toIntOrNull() ?: 0
                     val heightInt = height.toIntOrNull() ?: 0
                     val weightInt = weight.toIntOrNull() ?: 0
 
-                    // 알림 켜져 있을 때만 시간 사용, 아니면 0
                     val alarmHourInt = if (isAlarmEnabled) hour.toIntOrNull() ?: 0 else 0
                     val alarmMinuteInt = if (isAlarmEnabled) minute.toIntOrNull() ?: 0 else 0
 
-                    // 성별 코드 변환 ("남성"/"여성" -> "M"/"F")
                     val genderCode = when (selectedGender) {
                         "남성" -> "M"
                         "여성" -> "F"
                         else -> ""
                     }
 
-                    // 2) 백엔드에 개인정보 등록 요청
                     IndividualUserManager.registerIndividualUser(
                         name = name,
                         age = ageInt,
                         gender = genderCode,
-                        job = "",                    // 직업 필드 없으니 일단 빈 문자열로
+                        job = "",
                         height = heightInt,
                         weight = weightInt,
                         disease = disease,
-                        residenceType = address,
+                        residenceType = "",          // ❌ 거주지 제거 → 빈 값 전달
                         diaryReminderEnabled = isAlarmEnabled,
                         hour = alarmHourInt,
                         minute = alarmMinuteInt,
-                        onSuccess = { _ ->
-                            // 3) 성공하면 설문 페이지로 이동
+                        onSuccess = {
                             val intent = Intent(context, SignUpPrivateSurveyActivity::class.java)
                             context.startActivity(intent)
                         },
                         onFailure = { e ->
                             e.printStackTrace()
-
                             Toast.makeText(
                                 context,
                                 "개인 정보 등록 실패: ${e.message}",
@@ -285,12 +280,11 @@ fun SignUpPrivateScreen(
 
                     Image(
                         painter = painterResource(id = R.drawable.login_btn),
-                        contentDescription = "로그인 버튼 이미지",
+                        contentDescription = null,
                         modifier = Modifier.size((screenWidthDp * 0.05f).dp)
                     )
                 }
             }
-
 
             Spacer(Modifier.height(40.dp))
         }
@@ -298,7 +292,7 @@ fun SignUpPrivateScreen(
 }
 
 // ────────────────────────────────
-// 하위 UI 구성 컴포넌트
+// UI 구성 요소
 // ────────────────────────────────
 
 @Composable
@@ -343,6 +337,12 @@ fun LabeledTextField(
         )
     )
 }
+
+
+// ────────────────────────────────
+// 하위 UI 구성 컴포넌트
+// ────────────────────────────────
+
 
 @Composable
 fun AgeGenderRow(
@@ -495,6 +495,102 @@ fun HeightWeightRow(
         )
     }
 }
+
+@Composable
+fun JobFamilyRow(
+    screenWidthDp: Int,
+    screenHeightDp: Int,
+    job: String,
+    onJobChange: (String) -> Unit,
+    familyCount: String,
+    onFamilySelected: (String) -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+
+        // ───── 직업 입력 ─────
+        OutlinedTextField(
+            value = job,
+            onValueChange = onJobChange,
+            modifier = Modifier.weight(1f),
+            placeholder = { Text("직업", fontFamily = BrandFontFamily) },
+            leadingIcon = {
+                Image(
+                    painter = painterResource(id = R.drawable.job),
+                    contentDescription = "직업 아이콘",
+                    modifier = Modifier.size((screenWidthDp * 0.06f).dp)
+                )
+            },
+            singleLine = true,
+            shape = RoundedCornerShape(28.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = Color(0xFF9BB168),
+                unfocusedBorderColor = Color(0xFFBFD19B),
+                focusedContainerColor = Color.White,
+                unfocusedContainerColor = Color.White
+            )
+        )
+
+        // ───── 가구원 수 드롭다운 ─────
+        var expanded by remember { mutableStateOf(false) }
+        val options = listOf("1명", "2명", "3명 이상")
+
+        Box(modifier = Modifier
+            .weight(1f)
+            .height((screenHeightDp * 0.065f).dp)
+        ) {
+            OutlinedButton(
+                onClick = { expanded = true },
+                modifier = Modifier.fillMaxSize(),
+                shape = RoundedCornerShape(28.dp),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    containerColor = Color.White
+                ),
+                border = ButtonDefaults.outlinedButtonBorder.copy(
+                    brush = androidx.compose.ui.graphics.SolidColor(Color(0xFFBFD19B))
+                )
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = if (familyCount.isBlank()) "가구원 수" else familyCount,
+                        fontFamily = BrandFontFamily,
+                        color = Color(0xFF4F3422),
+                        fontSize = (screenWidthDp * 0.035f).sp
+                    )
+
+                }
+            }
+
+            DropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false },
+            ) {
+                options.forEach { option ->
+                    DropdownMenuItem(
+                        text = {
+                            Text(
+                                text = option,
+                                fontFamily = BrandFontFamily,
+                                color = Color(0xFF4F3422)
+                            )
+                        },
+                        onClick = {
+                            onFamilySelected(option)
+                            expanded = false
+                        }
+                    )
+                }
+            }
+        }
+    }
+}
+
 
 @Composable
 fun DiaryAlarmSection(

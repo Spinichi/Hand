@@ -50,7 +50,18 @@ fun CareSafeZone4Screen(onBackClick: () -> Unit, onStartClick: () -> Unit) {
     val screenWidth = configuration.screenWidthDp.dp
     val headerHeight = screenHeight * 0.25f
 
-    var discomfortScore by remember { mutableStateOf(TextFieldValue("")) }
+    // ✅ 각 입력창의 상태를 리스트로 관리
+    val questionList = listOf(
+        Pair("보입니까?", "무엇이 보이나요?"),
+        Pair("들립니까?", "무엇이 들리나요?"),
+        Pair("냄새가 납니까?", "어떤 냄새가 나나요?"),
+        Pair("감정이 느껴집니까?", "어떤 감정이 느껴집니까?"),
+        Pair("감각이 느껴집니까?", "어떤 감각이 느껴집니까?")
+    )
+
+    var answers by remember {
+        mutableStateOf(List(questionList.size) { TextFieldValue("") })
+    }
 
     val focusRequester = remember { FocusRequester() }
     val focusManager = LocalFocusManager.current
@@ -63,7 +74,7 @@ fun CareSafeZone4Screen(onBackClick: () -> Unit, onStartClick: () -> Unit) {
         // 헤더
         CareHeader2(
             titleText = "안전지대 연습",
-            subtitleText = "구체적으로 떠올리기", // 아이콘 없이 텍스트만
+            subtitleText = "구체적으로 떠올리기",
             onBackClick = onBackClick
         )
 
@@ -91,17 +102,11 @@ fun CareSafeZone4Screen(onBackClick: () -> Unit, onStartClick: () -> Unit) {
                     .height(screenHeight * 0.1f)
             )
 
-            val fieldHeight = screenHeight * 0.065f // ✅ 높이 늘림 (기존 0.055f → 0.065f)
+            val fieldHeight = screenHeight * 0.065f
 
-            val questionList = listOf(
-                Pair("보입니까?", "무엇이 보이나요?"),
-                Pair("들립니까?", "무엇이 들리나요?"),
-                Pair("냄새가 납니까?", "어떤 냄새가 나나요?"),
-                Pair("감정이 느껴집니까?", "어떤 감정이 느껴집니까?"),
-                Pair("감각이 느껴집니까?", "어떤 감각이 느껴집니까?")
-            )
+            questionList.forEachIndexed { index, (question, placeholder) ->
 
-            questionList.forEach { (question, placeholder) ->
+                // 질문 텍스트
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.fillMaxWidth()
@@ -118,7 +123,6 @@ fun CareSafeZone4Screen(onBackClick: () -> Unit, onStartClick: () -> Unit) {
                         fontWeight = FontWeight.Medium,
                         fontSize = (screenHeight * 0.02f).value.sp,
                         color = Color(0xFF4F3422),
-                        textAlign = TextAlign.Start
                     )
                     Text(
                         text = question,
@@ -126,15 +130,17 @@ fun CareSafeZone4Screen(onBackClick: () -> Unit, onStartClick: () -> Unit) {
                         fontWeight = FontWeight.Bold,
                         fontSize = (screenHeight * 0.02f).value.sp,
                         color = Color(0xFF4F3422),
-                        textAlign = TextAlign.Start
                     )
                 }
 
                 Spacer(modifier = Modifier.height(8.dp))
 
+                // 입력창
                 TextField(
-                    value = discomfortScore,
-                    onValueChange = { discomfortScore = it },
+                    value = answers[index],
+                    onValueChange = { newValue ->
+                        answers = answers.toMutableList().also { it[index] = newValue }
+                    },
                     placeholder = {
                         Text(
                             text = placeholder,
@@ -147,19 +153,11 @@ fun CareSafeZone4Screen(onBackClick: () -> Unit, onStartClick: () -> Unit) {
                     colors = TextFieldDefaults.colors(
                         focusedTextColor = Color(0xFF4F3422),
                         unfocusedTextColor = Color(0xFF4F3422),
-                        disabledTextColor = Color.Gray,
-                        errorTextColor = Color.Red,
                         focusedContainerColor = Color.White,
                         unfocusedContainerColor = Color.White,
-                        disabledContainerColor = Color.LightGray,
-                        errorContainerColor = Color.White,
                         cursorColor = Color(0xFF4F3422),
                         focusedIndicatorColor = Color.Transparent,
                         unfocusedIndicatorColor = Color.Transparent,
-                        disabledIndicatorColor = Color.Transparent,
-                        errorIndicatorColor = Color.Transparent,
-                        focusedPlaceholderColor = Color(0xFF736B66),
-                        unfocusedPlaceholderColor = Color(0xFF736B66)
                     ),
                     shape = RoundedCornerShape(100.dp),
                     singleLine = true,
@@ -168,6 +166,7 @@ fun CareSafeZone4Screen(onBackClick: () -> Unit, onStartClick: () -> Unit) {
                         .height(fieldHeight)
                         .focusRequester(focusRequester)
                 )
+
                 Spacer(modifier = Modifier.height(20.dp))
             }
         }
@@ -185,7 +184,7 @@ fun CareSafeZone4Screen(onBackClick: () -> Unit, onStartClick: () -> Unit) {
         ) {
             val buttonHeight = screenHeight * 0.065f
             val arrowHeight = buttonHeight * 0.4f
-            val arrowWidth = arrowHeight * (24f / 24f)
+            val arrowWidth = arrowHeight
 
             Button(
                 onClick = onStartClick,
