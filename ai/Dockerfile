@@ -24,7 +24,8 @@ RUN pip install --no-cache-dir \
 # 2단계: ML/데이터 관련 패키지
 RUN pip install --no-cache-dir \
     numpy==1.26.4 \
-    soynlp==0.0.493
+    soynlp==0.0.493 \
+    mlflow==3.5.1
 
 # 3단계: 나머지 애플리케이션 패키지
 RUN pip install --no-cache-dir \
