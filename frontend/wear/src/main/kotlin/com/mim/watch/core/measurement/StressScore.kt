@@ -46,8 +46,9 @@ object StressScore {        // 유틸 싱글턴
         } else null
 
         // 각 항목을 Z -> 0 ~ 100 점수로 환산
-        val sSdnn  = zToScore(sdnn?.let  { z(it, baseline.hrvSdnnMean, baseline.hrvSdnnStd) })
-        val sRmssd = zToScore(rmssd?.let { z(it, baseline.hrvRmssdMean, baseline.hrvRmssdStd) })
+        // ⭐ HRV(SDNN/RMSSD)는 높을수록 스트레스 낮음 → z값에 음수 곱해서 방향 반전
+        val sSdnn  = zToScore(sdnn?.let  { z(it, baseline.hrvSdnnMean, baseline.hrvSdnnStd)?.times(-1.0) })
+        val sRmssd = zToScore(rmssd?.let { z(it, baseline.hrvRmssdMean, baseline.hrvRmssdStd)?.times(-1.0) })
         val sHr    = zToScore(hr?.let    { z(it, baseline.hrMean,      baseline.hrStd) })
         val sTemp  = zToScore(temp?.let  { z(it, baseline.objTempMean,  baseline.objTempStd) })
 
