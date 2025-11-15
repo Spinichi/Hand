@@ -37,9 +37,17 @@ public class CounselingReport {
     private Integer diaryCount;
 
     /**
-     * 상담 조언 (긴 텍스트)
+     * MongoDB 상세 보고서 ID
      */
-    @Column(nullable = false, columnDefinition = "TEXT")
+    @Column(nullable = false)
+    private String mongodbReportId;
+
+    /**
+     * 상담 조언 (긴 텍스트) - 하위 호환성 유지
+     * @deprecated MongoDB의 CounselingReportDetail 사용 권장
+     */
+    @Deprecated
+    @Column(columnDefinition = "TEXT")
     private String counselingAdvice;
 
     @Column(nullable = false)

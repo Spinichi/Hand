@@ -11,6 +11,7 @@ import java.time.LocalDate;
 @Data
 public class CounselingAnalyzeRequest {
 
+    private Long groupId;
     private Long userId;
 
     @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)

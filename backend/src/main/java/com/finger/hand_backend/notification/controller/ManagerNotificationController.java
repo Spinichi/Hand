@@ -6,6 +6,7 @@ import com.finger.hand_backend.notification.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 /**
@@ -19,39 +20,66 @@ public class ManagerNotificationController {
 
     private final NotificationService notificationService;
 
+    private Long userId(Authentication auth) {
+        return Long.valueOf(auth.getName());
+    }
+
     /**
      * 특정 유저에게 알림 전송
      */
     @PostMapping("/send")
-    public ResponseEntity<ApiResponse<Void>> sendToUser(@RequestBody SendNotificationRequest request) {
+    public ResponseEntity<ApiResponse<Void>> sendToUser(
+            Authentication auth,
+            @RequestBody SendNotificationRequest request) {
 
-        log.info("POST /manager/notifications/send - userId: {}, title: {}", request.getUserId(), request.getTitle());
+        Long managerId = userId(auth);
+        log.info("POST /manager/notifications/send - managerId: {}, userId: {}, title: {}",
+                managerId, request.getUserId(), request.getTitle());
 
-        notificationService.sendToUser(
-                request.getUserId(),
-                NotificationType.MANAGER_NOTICE,
-                request.getTitle(),
-                request.getBody()
-        );
+        try {
+            notificationService.sendToUser(
+                    managerId,
+                    request.getUserId(),
+                    NotificationType.MANAGER_NOTICE,
+                    request.getTitle(),
+                    request.getBody()
+            );
 
-        return ResponseEntity.ok(ApiResponse.success(null, "알림이 전송되었습니다."));
+            return ResponseEntity.ok(ApiResponse.success(null, "알림이 전송되었습니다."));
+
+        } catch (IllegalArgumentException e) {
+            log.warn("Failed to send notification: {}", e.getMessage());
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.fail(e.getMessage()));
+        }
     }
 
     /**
-     * 전체 유저에게 알림 전송
+     * 전체 유저에게 알림 전송 (관리자가 속한 그룹의 멤버들에게만)
      */
     @PostMapping("/broadcast")
-    public ResponseEntity<ApiResponse<Void>> broadcastToAll(@RequestBody BroadcastNotificationRequest request) {
+    public ResponseEntity<ApiResponse<Void>> broadcastToAll(
+            Authentication auth,
+            @RequestBody BroadcastNotificationRequest request) {
 
-        log.info("POST /manager/notifications/broadcast - title: {}", request.getTitle());
+        Long managerId = userId(auth);
+        log.info("POST /manager/notifications/broadcast - managerId: {}, title: {}", managerId, request.getTitle());
 
-        notificationService.sendToAllUsers(
-                NotificationType.MANAGER_NOTICE,
-                request.getTitle(),
-                request.getBody()
-        );
+        try {
+            notificationService.sendToGroupMembers(
+                    managerId,
+                    NotificationType.MANAGER_NOTICE,
+                    request.getTitle(),
+                    request.getBody()
+            );
 
-        return ResponseEntity.ok(ApiResponse.success(null, "전체 알림이 전송되었습니다."));
+            return ResponseEntity.ok(ApiResponse.success(null, "그룹 멤버들에게 알림이 전송되었습니다."));
+
+        } catch (IllegalArgumentException e) {
+            log.warn("Failed to broadcast notification: {}", e.getMessage());
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.fail(e.getMessage()));
+        }
     }
 
     /**
