@@ -19,9 +19,9 @@ router = APIRouter()
 WEAVIATE_HOST = os.getenv("WEAVIATE_HOST", "hand-weaviate")
 def get_client():
     return weaviate.connect_to_custom(
-        http_host="WEAVIATE_HOST",
+        http_host=WEAVIATE_HOST,
         http_port=8080,
-        grpc_host="WEAVIATE_HOST",
+        grpc_host=WEAVIATE_HOST,
         grpc_port=50051,
         http_secure=False,
         grpc_secure=False,
