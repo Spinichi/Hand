@@ -2,6 +2,7 @@ package com.finger.hand_backend.report.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -26,82 +27,81 @@ import java.util.Map;
 public class ReportAnalysisClient {
 
     private final RestTemplate restTemplate = new RestTemplate();
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper = new ObjectMapper()
+            .registerModule(new JavaTimeModule());  // LocalDate 직렬화 지원
 
-    @Value("${report.api.weekly.url:http://localhost:8000/analyze-week}")
-    private String weeklyReportApiUrl;
+    @Value("${report.api.individual.url}")
+    private String individualReportApiUrl;
 
-    @Value("${report.api.monthly.url:http://localhost:8000/analyze-month}")
-    private String monthlyReportApiUrl;
-
-    @Value("${report.api.counseling.url:http://localhost:8000/analyze-counseling}")
-    private String counselingApiUrl;
+    @Value("${report.api.manager.url}")
+    private String managerAdviceApiUrl;
 
     /**
-     * 주간 보고서 분석
+     * 개인 사용자 보고서 분석
      *
-     * @param userId      사용자 ID
-     * @param startDate   시작일
-     * @param endDate     종료일
-     * @param diaries     일별 다이어리 리스트 (긴 요약, 우울 점수 포함)
-     * @param biometrics  생체 데이터
-     * @return 분석 결과
+     * FastAPI 엔드포인트: POST /ai/individual-users/report
+     *
+     * @param userId        사용자 ID
+     * @param diaries       일별 다이어리 리스트 (date, longSummary, shortSummary, depressionScore)
+     * @param biometrics    생체 데이터 (baseline, anomalies, userInfo)
+     * @param totalSummary  개인은 "" 값
+     * @return 분석 결과 (report, advice)
      */
-    public ReportAnalysisResult analyzeWeeklyReport(
+    public ReportAnalysisResult analyzeIndividualReport(
             Long userId,
-            LocalDate startDate,
-            LocalDate endDate,
             List<Map<String, Object>> diaries,
-            Map<String, Object> biometrics) {
+            Map<String, Object> biometrics,
+            String totalSummary) {
 
-        log.info("Analyzing weekly report for user {} ({} ~ {}, diaries: {})",
-                userId, startDate, endDate, diaries.size());
+        log.info("Analyzing individual report for user {} (diaries: {})", userId, diaries.size());
 
-        return callAnalysisApi(weeklyReportApiUrl, userId, startDate, endDate, diaries, biometrics, "weekly");
+        return callAnalysisApi(individualReportApiUrl, userId, diaries, biometrics, totalSummary, "individual");
     }
 
     /**
-     * 월간 보고서 분석
+     * 관리자(팀장)용 보고서 및 조언 생성
      *
-     * @param userId      사용자 ID
-     * @param startDate   시작일
-     * @param endDate     종료일
-     * @param diaries     일별 다이어리 리스트 (긴 요약, 우울 점수 포함)
-     * @param biometrics  생체 데이터
-     * @return 분석 결과
+     * FastAPI 엔드포인트: POST /ai/manager/advice
+     *
+     * @param userId        관리자 ID
+     * @param diaries       팀원의 일별 다이어리 리스트 (date, longSummary, shortSummary, depressionScore)
+     * @param biometrics    팀원의 생체 데이터 (baseline, anomalies, userInfo)
+     * @param totalSummary  팀 전체 요약
+     * @return 분석 결과 (report, advice)
      */
-    public ReportAnalysisResult analyzeMonthlyReport(
+    public ReportAnalysisResult analyzeManagerAdvice(
             Long userId,
-            LocalDate startDate,
-            LocalDate endDate,
             List<Map<String, Object>> diaries,
-            Map<String, Object> biometrics) {
+            Map<String, Object> biometrics,
+            String totalSummary) {
 
-        log.info("Analyzing monthly report for user {} ({} ~ {}, diaries: {})",
-                userId, startDate, endDate, diaries.size());
+        log.info("Analyzing manager advice for user {} (diaries: {})", userId, diaries.size());
 
-        return callAnalysisApi(monthlyReportApiUrl, userId, startDate, endDate, diaries, biometrics, "monthly");
+        return callAnalysisApi(managerAdviceApiUrl, userId, diaries, biometrics, totalSummary, "manager");
     }
 
     /**
      * FastAPI 호출 공통 메서드
+     *
+     * API 스펙:
+     * - Request: { "user_id": int, "diaries": [...], "biometrics": {...}, "total_summary": string }
+     * - Response: { "user_id": int, "report": string, "advice": string }
      */
     private ReportAnalysisResult callAnalysisApi(
             String apiUrl,
             Long userId,
-            LocalDate startDate,
-            LocalDate endDate,
             List<Map<String, Object>> diaries,
             Map<String, Object> biometrics,
+            String totalSummary,
             String reportType) {
 
         try {
-            // 요청 바디 구성
+            // FastAPI 스펙에 맞춘 요청 바디
             Map<String, Object> requestBody = new HashMap<>();
-            requestBody.put("userId", userId);
-            requestBody.put("period", Map.of("startDate", startDate, "endDate", endDate));
-            requestBody.put("diaries", diaries);
-            requestBody.put("biometrics", biometrics);
+            requestBody.put("user_id", userId);           // userId -> user_id
+            requestBody.put("diaries", diaries);          // 그대로 전달
+            requestBody.put("biometrics", biometrics);    // 그대로 전달
+            requestBody.put("total_summary", totalSummary); // 추가됨
 
             // FastAPI 호출
             HttpHeaders headers = new HttpHeaders();
@@ -114,13 +114,12 @@ public class ReportAnalysisClient {
             String responseBody = restTemplate.postForObject(apiUrl, request, String.class);
             log.debug("{} Report API Response: {}", reportType, responseBody);
 
-            // 응답 파싱
+            // 응답 파싱 (FastAPI 스펙)
             JsonNode root = objectMapper.readTree(responseBody);
-            JsonNode result = root.at("/result");
 
             return ReportAnalysisResult.builder()
-                    .report(result.get("report").asText())
-                    .emotionalAdvice(result.get("emotional_advice").asText())
+                    .report(root.get("report").asText())
+                    .advice(root.get("advice").asText())  // emotional_advice -> advice
                     .build();
 
         } catch (Exception e) {
@@ -129,53 +128,18 @@ public class ReportAnalysisClient {
             // Fallback: Mock 데이터 반환
             return ReportAnalysisResult.builder()
                     .report("분석 중 오류가 발생했습니다. 서버 상태를 확인해주세요.")
-                    .emotionalAdvice("FastAPI 서버와의 연결에 실패했습니다.")
+                    .advice("FastAPI 서버와의 연결에 실패했습니다.")
                     .build();
         }
     }
 
     /**
-     * 관리자 상담용 분석
-     *
-     * @param requestBody 전체 요청 데이터 (userId, period, totalSummary, diaries, biometrics)
-     * @return 상담 조언
-     */
-    public String analyzeCounseling(Map<String, Object> requestBody) {
-        log.info("Analyzing counseling");
-
-        try {
-            // FastAPI 호출
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-
-            String jsonRequestBody = objectMapper.writeValueAsString(requestBody);
-            HttpEntity<String> request = new HttpEntity<>(jsonRequestBody, headers);
-
-            log.debug("Counseling API Request: {}", jsonRequestBody);
-            String responseBody = restTemplate.postForObject(counselingApiUrl, request, String.class);
-            log.debug("Counseling API Response: {}", responseBody);
-
-            // 응답 파싱
-            JsonNode root = objectMapper.readTree(responseBody);
-            JsonNode result = root.at("/result");
-
-            return result.get("counselingAdvice").asText();
-
-        } catch (Exception e) {
-            log.warn("Counseling Analysis: FastAPI 호출 실패, Mock 데이터 반환", e);
-
-            // Fallback: Mock 데이터 반환
-            return "상담 분석 중 오류가 발생했습니다.\n\nFastAPI 서버와의 연결에 실패하여 상담 조언을 생성할 수 없습니다.\n서버 상태를 확인해주세요.";
-        }
-    }
-
-    /**
-     * 보고서 분석 결과
+     * 보고서 분석 결과 (FastAPI 응답 스펙)
      */
     @lombok.Data
     @lombok.Builder
     public static class ReportAnalysisResult {
-        private String report;            // 보고서 (통합)
-        private String emotionalAdvice;   // 감정 조언
+        private String report;   // 보고서 내용
+        private String advice;   // 조언 (emotional_advice -> advice로 변경됨)
     }
 }

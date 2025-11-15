@@ -57,7 +57,7 @@ public class CounselingService {
             throw new IllegalStateException("해당 기간에 작성된 다이어리가 없습니다.");
         }
 
-        // 2. totalSummary 생성 (모든 longSummary 이어붙이기)
+        // 2. totalSummary 생성 (관리자용 RAG: 모든 longSummary 이어붙이기)
         String totalSummary = diaries.stream()
                 .map(diary -> diary.getEmotionAnalysis().getLongSummary())
                 .collect(Collectors.joining(" "));
@@ -66,7 +66,7 @@ public class CounselingService {
         List<Map<String, Object>> dailyDiaries = new ArrayList<>();
         for (DiaryConversation diary : diaries) {
             Map<String, Object> dailyDiary = new HashMap<>();
-            dailyDiary.put("date", diary.getSessionDate());
+            dailyDiary.put("date", diary.getSessionDate().toString());  // LocalDate -> String (ISO 8601)
             dailyDiary.put("longSummary", diary.getEmotionAnalysis().getLongSummary());
             dailyDiary.put("shortSummary", diary.getEmotionAnalysis().getShortSummary());
             dailyDiary.put("depressionScore", diary.getEmotionAnalysis().getDepressionScore());
@@ -77,20 +77,21 @@ public class CounselingService {
         BiometricDataCollector.BiometricDataResult biometricData =
                 biometricDataCollector.collectBiometricData(userId, startDate, endDate);
 
-        // 5. FastAPI로 분석 요청
-        Map<String, Object> requestBody = new HashMap<>();
-        requestBody.put("userId", userId);
-        requestBody.put("period", Map.of("startDate", startDate, "endDate", endDate));
-        requestBody.put("totalSummary", totalSummary);
-        requestBody.put("diaries", dailyDiaries);
-
+        // 5. FastAPI로 분석 요청 (관리자용)
         Map<String, Object> biometrics = new HashMap<>();
         biometrics.put("baseline", biometricData.getUserBaseline());
         biometrics.put("anomalies", biometricData.getAnomalies());
         biometrics.put("userInfo", biometricData.getUserInfo());
-        requestBody.put("biometrics", biometrics);
 
-        String counselingAdvice = reportAnalysisClient.analyzeCounseling(requestBody);
+        ReportAnalysisClient.ReportAnalysisResult analysisResult =
+                reportAnalysisClient.analyzeManagerAdvice(
+                        userId,
+                        dailyDiaries,
+                        biometrics,
+                        totalSummary
+                );
+
+        String counselingAdvice = analysisResult.getAdvice();
 
         // 6. DB에 저장
         CounselingReport savedReport = counselingReportRepository.save(

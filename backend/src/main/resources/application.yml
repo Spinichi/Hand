@@ -40,9 +40,21 @@ gms:
         url: https://gms.ssafy.io/gmsapi/api.openai.com/v1/chat/completions
         key: ${GMS_API_KEY}
 
+# AI 서버 설정 (FastAPI)
+ai:
+    server:
+        base-url: https://gatewaytohand.store/ai
+
 emotion:
     api:
-        url: http://localhost:8000/analyze   # FastAPI 서버 (TODO)
+        url: ${ai.server.base-url}/diary/summary
+
+report:
+    api:
+        individual:
+            url: ${ai.server.base-url}/individual-users/report
+        manager:
+            url: ${ai.server.base-url}/manager/advice
 
 logging:
     level:

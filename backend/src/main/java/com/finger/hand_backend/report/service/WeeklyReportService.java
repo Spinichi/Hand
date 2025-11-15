@@ -88,7 +88,7 @@ public class WeeklyReportService {
 
         for (DiaryConversation diary : diaries) {
             Map<String, Object> dailyDiary = new HashMap<>();
-            dailyDiary.put("date", diary.getSessionDate());
+            dailyDiary.put("date", diary.getSessionDate().toString());  // LocalDate -> String (ISO 8601)
             dailyDiary.put("longSummary", diary.getEmotionAnalysis().getLongSummary());
             dailyDiary.put("shortSummary", diary.getEmotionAnalysis().getShortSummary());
             dailyDiary.put("depressionScore", diary.getEmotionAnalysis().getDepressionScore());
@@ -99,19 +99,19 @@ public class WeeklyReportService {
         BiometricDataCollector.BiometricDataResult biometricData =
                 biometricDataCollector.collectBiometricData(userId, weekStart, weekEnd);
 
-        // 8. FastAPI로 분석 요청
+        // 8. FastAPI로 분석 요청 (개인용)
         Map<String, Object> biometricsForApi = new HashMap<>();
         biometricsForApi.put("baseline", biometricData.getUserBaseline());
         biometricsForApi.put("anomalies", biometricData.getAnomalies());
         biometricsForApi.put("userInfo", biometricData.getUserInfo());
 
+        // 개인용 보고서는 totalSummary를 빈 문자열로 전달 (관리자용만 RAG 사용)
         ReportAnalysisClient.ReportAnalysisResult analysisResult =
-                reportAnalysisClient.analyzeWeeklyReport(
+                reportAnalysisClient.analyzeIndividualReport(
                         userId,
-                        weekStart,
-                        weekEnd,
                         dailyDiaries,
-                        biometricsForApi
+                        biometricsForApi,
+                        ""  // 개인용은 빈 문자열
                 );
 
         // 9. 통계 계산
@@ -131,7 +131,7 @@ public class WeeklyReportService {
                 .anomalies(biometricData.getAnomalies())
                 .userInfo(biometricData.getUserInfo())
                 .report(analysisResult.getReport())
-                .emotionalAdvice(analysisResult.getEmotionalAdvice())
+                .emotionalAdvice(analysisResult.getAdvice())  // FastAPI 스펙: advice 필드 사용
                 .totalDiaryCount(diaries.size())
                 .averageDepressionScore(scoreStats.getAverage())
                 .maxDepressionScore(scoreStats.getMax())

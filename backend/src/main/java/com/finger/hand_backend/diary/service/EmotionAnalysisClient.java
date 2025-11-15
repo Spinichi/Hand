@@ -35,28 +35,32 @@ public class EmotionAnalysisClient {
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final Random random = new Random();
 
-    @Value("${emotion.api.url:http://localhost:8000/analyze}")
+    @Value("${emotion.api.url}")
     private String emotionApiUrl;
 
     /**
      * 감정 분석
-     * FastAPI 서버로 대화 내용 전송 후 감정 분석 결과 수신
+     * FastAPI 서버(/ai/diary/summary)로 대화 내용 전송 후 감정 분석 결과 수신
+     *
+     * API 스펙:
+     * - Request: { "user_id": int, "texts": [string, string, ...] }
+     * - Response: { "user_id": int, "result": { "score", "sentiment", "short_summary", "long_summary", "short_advice" } }
      */
     public EmotionAnalysis analyzeEmotion(Long userId, LocalDate date, List<QuestionAnswer> conversationHistory) {
         log.info("EmotionAnalysis: Analyzing for user {} on {} (conversation size: {})",
                 userId, date, conversationHistory.size());
 
         try {
-            // 답변들만 이어붙여서 하나의 문자열로 생성
-            String diary = conversationHistory.stream()
-                    .filter(qa -> qa.getAnswerText() != null) // 답변이 있는 것만
+            // 답변들만 추출하여 텍스트 배열 생성
+            List<String> texts = conversationHistory.stream()
+                    .filter(qa -> qa.getAnswerText() != null && !qa.getAnswerText().isBlank())
                     .map(QuestionAnswer::getAnswerText)
-                    .collect(Collectors.joining(" "));
+                    .collect(Collectors.toList());
 
+            // FastAPI 스펙에 맞춘 요청 바디
             Map<String, Object> requestBody = new HashMap<>();
-            requestBody.put("userId", userId);
-            requestBody.put("date", date);
-            requestBody.put("diary", diary);
+            requestBody.put("user_id", userId);  // userId -> user_id
+            requestBody.put("texts", texts);     // diary (string) -> texts (array)
 
             // FastAPI 호출
             HttpHeaders headers = new HttpHeaders();
@@ -69,7 +73,7 @@ public class EmotionAnalysisClient {
             String responseBody = restTemplate.postForObject(emotionApiUrl, request, String.class);
             log.debug("Emotion API Response: {}", responseBody);
 
-            // 응답 파싱
+            // 응답 파싱 (FastAPI 스펙)
             JsonNode root = objectMapper.readTree(responseBody);
             JsonNode result = root.at("/result");
             JsonNode sentiment = result.at("/sentiment");
@@ -84,7 +88,7 @@ public class EmotionAnalysisClient {
                     .depressionScore(result.get("score").asDouble())
                     .shortSummary(result.get("short_summary").asText())
                     .longSummary(result.get("long_summary").asText())
-                    .emotionalAdvice(result.get("emotional_advice").asText())
+                    .emotionalAdvice(result.get("short_advice").asText())  // emotional_advice -> short_advice
                     .analyzedAt(LocalDateTime.now())
                     .build();
 
