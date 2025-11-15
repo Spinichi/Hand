@@ -16,12 +16,12 @@ import asyncio
 router = APIRouter()
 
 # Weaviate 세팅
-WEAVIATE_URL = os.getenv("WEAVIATE_URL")
+WEAVIATE_HOST = os.getenv("WEAVIATE_HOST", "hand-weaviate")
 def get_client():
     return weaviate.connect_to_custom(
-        http_host="localhost",
+        http_host="WEAVIATE_HOST",
         http_port=8080,
-        grpc_host="localhost",
+        grpc_host="WEAVIATE_HOST",
         grpc_port=50051,
         http_secure=False,
         grpc_secure=False,
