@@ -72,8 +72,9 @@ class StressTestActivity : ComponentActivity() {
                         // 10초 뒤 다른 화면으로 이동
                         launch {
                             delay(10000)
-                            // ⭐ 현재 스트레스 점수(인덱스)를 StressScoreActivity로 전달
-                            val currentStressScore = com.mim.watch.services.SensorGatewayImpl.currentStressIndex
+                            // ⭐ DB에 저장되는 값과 동일한 10초 평균 스트레스 점수 사용
+                            val representativeSample = com.mim.watch.services.DataBufferManager.latestRepresentativeSample
+                            val currentStressScore = representativeSample?.stressIndex ?: 0.0
                             val intent = Intent(this@StressTestActivity, StressScoreActivity::class.java)
                             intent.putExtra("stressScore", currentStressScore)
                             startActivity(intent)
