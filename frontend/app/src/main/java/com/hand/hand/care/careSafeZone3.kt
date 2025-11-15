@@ -2,18 +2,22 @@ package com.hand.hand.care
 
 import android.content.Intent
 import android.os.Bundle
+import android.speech.tts.TextToSpeech
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalFocusManager
@@ -23,28 +27,80 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.layout.imePadding
 import com.hand.hand.R
 import com.hand.hand.ui.theme.BrandFontFamily
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
-import androidx.compose.foundation.layout.imePadding
+import java.util.Locale
 
 class CareSafeZone3Activity : ComponentActivity() {
+
+    // TTS 객체 & 준비 여부 상태
+    private var tts: TextToSpeech? = null
+    private val ttsInitialized = mutableStateOf(false)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // TTS 초기화
+        tts = TextToSpeech(this) { status ->
+            if (status == TextToSpeech.SUCCESS) {
+                val result = tts?.setLanguage(Locale.KOREAN)
+                if (result != TextToSpeech.LANG_MISSING_DATA &&
+                    result != TextToSpeech.LANG_NOT_SUPPORTED
+                ) {
+                    ttsInitialized.value = true
+                } else {
+                    Toast.makeText(this, "한국어 TTS를 사용할 수 없습니다.", Toast.LENGTH_SHORT).show()
+                }
+            } else {
+                Toast.makeText(this, "TTS 초기화에 실패했습니다.", Toast.LENGTH_SHORT).show()
+            }
+        }
+
         setContent {
+            val ttsReady by ttsInitialized
             CareSafeZone3Screen(
                 onBackClick = { finish() },
                 onStartClick = {
                     startActivity(Intent(this, CareSafeZone4Activity::class.java))
-                }
+                },
+                tts = tts,
+                ttsReady = ttsReady
             )
         }
     }
+
+
+    override fun onPause() {
+        super.onPause()
+        tts?.stop()   // 다른 화면으로 넘어가는 순간 TTS 끊기
+    }
+
+    override fun onDestroy() {
+        tts?.stop()
+        tts?.shutdown()
+        super.onDestroy()
+    }
+}
+
+// SafeZone3 안내문을 읽어주는 확장 함수
+fun TextToSpeech?.readSafeZone3Text() {
+    val ttsText =
+        "아무한테도 방해받지 않고 편안하고 안전하게 느껴지는 장소를 떠올리세요. " +
+                "잠시 숨을 고르며 그 장소를 떠올려 봅니다. " +
+                "가보았던 장소도 좋고 상상의 장소도 좋습니다. " +
+                "고요하고 안전하게 느껴지는 곳을 생각하세요. " +
+                "바닷가나 편안한 방일 수도 있습니다."
+    this?.speak(ttsText, TextToSpeech.QUEUE_FLUSH, null, "SafeZone3TTS")
 }
 
 @Composable
-fun CareSafeZone3Screen(onBackClick: () -> Unit, onStartClick: () -> Unit) {
+fun CareSafeZone3Screen(
+    onBackClick: () -> Unit,
+    onStartClick: () -> Unit,
+    tts: TextToSpeech?,
+    ttsReady: Boolean
+) {
     val configuration = LocalConfiguration.current
     val screenHeight = configuration.screenHeightDp.dp
     val screenWidth = configuration.screenWidthDp.dp
@@ -54,6 +110,14 @@ fun CareSafeZone3Screen(onBackClick: () -> Unit, onStartClick: () -> Unit) {
 
     val focusRequester = remember { FocusRequester() }
     val focusManager = LocalFocusManager.current
+
+    // 페이지 들어오고 TTS 준비되면 자동으로 한 번 읽기
+    LaunchedEffect(ttsReady) {
+        if (ttsReady) {
+            android.util.Log.d("CareSafeZone3", "TTS ready, speaking SafeZone3 text.")
+            tts.readSafeZone3Text()
+        }
+    }
 
     Box(
         modifier = Modifier
@@ -93,7 +157,12 @@ fun CareSafeZone3Screen(onBackClick: () -> Unit, onStartClick: () -> Unit) {
             Spacer(modifier = Modifier.height(16.dp))
 
             Text(
-                text = "아무한테도 방해받지 않고 편안하고 \n 안전하게 느껴지는 장소를 떠올리세요. \n \n 가보았던 장소도 좋고 상상의 장소도 \n 좋습니다. 고요하고 안전하게 느껴지는 곳을 \n 생각하세요. 바닷가나 편안한 방일 수도 \n 있습니다.",
+                text = "아무한테도 방해받지 않고 편안하고 \n" +
+                        "안전하게 느껴지는 장소를 떠올리세요. \n\n" +
+                        "가보았던 장소도 좋고 상상의 장소도 \n" +
+                        "좋습니다. 고요하고 안전하게 느껴지는 곳을 \n" +
+                        "생각하세요. 바닷가나 편안한 방일 수도 \n" +
+                        "있습니다.",
                 fontFamily = BrandFontFamily,
                 fontWeight = FontWeight.Medium,
                 fontSize = (screenHeight * 0.023f).value.sp,

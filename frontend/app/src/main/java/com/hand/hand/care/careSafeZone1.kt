@@ -4,6 +4,8 @@ package com.hand.hand.care
 
 import android.content.Intent
 import android.os.Bundle
+import android.speech.tts.TextToSpeech
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.Image
@@ -14,21 +16,19 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.hand.hand.R
-import com.hand.hand.ui.theme.BrandFontFamily
-
 import com.hand.hand.api.Relief.ReliefManager
-import android.widget.Toast
+import com.hand.hand.ui.theme.BrandFontFamily
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -37,58 +37,68 @@ import java.util.TimeZone
 class CareSafeZone1Activity : ComponentActivity() {
 
     companion object {
-        // 앱 실행 중 어디서든 접근 가능한 세션 ID 저장소
         var safeZoneSessionId: Long? = null
-
-        // ⭐ 완화법 시작 시점의 스트레스 점수 저장
         var beforeStressLevel: Int? = null
         var beforeStressTimestamp: Long? = null
     }
+
+    //  TTS + 상태
+    private var tts: TextToSpeech? = null
+    private val ttsInitialized = mutableStateOf(false)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // TTS 초기화 (람다 콜백 방식)
+        tts = TextToSpeech(this) { status ->
+            if (status == TextToSpeech.SUCCESS) {
+                val result = tts?.setLanguage(Locale.KOREAN)
+
+                if (result != TextToSpeech.LANG_MISSING_DATA &&
+                    result != TextToSpeech.LANG_NOT_SUPPORTED
+                ) {
+                    ttsInitialized.value = true
+                } else {
+                    Toast.makeText(this, "한국어 TTS를 사용할 수 없습니다.", Toast.LENGTH_SHORT).show()
+                }
+            } else {
+                Toast.makeText(this, "TTS 초기화에 실패했습니다.", Toast.LENGTH_SHORT).show()
+            }
+        }
+
         setContent {
+            val ttsReady by ttsInitialized
             CareSafeZone1Screen(
                 onBackClick = { finish() },
-                onStartClick = {
-                    startSafeZoneSession()
-//                    startActivity(Intent(this, CareSafeZone2Activity::class.java))
-                }
+                onStartClick = { startSafeZoneSession() },
+                tts = tts,
+                ttsReady = ttsReady
             )
         }
     }
+
     private fun startSafeZoneSession() {
-        // 1) 토큰 가져오기 (예시: SharedPreferences에 저장해둔 경우)
-//        val prefs = getSharedPreferences("auth", MODE_PRIVATE)
-//        val token = prefs.getString("accessToken", null)
-//
-//        if (token == null) {
-//            Toast.makeText(this, "로그인 정보가 없습니다.", Toast.LENGTH_SHORT).show()
-//            return
-//        }
+        beforeStressLevel =
+            com.hand.hand.wear.WearListenerForegroundService.getLatestStressLevel()
+        beforeStressTimestamp =
+            com.hand.hand.wear.WearListenerForegroundService.getLatestStressTimestamp()
+        android.util.Log.d(
+            "CareSafeZone1",
+            "📊 Before stress level: $beforeStressLevel (timestamp: $beforeStressTimestamp)"
+        )
 
-        // 2) ⭐ 완화법 시작 시점의 스트레스 점수 저장
-        beforeStressLevel = com.hand.hand.wear.WearListenerForegroundService.getLatestStressLevel()
-        beforeStressTimestamp = com.hand.hand.wear.WearListenerForegroundService.getLatestStressTimestamp()
-        android.util.Log.d("CareSafeZone1", "📊 Before stress level: $beforeStressLevel (timestamp: $beforeStressTimestamp)")
-
-        // 3) 현재 시간을 ISO 형식으로 만들기
         val startedAt = nowIsoUtc()
 
-        // 4) ReliefManager로 API 호출
         ReliefManager.startReliefSession(
-//            token = token,
-            interventionId = 2,          // ✅ 안전지대 연습의 DB id
-            triggerType = "MANUAL",  // 수동으로 실행
+            interventionId = 2,
+            triggerType = "MANUAL",
             anomalyDetectionId = null,
             gestureCode = "SAFE_ZONE",
             startedAt = startedAt,
             onSuccess = { res ->
                 val sessionId = res.data?.sessionId
-                // 세션 id 잘 받았는지 확인
-                // Log.d("Care", "safe zone sessionId = $sessionId")
-
                 safeZoneSessionId = sessionId
-                // 4) 다음 화면으로 이동 + 필요하면 sessionId도 같이 넘기기
+
                 val intent = Intent(this, CareSafeZone2Activity::class.java).apply {
                     putExtra("sessionId", sessionId ?: -1L)
                 }
@@ -101,27 +111,55 @@ class CareSafeZone1Activity : ComponentActivity() {
         )
     }
 
-    // KST 현재시간을 "yyyy-MM-dd'T'HH:mm:ss" 형태로
     private fun nowIsoUtc(): String {
         val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
         sdf.timeZone = TimeZone.getTimeZone("Asia/Seoul")
         return sdf.format(Date())
     }
+
+    override fun onPause() {
+        super.onPause()
+        tts?.stop()   // 다른 화면으로 넘어가는 순간 TTS 끊기
+    }
+
+    override fun onDestroy() {
+        tts?.stop()
+        tts?.shutdown()
+        super.onDestroy()
+    }
+}
+
+// TTS 확장 함수
+fun TextToSpeech?.readSafeZoneText() {
+    val text = "안전지대는 편안하고 안정되는 장소입니다. 불편함이 느껴진다면 다른 장소를 떠올리세요."
+    this?.speak(text, TextToSpeech.QUEUE_FLUSH, null, "SafeZone1TTS")
 }
 
 @Composable
-fun CareSafeZone1Screen(onBackClick: () -> Unit, onStartClick: () -> Unit) {
+fun CareSafeZone1Screen(
+    onBackClick: () -> Unit,
+    onStartClick: () -> Unit,
+    tts: TextToSpeech?,
+    ttsReady: Boolean
+) {
     val configuration = LocalConfiguration.current
     val screenHeight = configuration.screenHeightDp.dp
     val screenWidth = configuration.screenWidthDp.dp
     val headerHeight = screenHeight * 0.25f
+
+    // 페이지 들어오고 TTS 준비되면 자동으로 한 번 읽기
+    LaunchedEffect(ttsReady) {
+        if (ttsReady) {
+            android.util.Log.d("CareSafeZone1", "TTS ready, speaking text.")
+            tts.readSafeZoneText()
+        }
+    }
 
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(Color(0xFFF7F4F2))
     ) {
-        // 헤더
         CareHeader2(
             titleText = "안전지대 연습",
             subtitleTags = listOf(
@@ -132,20 +170,18 @@ fun CareSafeZone1Screen(onBackClick: () -> Unit, onStartClick: () -> Unit) {
             onBackClick = onBackClick
         )
 
-        // 본문 영역
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(
-                    top = headerHeight, // 헤더 바로 아래 시작
+                    top = headerHeight,
                     start = screenWidth * 0.05f,
                     end = screenWidth * 0.05f,
-                    bottom = 80.dp // 버튼 공간 확보
+                    bottom = 80.dp
                 )
                 .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // 이미지
             Spacer(modifier = Modifier.height(screenHeight * 0.01f))
             Image(
                 painter = painterResource(id = R.drawable.safe_zone_level),
@@ -157,7 +193,6 @@ fun CareSafeZone1Screen(onBackClick: () -> Unit, onStartClick: () -> Unit) {
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // 안내 텍스트
             Text(
                 text = "안전지대는 편안하고 \n 안정되는 장소입니다. \n \n 불편함이 느껴진다면 \n 다른 장소를 떠올리세요",
                 fontFamily = BrandFontFamily,
@@ -169,7 +204,6 @@ fun CareSafeZone1Screen(onBackClick: () -> Unit, onStartClick: () -> Unit) {
             )
         }
 
-        // 하단 고정 버튼
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -178,7 +212,7 @@ fun CareSafeZone1Screen(onBackClick: () -> Unit, onStartClick: () -> Unit) {
         ) {
             val buttonHeight = screenHeight * 0.065f
             val arrowHeight = buttonHeight * 0.4f
-            val arrowWidth = arrowHeight * (24f / 24f) // 원본 비율 유지
+            val arrowWidth = arrowHeight * (24f / 24f)
 
             Button(
                 onClick = onStartClick,

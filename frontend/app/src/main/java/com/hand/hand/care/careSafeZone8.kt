@@ -4,6 +4,7 @@ package com.hand.hand.care
 
 import android.content.Intent
 import android.os.Bundle
+import android.speech.tts.TextToSpeech
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -28,32 +29,49 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.layout.imePadding
 import com.hand.hand.R
 import com.hand.hand.api.Relief.ReliefManager
 import com.hand.hand.ui.theme.BrandFontFamily
-import androidx.compose.foundation.layout.imePadding
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
-import com.hand.hand.care.CareSafeZone1Activity
 
 class CareSafeZone8Activity : ComponentActivity() {
 
-//    private var sessionId: Long = -1L
+    // ✅ TTS 객체 & 준비 여부 상태
+    private var tts: TextToSpeech? = null
+    private val ttsInitialized = mutableStateOf(false)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        //  앞 단계에서 넘겨준 sessionId 받기
-//        sessionId = intent.getLongExtra("sessionId", -1L)
+        // ✅ TTS 초기화
+        tts = TextToSpeech(this) { status ->
+            if (status == TextToSpeech.SUCCESS) {
+                val result = tts?.setLanguage(Locale.KOREAN)
+                if (result != TextToSpeech.LANG_MISSING_DATA &&
+                    result != TextToSpeech.LANG_NOT_SUPPORTED
+                ) {
+                    ttsInitialized.value = true
+                } else {
+                    Toast.makeText(this, "한국어 TTS를 사용할 수 없습니다.", Toast.LENGTH_SHORT).show()
+                }
+            } else {
+                Toast.makeText(this, "TTS 초기화에 실패했습니다.", Toast.LENGTH_SHORT).show()
+            }
+        }
 
         setContent {
+            val ttsReady by ttsInitialized
             CareSafeZone8Screen(
                 onBackClick = { finish() },
                 onSubmit = { score ->
                     endSafeZoneSession(score)
-                }
+                },
+                tts = tts,
+                ttsReady = ttsReady
             )
         }
     }
@@ -98,12 +116,26 @@ class CareSafeZone8Activity : ComponentActivity() {
         sdf.timeZone = TimeZone.getTimeZone("Asia/Seoul")
         return sdf.format(Date())
     }
+
+    override fun onDestroy() {
+        tts?.stop()
+        tts?.shutdown()
+        super.onDestroy()
+    }
+}
+
+// ✅ 이 화면에서 "수고하셨습니다!"만 읽어주는 확장 함수
+fun TextToSpeech?.readSafeZone8Text() {
+    val ttsText = "수고하셨습니다!"
+    this?.speak(ttsText, TextToSpeech.QUEUE_FLUSH, null, "SafeZone8TTS")
 }
 
 @Composable
 fun CareSafeZone8Screen(
     onBackClick: () -> Unit,
-    onSubmit: (Int) -> Unit               // ✅ 입력완료 시 점수(Int)를 넘겨주는 콜백
+    onSubmit: (Int) -> Unit,      // ✅ 입력완료 시 점수(Int)를 넘겨주는 콜백
+    tts: TextToSpeech?,
+    ttsReady: Boolean
 ) {
     val configuration = LocalConfiguration.current
     val screenHeight = configuration.screenHeightDp.dp
@@ -114,6 +146,14 @@ fun CareSafeZone8Screen(
 
     val focusRequester = remember { FocusRequester() }
     val focusManager = LocalFocusManager.current
+
+    // ✅ 페이지 들어오고 TTS 준비되면 자동으로 "수고하셨습니다!" 한 번 읽기
+    LaunchedEffect(ttsReady) {
+        if (ttsReady) {
+            android.util.Log.d("CareSafeZone8", "TTS ready, speaking SafeZone8 text.")
+            tts.readSafeZone8Text()
+        }
+    }
 
     Box(
         modifier = Modifier
@@ -249,9 +289,9 @@ fun CareSafeZone8Screen(
                     val scoreInt = scoreText.toIntOrNull()
 
                     if (scoreInt != null) {
-                        onSubmit(scoreInt)   // ✅ Activity로 점수 전달 → endSession 호출
+                        onSubmit(scoreInt)   // ✅ Activity로 점수 전달 → endSafeZoneSession 호출
                     }
-                    // 숫자 아니면 지금은 무시 (원하면 나중에 에러 처리 추가)
+                    // 숫자 아니면 지금은 무시 (원하면 나중에 에러 처리 추가 가능)
                 },
                 modifier = Modifier
                     .fillMaxWidth()
