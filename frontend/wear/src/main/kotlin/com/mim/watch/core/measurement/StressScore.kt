@@ -40,7 +40,7 @@ object StressScore {        // 유틸 싱글턴
         val sdnn  = ibi?.let { if (it.size >= 2) HrvCalculator.sdnn(it) else null }
         val rmssd = ibi?.let { if (it.size >= 2) HrvCalculator.rmssd(it) else null }
 
-        // ⭐ 가속도 크기 계산 (X, Y, Z로부터 벡터 크기)
+        // ⭐ 가속도 크기 계산 (활동 감지용)
         val accelMagnitude = if (accelX != null && accelY != null && accelZ != null) {
             kotlin.math.sqrt(accelX * accelX + accelY * accelY + accelZ * accelZ)
         } else null
@@ -52,18 +52,15 @@ object StressScore {        // 유틸 싱글턴
         val sHr    = zToScore(hr?.let    { z(it, baseline.hrMean,      baseline.hrStd) })
         val sTemp  = zToScore(temp?.let  { z(it, baseline.objTempMean,  baseline.objTempStd) })
 
-        // ⭐ 가속도 점수: 높은 움직임 = 높은 스트레스 (간단한 매핑, Baseline 없이 절대값 기준)
-        // 가속도 크기가 클수록 스트레스 증가 (0~20 m/s² 범위를 0~100으로 정규화)
-        val sAccel = accelMagnitude?.let {
-            val normalized = (it / 20.0) * 100.0  // 20 m/s²를 최대값으로 가정
-            min(100.0, max(0.0, normalized))
-        } ?: 0.0
+        // 가중 합산: HRV 60%, HR 30%, Temp 10%
+        // (가속도는 활동 감지용으로만 사용, 스트레스 지수에 직접 반영하지 않음)
+        var index = (sSdnn * 0.30) + (sRmssd * 0.30) + (sHr * 0.30) + (sTemp * 0.10)
 
-        // 가중 합산(논문/설계 비율): HRV 0.6, HR 0.25, Temp 0.10, Accel 0.05
-        var index = (sSdnn * 0.30) + (sRmssd * 0.30) + (sHr * 0.25) + (sTemp * 0.10) + (sAccel * 0.05)
-
-        // ⭐ SPM 기반 활동 보정 (SPM >= 100이면 활동 중으로 간주)
+        // ⭐ SPM 기반 활동 보정 (SPM >= 100이면 운동 중으로 간주)
         index = StressLevelMapper.applyActivityDiscountBySpm(index, spm)
+
+        // ⭐ 가속도 기반 활동 보정 (제자리 운동/활동 감지)
+        index = StressLevelMapper.applyActivityDiscountByAccel(index, accelMagnitude)
 
         // 0~100으로 클램프
         index = min(100.0, max(0.0, index))
