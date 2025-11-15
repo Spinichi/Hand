@@ -86,7 +86,19 @@ public class CounselingService {
         // 1. 관리자 권한 검증
         validateManagerAccessToGroup(managerId, groupId, userId);
 
-        // 1. 해당 기간의 다이어리 조회
+        // 2. 중복 체크: 같은 기간 보고서가 이미 있으면 기존 것 반환
+        Optional<CounselingReport> existingReport = counselingReportRepository
+                .findTopByUserIdAndStartDateAndEndDateOrderByCreatedAtDesc(userId, startDate, endDate);
+
+        if (existingReport.isPresent()) {
+            log.info("Existing report found for user {} ({} ~ {}), returning existing report: {}",
+                    userId, startDate, endDate, existingReport.get().getId());
+            return getCounselingReport(managerId, groupId, existingReport.get().getId());
+        }
+
+        log.info("No existing report found, creating new counseling report");
+
+        // 3. 해당 기간의 다이어리 조회
         List<DiaryConversation> diaries = diaryConversationRepository
                 .findByUserIdAndSessionDateBetweenOrderBySessionDateAsc(userId, startDate, endDate)
                 .stream()
@@ -99,12 +111,12 @@ public class CounselingService {
             throw new IllegalStateException("해당 기간에 작성된 다이어리가 없습니다.");
         }
 
-        // 2. totalSummary 생성 (관리자용 RAG: 모든 longSummary 이어붙이기)
+        // 4. totalSummary 생성 (관리자용 RAG: 모든 longSummary 이어붙이기)
         String totalSummary = diaries.stream()
                 .map(diary -> diary.getEmotionAnalysis().getLongSummary())
                 .collect(Collectors.joining(" "));
 
-        // 3. 일별 다이어리 데이터 구성
+        // 5. 일별 다이어리 데이터 구성
         List<Map<String, Object>> dailyDiaries = new ArrayList<>();
         for (DiaryConversation diary : diaries) {
             Map<String, Object> dailyDiary = new HashMap<>();
@@ -115,11 +127,11 @@ public class CounselingService {
             dailyDiaries.add(dailyDiary);
         }
 
-        // 4. 생체 데이터 수집
+        // 6. 생체 데이터 수집
         BiometricDataCollector.BiometricDataResult biometricData =
                 biometricDataCollector.collectBiometricData(userId, startDate, endDate);
 
-        // 5. FastAPI로 분석 요청 (관리자용)
+        // 7. FastAPI로 분석 요청 (관리자용)
         Map<String, Object> biometrics = new HashMap<>();
         biometrics.put("baseline", biometricData.getUserBaseline());
         biometrics.put("anomalies", biometricData.getAnomalies());
@@ -133,12 +145,12 @@ public class CounselingService {
                         totalSummary
                 );
 
-        // 6. 통계 계산
+        // 8. 통계 계산
         DoubleSummaryStatistics scoreStats = diaries.stream()
                 .mapToDouble(d -> d.getEmotionAnalysis().getDepressionScore())
                 .summaryStatistics();
 
-        // 7. CounselingReportDetail (MongoDB) 저장
+        // 9. CounselingReportDetail (MongoDB) 저장
         CounselingReportDetail detail = CounselingReportDetail.builder()
                 .userId(userId)
                 .startDate(startDate)
@@ -160,7 +172,7 @@ public class CounselingService {
         detail = counselingReportDetailRepository.save(detail);
         log.debug("CounselingReportDetail saved with ID: {}", detail.getId());
 
-        // 9. CounselingReport (MySQL) 메타데이터 저장
+        // 10. CounselingReport (MySQL) 메타데이터 저장
         CounselingReport savedReport = counselingReportRepository.save(
                 CounselingReport.builder()
                         .userId(userId)
@@ -175,7 +187,7 @@ public class CounselingService {
 
         log.info("Counseling report saved with id: {}", savedReport.getId());
 
-        // 10. 결과 반환 (specialNotes는 toDto에서 실시간 조회)
+        // 11. 결과 반환 (specialNotes는 toDto에서 실시간 조회)
         return toDto(savedReport, detail, groupId);
     }
 
