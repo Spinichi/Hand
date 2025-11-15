@@ -17,6 +17,10 @@ WEAVIATE_HOST = os.getenv("WEAVIATE_HOST", "localhost")
 WEAVIATE_HTTP_PORT = int(os.getenv("WEAVIATE_PORT", "8080"))
 WEAVIATE_GRPC_PORT = int(os.getenv("WEAVIATE_GRPC_PORT", "50051"))
 
+print("="*50)
+print(f"DEBUG: Attempting to connect to Weaviate with host: '{WEAVIATE_HOST}'")
+print("="*50)
+
 # Weaviate 연결 with retry logic
 def connect_weaviate_with_retry(max_retries=5, delay=2):
     """Weaviate 연결을 재시도하는 함수"""
