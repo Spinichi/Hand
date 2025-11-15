@@ -24,6 +24,12 @@ object StressScore {        // 유틸 싱글턴
         }
     }
 
+    // HRV용 역방향 점수 매핑 (높을수록 낮은 점수)
+    private fun zToScoreInverted(z: Double?): Double {
+        if (z == null) return 0.0
+        return 100.0 - zToScore(z)  // 점수 반전
+    }
+
     // 최종 결과 묶음(지수/레벨/HRV 상세)
     data class Result(
         val stressIndex: Double, // 0~100
@@ -46,9 +52,9 @@ object StressScore {        // 유틸 싱글턴
         } else null
 
         // 각 항목을 Z -> 0 ~ 100 점수로 환산
-        // ⭐ HRV(SDNN/RMSSD)는 높을수록 스트레스 낮음 → z값에 음수 곱해서 방향 반전
-        val sSdnn  = zToScore(sdnn?.let  { z(it, baseline.hrvSdnnMean, baseline.hrvSdnnStd)?.times(-1.0) })
-        val sRmssd = zToScore(rmssd?.let { z(it, baseline.hrvRmssdMean, baseline.hrvRmssdStd)?.times(-1.0) })
+        // ⭐ HRV(SDNN/RMSSD)는 높을수록 스트레스 낮음 → 점수 반전 사용
+        val sSdnn  = zToScoreInverted(sdnn?.let  { z(it, baseline.hrvSdnnMean, baseline.hrvSdnnStd) })
+        val sRmssd = zToScoreInverted(rmssd?.let { z(it, baseline.hrvRmssdMean, baseline.hrvRmssdStd) })
         val sHr    = zToScore(hr?.let    { z(it, baseline.hrMean,      baseline.hrStd) })
         val sTemp  = zToScore(temp?.let  { z(it, baseline.objTempMean,  baseline.objTempStd) })
 
