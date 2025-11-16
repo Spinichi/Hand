@@ -213,8 +213,9 @@ fun SignUpPrivateScreen(
             // 등록 버튼
             Button(
                 onClick = {
-                    if (name.isBlank() || age.isBlank() || selectedGender.isBlank()) {
-                        Toast.makeText(context, "이름 / 나이 / 성별은 필수입니다.", Toast.LENGTH_SHORT).show()
+                    if (name.isBlank() || age.isBlank() || selectedGender.isBlank() ||
+                        job.isBlank() || familyCount.isBlank()) {
+                        Toast.makeText(context, "모든 항목을 입력해주세요.", Toast.LENGTH_SHORT).show()
                         return@Button
                     }
 
@@ -235,11 +236,11 @@ fun SignUpPrivateScreen(
                         name = name,
                         age = ageInt,
                         gender = genderCode,
-                        job = "",
+                        job = job,
                         height = heightInt,
                         weight = weightInt,
                         disease = disease,
-                        residenceType = "",          // ❌ 거주지 제거 → 빈 값 전달
+                        residenceType = familyCount,
                         diaryReminderEnabled = isAlarmEnabled,
                         hour = alarmHourInt,
                         minute = alarmMinuteInt,
@@ -454,6 +455,10 @@ fun HeightWeightRow(
                 )
             },
             singleLine = true,
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Number,
+                imeAction = ImeAction.Next
+            ),
             shape = RoundedCornerShape(28.dp),
             colors = OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = Color(0xFF9BB168),
@@ -485,6 +490,10 @@ fun HeightWeightRow(
                 )
             },
             singleLine = true,
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Number,
+                imeAction = ImeAction.Next
+            ),
             shape = RoundedCornerShape(28.dp),
             colors = OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = Color(0xFF9BB168),
@@ -638,7 +647,7 @@ fun DiaryAlarmSection(
                     value = hour,
                     onValueChange = onHourChange,
                     modifier = Modifier.weight(1f),
-                    placeholder = { Text("시", fontFamily = BrandFontFamily) },
+                    placeholder = { Text("18", fontFamily = BrandFontFamily, color = Color(0xFFBFBFBF)) },
                     leadingIcon = {
                         Image(
                             painter = painterResource(id = R.drawable.signup_private_time),
@@ -656,6 +665,10 @@ fun DiaryAlarmSection(
                         )
                     },
                     singleLine = true,
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Number,
+                        imeAction = ImeAction.Next
+                    ),
                     shape = RoundedCornerShape(28.dp),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = Color(0xFF9BB168),
@@ -669,7 +682,7 @@ fun DiaryAlarmSection(
                     value = minute,
                     onValueChange = onMinuteChange,
                     modifier = Modifier.weight(1f),
-                    placeholder = { Text("분", fontFamily = BrandFontFamily) },
+                    placeholder = { Text("00", fontFamily = BrandFontFamily, color = Color(0xFFBFBFBF)) },
                     leadingIcon = {
                         Image(
                             painter = painterResource(id = R.drawable.signup_private_time),
@@ -687,6 +700,10 @@ fun DiaryAlarmSection(
                         )
                     },
                     singleLine = true,
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Number,
+                        imeAction = ImeAction.Done
+                    ),
                     shape = RoundedCornerShape(28.dp),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = Color(0xFF9BB168),
