@@ -50,10 +50,14 @@ private fun scoreToMood(score: Int): Mood {
 
 private fun GroupData.toOrganization(): Organization? {
     if (this.id == null || this.name == null) return null
+
+    val rawCount = this.memberCount ?: 0
+    val memberOnlyCount = maxOf(0, rawCount - 1)
+
     return Organization(
         id = this.id.toString(),
         name = this.name,
-        memberCount = this.memberCount ?: 0,
+        memberCount = memberOnlyCount,
         averageScore = this.avgMemberRiskScore?.toFloat()?.coerceIn(0f, 100f) ?: 0f
     )
 }

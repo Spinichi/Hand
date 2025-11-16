@@ -97,10 +97,12 @@ fun HomeScreen() {
                     organizations = apiList.mapNotNull { api: GroupData ->
                         // 현재 Organization 모델(memberCount 존재)을 사용하여 객체 생성
                         if (api.id == null || api.name == null) return@mapNotNull null
+                        val rawCount = api.memberCount ?: 0
+                        val memberOnlyCount = maxOf(0, rawCount - 1)
                         Organization(
                             id = api.id.toString(),
                             name = api.name,
-                            memberCount = api.memberCount ?: 0,
+                            memberCount = memberOnlyCount,
                             averageScore = api.avgMemberRiskScore?.toFloat() ?: 0f
                         )
                     }
