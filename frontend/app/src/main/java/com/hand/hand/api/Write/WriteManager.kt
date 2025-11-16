@@ -10,6 +10,8 @@ import retrofit2.Response
 
 class WriteManager {
     companion object {
+
+        private const val TAG = "WriteManager"
         private val httpCall: WriteInterface =
             RetrofitClient.getClient().create(WriteInterface::class.java)
 
@@ -45,6 +47,7 @@ class WriteManager {
                 }
             })
         }
+
         fun sendAnswer(
             sessionId: Long,
             answerText: String,
@@ -79,5 +82,34 @@ class WriteManager {
             })
         }
 
-    }
-}
+        // 다이어리 완료 요청
+        fun completeDiary(
+            sessionId: Long,
+            onSuccess: (DiaryCompleteResponse) -> Unit,
+            onFailure: (Throwable) -> Unit
+        ) {
+            Log.d(TAG, "다이어리 완료 요청: sessionId=$sessionId")
+
+            httpCall.completeDiary(sessionId).enqueue(object : Callback<DiaryCompleteResponse> {
+                override fun onResponse(
+                    call: Call<DiaryCompleteResponse>,
+                    response: Response<DiaryCompleteResponse>
+                ) {
+                    val body = response.body()
+                    Log.d(TAG, "completeDiary 응답: code=${response.code()}, body=$body")
+
+                    if (body != null) {
+                        onSuccess(body)
+                    } else {
+                        onFailure(IllegalStateException("응답 body 없음"))
+                    }
+                }
+
+                override fun onFailure(call: Call<DiaryCompleteResponse>, t: Throwable) {
+                    Log.e(TAG, "completeDiary 실패", t)
+                    onFailure(t)
+                }
+            })
+
+        }
+    }}

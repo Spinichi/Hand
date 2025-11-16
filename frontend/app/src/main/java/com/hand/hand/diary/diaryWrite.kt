@@ -35,11 +35,19 @@ import com.hand.hand.R
 import com.hand.hand.api.GMS.GmsSttManager
 import com.hand.hand.api.Write.WriteManager
 import com.hand.hand.ui.theme.BrandFontFamily
+import android.speech.tts.TextToSpeech
+import java.util.Locale
 
-class DiaryWriteActivity : ComponentActivity() {
+class DiaryWriteActivity : ComponentActivity(), TextToSpeech.OnInitListener {
+
+    private var tts: TextToSpeech? = null
+    private var isTtsReady: Boolean = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // 🔸 TTS 초기화
+        tts = TextToSpeech(this, this)
 
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO)
             != PackageManager.PERMISSION_GRANTED
@@ -56,11 +64,47 @@ class DiaryWriteActivity : ComponentActivity() {
         setContent {
             DiaryWriteScreen(
                 selectedDate = selectedDate,
-                onBackClick = { finish() }
+                onBackClick = { finish() },
+                onSpeak = { text -> speak(text) }   // 🔸 여기서 TTS 호출 람다 내려줌
             )
         }
     }
-}
+
+    // 🔸 TTS 초기화 콜백
+    override fun onInit(status: Int) {
+        if (status == TextToSpeech.SUCCESS) {
+            val result = tts?.setLanguage(Locale.KOREAN)
+            isTtsReady = result != TextToSpeech.LANG_MISSING_DATA &&
+                    result != TextToSpeech.LANG_NOT_SUPPORTED
+        } else {
+            isTtsReady = false
+        }
+    }
+
+    // 🔸 실제로 읽어주는 함수
+    private fun speak(text: String) {
+        if (!isTtsReady) {   // ❗ 여기 ! 붙는게 맞음
+            Log.d("DiaryTTS", "TTS 아직 준비 안됨")
+            return
+        }
+        if (text.isBlank()) return
+
+        tts?.speak(
+            text,
+            TextToSpeech.QUEUE_FLUSH,
+            null,
+            "DIARY_QUESTION"
+        )
+    }
+
+    override fun onDestroy() {
+        tts?.stop()
+        tts?.shutdown()
+        super.onDestroy()
+    }
+}   // 🔸 여기서 Activity 클래스 끝!! (이 괄호가 빠져 있었음)
+
+// ======================= 여기부터는 예전처럼 top-level 함수 =======================
 
 /* 공백 기준 줄바꿈 */
 fun autoWrapText(text: String, maxCharPerLine: Int): String {
@@ -109,7 +153,11 @@ fun EndConversationButton(
 }
 
 @Composable
-fun DiaryWriteScreen(selectedDate: String, onBackClick: () -> Unit) {
+fun DiaryWriteScreen(
+    selectedDate: String,
+    onBackClick: () -> Unit,
+    onSpeak: (String) -> Unit      // 🔸 여기 새 파라미터 추가!!
+) {
 
     val configuration = LocalConfiguration.current
     val context = LocalContext.current
@@ -137,6 +185,9 @@ fun DiaryWriteScreen(selectedDate: String, onBackClick: () -> Unit) {
                     sessionId = data.sessionId
                     questionNumber = data.questionNumber
                     questions = listOf(data.questionText)
+
+                    // 🔸 첫 질문을 바로 읽어주기
+                    onSpeak(data.questionText)
                 } else {
                     questions = listOf("질문을 불러오지 못했어요.")
                 }
@@ -317,6 +368,9 @@ fun DiaryWriteScreen(selectedDate: String, onBackClick: () -> Unit) {
                                             sessionId = res.data.sessionId
                                             questionNumber = res.data.questionNumber
                                             questions = questions + res.data.questionText
+
+                                            // 🔸 새 질문도 TTS로 읽기
+                                            onSpeak(res.data.questionText)
                                         }
                                     },
                                     onFailure = {
@@ -392,9 +446,53 @@ fun DiaryWriteScreen(selectedDate: String, onBackClick: () -> Unit) {
                                 .size(screenHeight * 0.07f)
                                 .clickable {
                                     showExitDialog = false
-                                    onBackClick()
+
+                                    val currentSessionId = sessionId
+                                    if (currentSessionId == null) {
+                                        Toast.makeText(
+                                            context,
+                                            "세션 정보가 없어요. 다시 시도해 주세요.",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                        onBackClick()
+                                    } else {
+                                        WriteManager.completeDiary(
+                                            sessionId = currentSessionId,
+                                            onSuccess = { res ->
+                                                if (res.success && res.data != null) {
+                                                    Log.d("DiaryWrite", "다이어리 완료 성공: ${res.data}")
+
+                                                    // ✅ 원하면 여기서 완료 요약을 읽어줄 수도 있어요
+                                                    // onSpeak(res.data.shortSummary)
+
+                                                    Toast.makeText(
+                                                        context,
+                                                        "다이어리가 완료되었어요.",
+                                                        Toast.LENGTH_SHORT
+                                                    ).show()
+
+                                                    onBackClick()
+                                                } else {
+                                                    Toast.makeText(
+                                                        context,
+                                                        res.message ?: "완료 처리에 실패했어요.",
+                                                        Toast.LENGTH_SHORT
+                                                    ).show()
+                                                }
+                                            },
+                                            onFailure = { e ->
+                                                Log.e("DiaryWrite", "다이어리 완료 실패", e)
+                                                Toast.makeText(
+                                                    context,
+                                                    "완료 요청 중 오류가 발생했어요.",
+                                                    Toast.LENGTH_SHORT
+                                                ).show()
+                                            }
+                                        )
+                                    }
                                 }
                         )
+
                     }
                 }
             }

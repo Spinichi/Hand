@@ -19,4 +19,9 @@ interface WriteInterface {
         @Body body: DiaryAnswerRequest
     ): Call<DiaryAnswerResponse>
 
+    // 다이어리 완료 요청
+    @POST("v1/diaries/{sessionId}/complete")
+    fun completeDiary(
+        @Path("sessionId") sessionId: Long
+    ): Call<DiaryCompleteResponse>
 }
