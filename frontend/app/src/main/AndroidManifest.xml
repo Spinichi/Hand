@@ -16,6 +16,10 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
+    <!-- stt 연결 -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+
+
     <application
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
@@ -68,6 +72,7 @@
         <activity android:name="com.hand.hand.AiDocument.PrivateAiDocumentActivity" />
         <activity android:name="com.hand.hand.AiDocument.TeamAiDocumentActivity" />
         <activity android:name="com.hand.hand.ui.test.WearTestActivity" />
+        <activity android:name="com.hand.hand.carehistory.CareHistoryActivity" />
 
         <!-- Wear 앱으로부터 생체 데이터를 백그라운드에서 수신하는 Foreground Service -->
         <service
