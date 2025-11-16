@@ -66,6 +66,16 @@ public class ReliefController {
                 queryService.getMyStats(userId), "my sessions"));
     }
 
+    @GetMapping("/history")
+    public ResponseEntity<?> getReliefHistory(
+            Authentication auth,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "7") int size) {
+        Long userId = Long.valueOf(auth.getName());
+        return ResponseEntity.ok(ApiResponse.success(
+                queryService.getReliefHistory(userId, page, size), "relief history"));
+    }
+
     // ===== DTOs =====
     @Data
     public static class StartReq {
