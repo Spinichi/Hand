@@ -107,7 +107,7 @@ public class ReportController {
     @GetMapping("/weekly")
     public ResponseEntity<ApiResponse<Page<WeeklyReport>>> getWeeklyReports(
             Authentication authentication,
-            @PageableDefault(size = 10, sort = "year", direction = Sort.Direction.DESC) Pageable pageable) {
+            @PageableDefault(size = 10) Pageable pageable) {  // Repository 메서드에 정렬이 이미 포함됨
 
         Long userId = Long.valueOf(authentication.getName());
 
@@ -189,7 +189,7 @@ public class ReportController {
     @GetMapping("/monthly")
     public ResponseEntity<ApiResponse<Page<MonthlyReport>>> getMonthlyReports(
             Authentication authentication,
-            @PageableDefault(size = 10, sort = "year", direction = Sort.Direction.DESC) Pageable pageable) {
+            @PageableDefault(size = 10) Pageable pageable) {  // Repository 메서드에 정렬이 이미 포함됨
 
         Long userId = Long.valueOf(authentication.getName());
 

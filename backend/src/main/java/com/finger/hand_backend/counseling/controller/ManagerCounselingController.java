@@ -11,6 +11,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 /**
@@ -24,18 +25,26 @@ public class ManagerCounselingController {
 
     private final CounselingService counselingService;
 
+    private Long userId(Authentication auth) {
+        return Long.valueOf(auth.getName());
+    }
+
     /**
      * 관리자 상담용 분석 (새로 생성)
      */
     @PostMapping("/analyze")
     public ResponseEntity<ApiResponse<CounselingAnalysisResult>> analyzeCounseling(
+            Authentication auth,
             @RequestBody CounselingAnalyzeRequest request) {
 
-        log.info("POST /manager/counseling/analyze - userId: {}, period: {} ~ {}",
-                request.getUserId(), request.getStartDate(), request.getEndDate());
+        Long managerId = userId(auth);
+        log.info("POST /manager/counseling/analyze - managerId: {}, groupId: {}, userId: {}, period: {} ~ {}",
+                managerId, request.getGroupId(), request.getUserId(), request.getStartDate(), request.getEndDate());
 
         try {
             CounselingAnalysisResult result = counselingService.analyzeCounseling(
+                    managerId,
+                    request.getGroupId(),
                     request.getUserId(),
                     request.getStartDate(),
                     request.getEndDate()
@@ -43,7 +52,7 @@ public class ManagerCounselingController {
 
             return ResponseEntity.ok(ApiResponse.success(result, "상담 분석이 완료되었습니다."));
 
-        } catch (IllegalStateException e) {
+        } catch (IllegalArgumentException | IllegalStateException e) {
             log.warn("Failed to analyze counseling: {}", e.getMessage());
             return ResponseEntity.badRequest()
                     .body(ApiResponse.fail(e.getMessage()));
@@ -55,15 +64,23 @@ public class ManagerCounselingController {
      */
     @GetMapping
     public ResponseEntity<ApiResponse<Page<CounselingAnalysisResult>>> getCounselingReports(
+            Authentication auth,
+            @RequestParam Long groupId,
             @RequestParam Long userId,
             @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
 
-        log.info("GET /manager/counseling - userId: {}, page: {}", userId, pageable.getPageNumber());
+        Long managerId = userId(auth);
+        log.info("GET /manager/counseling - managerId: {}, groupId: {}, userId: {}, page: {}",
+                managerId, groupId, userId, pageable.getPageNumber());
 
         try {
-            Page<CounselingAnalysisResult> reports = counselingService.getCounselingReports(userId, pageable);
+            Page<CounselingAnalysisResult> reports = counselingService.getCounselingReports(managerId, groupId, userId, pageable);
             return ResponseEntity.ok(ApiResponse.success(reports, "상담 보고서 목록을 조회했습니다."));
 
+        } catch (IllegalArgumentException e) {
+            log.warn("Access denied or report not found: {}", e.getMessage());
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.fail(e.getMessage()));
         } catch (Exception e) {
             log.error("Failed to get counseling reports", e);
             return ResponseEntity.badRequest()
@@ -76,16 +93,19 @@ public class ManagerCounselingController {
      */
     @GetMapping("/{reportId}")
     public ResponseEntity<ApiResponse<CounselingAnalysisResult>> getCounselingReport(
-            @PathVariable Long reportId) {
+            Authentication auth,
+            @PathVariable Long reportId,
+            @RequestParam Long groupId) {
 
-        log.info("GET /manager/counseling/{}", reportId);
+        Long managerId = userId(auth);
+        log.info("GET /manager/counseling/{} - managerId: {}, groupId: {}", reportId, managerId, groupId);
 
         try {
-            CounselingAnalysisResult report = counselingService.getCounselingReport(reportId);
+            CounselingAnalysisResult report = counselingService.getCounselingReport(managerId, groupId, reportId);
             return ResponseEntity.ok(ApiResponse.success(report, "상담 보고서를 조회했습니다."));
 
         } catch (IllegalArgumentException e) {
-            log.warn("Counseling report not found: {}", reportId);
+            log.warn("Counseling report not found or access denied: {}", e.getMessage());
             return ResponseEntity.badRequest()
                     .body(ApiResponse.fail(e.getMessage()));
         }
@@ -96,16 +116,19 @@ public class ManagerCounselingController {
      */
     @GetMapping("/latest")
     public ResponseEntity<ApiResponse<CounselingAnalysisResult>> getLatestCounselingReport(
+            Authentication auth,
+            @RequestParam Long groupId,
             @RequestParam Long userId) {
 
-        log.info("GET /manager/counseling/latest - userId: {}", userId);
+        Long managerId = userId(auth);
+        log.info("GET /manager/counseling/latest - managerId: {}, groupId: {}, userId: {}", managerId, groupId, userId);
 
         try {
-            CounselingAnalysisResult report = counselingService.getLatestCounselingReport(userId);
+            CounselingAnalysisResult report = counselingService.getLatestCounselingReport(managerId, groupId, userId);
             return ResponseEntity.ok(ApiResponse.success(report, "최신 상담 보고서를 조회했습니다."));
 
         } catch (IllegalArgumentException e) {
-            log.warn("Latest counseling report not found for user: {}", userId);
+            log.warn("Latest counseling report not found or access denied: {}", e.getMessage());
             return ResponseEntity.badRequest()
                     .body(ApiResponse.fail(e.getMessage()));
         }

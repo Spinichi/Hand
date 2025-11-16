@@ -10,9 +10,13 @@ data class GroupJoinRequest(
     val inviteCode: String
 )
 
+data class MemberNotesUpdateRequest(
+    val specialNotes: String
+)
+
 // response inner data (서버에서 반환한 data 필드의 구조)
 data class GroupData(
-    val id: Int?,
+    val id: Int,
     val name: String?,
     val groupType: String?,
     val inviteCode: String?,

@@ -17,6 +17,11 @@ object DataBufferManager {
     var deviceId: String = "unknown"
         private set
 
+    // ⭐ 최신 대표 샘플 (10초 평균값, 워치 화면 표시용)
+    @Volatile
+    var latestRepresentativeSample: BioSample? = null
+        private set
+
     /**
      * 디바이스 ID 설정 (한 번만 호출)
      */
@@ -87,7 +92,7 @@ object DataBufferManager {
         }
 
         // 대표 샘플 생성 (평균값 사용, 최신 타임스탬프)
-        return BioSample(
+        val representativeSample = BioSample(
             timestampMs = System.currentTimeMillis(),
             heartRate = validHeartRates.takeIf { it.isNotEmpty() }?.average()?.toFloat(),
             hrvSdnn = validHrvSdnn.takeIf { it.isNotEmpty() }?.average(),
@@ -104,6 +109,11 @@ object DataBufferManager {
             stepsPerMinute = validStepsPerMinute.takeIf { it.isNotEmpty() }?.average()?.toInt(),
             isAnomaly = isAnomaly  // 원본 10개 샘플 기준으로 판정
         )
+
+        // ⭐ 최신 대표 샘플 저장 (워치 화면에서 DB 저장값과 동일한 값 표시)
+        latestRepresentativeSample = representativeSample
+
+        return representativeSample
     }
 
     /**

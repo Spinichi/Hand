@@ -77,31 +77,35 @@ public class BiometricDataCollector {
 
         result.put("version", baseline.getVersion());
         result.put("measurementCount", baseline.getMeasurementCount());
-        result.put("dataStartDate", baseline.getDataStartDate());
-        result.put("dataEndDate", baseline.getDataEndDate());
+        result.put("dataStartDate", baseline.getDataStartDate() != null ? baseline.getDataStartDate().toString() : null);
+        result.put("dataEndDate", baseline.getDataEndDate() != null ? baseline.getDataEndDate().toString() : null);
 
-        // HRV SDNN
+        // HRV SDNN (FastAPI 스펙: min, max, avg)
         Map<String, Object> hrvSdnn = new HashMap<>();
-        hrvSdnn.put("mean", baseline.getHrvSdnnMean());
-        hrvSdnn.put("std", baseline.getHrvSdnnStd());
+        hrvSdnn.put("min", baseline.getHrvSdnnMin());
+        hrvSdnn.put("max", baseline.getHrvSdnnMax());
+        hrvSdnn.put("avg", baseline.getHrvSdnnMean());  // mean -> avg
         result.put("hrvSdnn", hrvSdnn);
 
-        // HRV RMSSD
+        // HRV RMSSD (FastAPI 스펙: min, max, avg)
         Map<String, Object> hrvRmssd = new HashMap<>();
-        hrvRmssd.put("mean", baseline.getHrvRmssdMean());
-        hrvRmssd.put("std", baseline.getHrvRmssdStd());
+        hrvRmssd.put("min", baseline.getHrvRmssdMin());
+        hrvRmssd.put("max", baseline.getHrvRmssdMax());
+        hrvRmssd.put("avg", baseline.getHrvRmssdMean());  // mean -> avg
         result.put("hrvRmssd", hrvRmssd);
 
-        // 심박수
+        // 심박수 (FastAPI 스펙: min, max, avg)
         Map<String, Object> heartRate = new HashMap<>();
-        heartRate.put("mean", baseline.getHeartRateMean());
-        heartRate.put("std", baseline.getHeartRateStd());
+        heartRate.put("min", baseline.getHeartRateMin());
+        heartRate.put("max", baseline.getHeartRateMax());
+        heartRate.put("avg", baseline.getHeartRateMean());  // mean -> avg
         result.put("heartRate", heartRate);
 
-        // 체온
+        // 체온 (FastAPI 스펙: min, max, avg)
         Map<String, Object> objectTemp = new HashMap<>();
-        objectTemp.put("mean", baseline.getObjectTempMean());
-        objectTemp.put("std", baseline.getObjectTempStd());
+        objectTemp.put("min", baseline.getObjectTempMin());
+        objectTemp.put("max", baseline.getObjectTempMax());
+        objectTemp.put("avg", baseline.getObjectTempMean());  // mean -> avg
         result.put("objectTemp", objectTemp);
 
         return result;
@@ -146,17 +150,18 @@ public class BiometricDataCollector {
             return new ArrayList<>();
         }
 
-        // 이상치 상세 정보 구성
+        // 이상치 상세 정보 구성 (FastAPI 스펙에 맞춤)
         List<Map<String, Object>> anomalyDetails = new ArrayList<>();
         for (Measurement measurement : anomalies) {
             Map<String, Object> detail = new HashMap<>();
-            detail.put("measuredAt", measurement.getMeasuredAt());
+            detail.put("detectedAt", measurement.getMeasuredAt().toString());  // measuredAt -> detectedAt (String)
+            detail.put("measurementId", measurement.getId());  // 측정 ID 추가
             detail.put("stressIndex", measurement.getStressIndex());
             detail.put("stressLevel", measurement.getStressLevel());
             detail.put("heartRate", measurement.getHeartRate());
             detail.put("hrvSdnn", measurement.getHrvSdnn());
             detail.put("hrvRmssd", measurement.getHrvRmssd());
-            detail.put("objectTemp", measurement.getObjectTemp());
+            // objectTemp는 FastAPI 스펙에 없으므로 제거
 
             anomalyDetails.add(detail);
         }

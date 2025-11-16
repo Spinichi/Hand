@@ -59,6 +59,18 @@ public class Baseline {
     // ========== HRV SDNN 통계 ==========
 
     /**
+     * HRV SDNN 최소값 (ms)
+     */
+    @Column(name = "hrv_sdnn_min")
+    private Double hrvSdnnMin;
+
+    /**
+     * HRV SDNN 최대값 (ms)
+     */
+    @Column(name = "hrv_sdnn_max")
+    private Double hrvSdnnMax;
+
+    /**
      * HRV SDNN 평균값 (ms)
      */
     @Column(name = "hrv_sdnn_mean")
@@ -71,6 +83,18 @@ public class Baseline {
     private Double hrvSdnnStd;
 
     // ========== HRV RMSSD 통계 ==========
+
+    /**
+     * HRV RMSSD 최소값 (ms)
+     */
+    @Column(name = "hrv_rmssd_min")
+    private Double hrvRmssdMin;
+
+    /**
+     * HRV RMSSD 최대값 (ms)
+     */
+    @Column(name = "hrv_rmssd_max")
+    private Double hrvRmssdMax;
 
     /**
      * HRV RMSSD 평균값 (ms)
@@ -87,6 +111,18 @@ public class Baseline {
     // ========== 심박수 통계 ==========
 
     /**
+     * 심박수 최소값 (bpm)
+     */
+    @Column(name = "heart_rate_min")
+    private Double heartRateMin;
+
+    /**
+     * 심박수 최대값 (bpm)
+     */
+    @Column(name = "heart_rate_max")
+    private Double heartRateMax;
+
+    /**
      * 심박수 평균값 (bpm)
      */
     @Column(name = "heart_rate_mean")
@@ -99,6 +135,18 @@ public class Baseline {
     private Double heartRateStd;
 
     // ========== 체온 통계 ==========
+
+    /**
+     * 피부 온도 최소값 (°C)
+     */
+    @Column(name = "object_temp_min")
+    private Double objectTempMin;
+
+    /**
+     * 피부 온도 최대값 (°C)
+     */
+    @Column(name = "object_temp_max")
+    private Double objectTempMax;
 
     /**
      * 피부 온도 평균값 (°C)

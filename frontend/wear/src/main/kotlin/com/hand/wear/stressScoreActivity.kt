@@ -22,14 +22,23 @@ import androidx.wear.compose.material.*
 import ui.theme.HandTheme
 import com.hand.wear.components.BackgroundCircles
 import com.hand.hand.R
+import androidx.lifecycle.lifecycleScope
+import com.mim.watch.services.WearMessageSender
+import kotlinx.coroutines.launch
 
 
 class StressScoreActivity : ComponentActivity() {
+
+    private lateinit var messageSender: WearMessageSender
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         // ⭐ Intent에서 스트레스 점수 받기 (기본값 54.0)
         val stressScore = intent.getDoubleExtra("stressScore", 54.0)
+
+        // ⭐ MessageSender 초기화
+        messageSender = WearMessageSender(applicationContext)
 
         setContent {
             HandTheme {
@@ -41,8 +50,18 @@ class StressScoreActivity : ComponentActivity() {
                         finish() // 현재 화면 종료
                     },
                     onConfirm = {
-                        // ✅ Check 버튼 눌렀을 때: CareEx1Activity 로 이동
-                        startActivity(Intent(this, CareEx1Activity::class.java))
+                        // ✅ Check 버튼 눌렀을 때: relief START 이벤트 전송 후 CareEx1Activity로 이동
+                        lifecycleScope.launch {
+                            messageSender.sendReliefStartEvent(
+                                interventionId = 1L,  // 호흡법
+                                triggerType = "MANUAL",
+                                gestureCode = "breathing"
+                            )
+                        }
+
+                        val intent = Intent(this, CareEx1Activity::class.java)
+                        intent.putExtra("triggerType", "MANUAL")
+                        startActivity(intent)
                         finish()
                     }
                 )

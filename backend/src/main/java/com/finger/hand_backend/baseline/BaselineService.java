@@ -61,16 +61,28 @@ public class BaselineService {
             );
         }
 
-        // 2. 통계 계산
+        // 2. 통계 계산 (min, max, mean, std)
+        // HRV SDNN
+        double hrvSdnnMin = calculateMin(measurements, Measurement::getHrvSdnn);
+        double hrvSdnnMax = calculateMax(measurements, Measurement::getHrvSdnn);
         double hrvSdnnMean = calculateMean(measurements, Measurement::getHrvSdnn);
         double hrvSdnnStd = calculateStdDev(measurements, Measurement::getHrvSdnn, hrvSdnnMean);
 
+        // HRV RMSSD
+        double hrvRmssdMin = calculateMin(measurements, Measurement::getHrvRmssd);
+        double hrvRmssdMax = calculateMax(measurements, Measurement::getHrvRmssd);
         double hrvRmssdMean = calculateMean(measurements, Measurement::getHrvRmssd);
         double hrvRmssdStd = calculateStdDev(measurements, Measurement::getHrvRmssd, hrvRmssdMean);
 
+        // Heart Rate
+        double heartRateMin = calculateMin(measurements, m -> m.getHeartRate().doubleValue());
+        double heartRateMax = calculateMax(measurements, m -> m.getHeartRate().doubleValue());
         double heartRateMean = calculateMean(measurements, m -> m.getHeartRate().doubleValue());
         double heartRateStd = calculateStdDev(measurements, m -> m.getHeartRate().doubleValue(), heartRateMean);
 
+        // Object Temp
+        double objectTempMin = calculateMin(measurements, Measurement::getObjectTemp);
+        double objectTempMax = calculateMax(measurements, Measurement::getObjectTemp);
         double objectTempMean = calculateMean(measurements, Measurement::getObjectTemp);
         double objectTempStd = calculateStdDev(measurements, Measurement::getObjectTemp, objectTempMean);
 
@@ -85,14 +97,27 @@ public class BaselineService {
                 .userId(userId)
                 .version(nextVersion)
                 .isActive(true)
+                // HRV SDNN
+                .hrvSdnnMin(hrvSdnnMin)
+                .hrvSdnnMax(hrvSdnnMax)
                 .hrvSdnnMean(hrvSdnnMean)
                 .hrvSdnnStd(hrvSdnnStd)
+                // HRV RMSSD
+                .hrvRmssdMin(hrvRmssdMin)
+                .hrvRmssdMax(hrvRmssdMax)
                 .hrvRmssdMean(hrvRmssdMean)
                 .hrvRmssdStd(hrvRmssdStd)
+                // Heart Rate
+                .heartRateMin(heartRateMin)
+                .heartRateMax(heartRateMax)
                 .heartRateMean(heartRateMean)
                 .heartRateStd(heartRateStd)
+                // Object Temp
+                .objectTempMin(objectTempMin)
+                .objectTempMax(objectTempMax)
                 .objectTempMean(objectTempMean)
                 .objectTempStd(objectTempStd)
+                // Metadata
                 .measurementCount(measurements.size())
                 .dataStartDate(measurements.get(0).getMeasuredAt().toLocalDate())
                 .dataEndDate(measurements.get(measurements.size() - 1).getMeasuredAt().toLocalDate())
@@ -226,5 +251,31 @@ public class BaselineService {
                 .orElse(0.0);
 
         return Math.sqrt(variance);
+    }
+
+    /**
+     * 최소값 계산
+     */
+    private double calculateMin(List<Measurement> measurements,
+                                 java.util.function.Function<Measurement, Double> extractor) {
+        return measurements.stream()
+                .map(extractor)
+                .filter(val -> val != null && val > 0)
+                .mapToDouble(Double::doubleValue)
+                .min()
+                .orElse(0.0);
+    }
+
+    /**
+     * 최대값 계산
+     */
+    private double calculateMax(List<Measurement> measurements,
+                                 java.util.function.Function<Measurement, Double> extractor) {
+        return measurements.stream()
+                .map(extractor)
+                .filter(val -> val != null && val > 0)
+                .mapToDouble(Double::doubleValue)
+                .max()
+                .orElse(0.0);
     }
 }

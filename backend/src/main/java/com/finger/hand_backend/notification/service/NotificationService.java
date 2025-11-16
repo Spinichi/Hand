@@ -1,5 +1,8 @@
 package com.finger.hand_backend.notification.service;
 
+import com.finger.hand_backend.group.entity.GroupMember;
+import com.finger.hand_backend.group.entity.GroupRole;
+import com.finger.hand_backend.group.repository.GroupMemberRepository;
 import com.finger.hand_backend.notification.entity.DeviceToken;
 import com.finger.hand_backend.notification.entity.Notification;
 import com.finger.hand_backend.notification.entity.NotificationType;
@@ -13,9 +16,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * 알림 서비스
@@ -28,6 +30,33 @@ public class NotificationService {
     private final DeviceTokenRepository deviceTokenRepository;
     private final NotificationRepository notificationRepository;
     private final FCMService fcmService;
+    private final GroupMemberRepository groupMemberRepository;
+
+    /**
+     * 관리자가 대상 유저를 관리할 권한이 있는지 검증
+     */
+    private void validateManagerAccess(Long managerId, Long targetUserId) {
+        List<GroupMember> managerGroups = groupMemberRepository.findByUserIdAndRole(managerId, GroupRole.MANAGER);
+
+        if (managerGroups.isEmpty()) {
+            throw new IllegalArgumentException("관리자 권한이 없습니다.");
+        }
+
+        List<GroupMember> targetGroups = groupMemberRepository.findByUserId(targetUserId);
+
+        Set<Long> managerGroupIds = managerGroups.stream()
+                .map(gm -> gm.getGroup().getId())
+                .collect(Collectors.toSet());
+
+        boolean hasAccess = targetGroups.stream()
+                .anyMatch(gm -> managerGroupIds.contains(gm.getGroup().getId()));
+
+        if (!hasAccess) {
+            throw new IllegalArgumentException("해당 사용자에 대한 접근 권한이 없습니다.");
+        }
+
+        log.debug("Manager {} has access to user {}", managerId, targetUserId);
+    }
 
     /**
      * 디바이스 토큰 등록
@@ -79,7 +108,21 @@ public class NotificationService {
     }
 
     /**
-     * 특정 사용자에게 알림 전송
+     * 관리자가 특정 사용자에게 알림 전송 (권한 검증 포함)
+     */
+    @Transactional
+    public void sendToUser(Long managerId, Long userId, NotificationType type, String title, String body) {
+        log.info("Manager {} sending notification to user {}: {}", managerId, userId, title);
+
+        // 관리자 권한 검증
+        validateManagerAccess(managerId, userId);
+
+        // 기존 sendToUser 호출
+        sendToUser(userId, type, title, body, null);
+    }
+
+    /**
+     * 특정 사용자에게 알림 전송 (내부용 - 권한 검증 없음)
      */
     @Transactional
     public void sendToUser(Long userId, NotificationType type, String title, String body) {
@@ -126,7 +169,44 @@ public class NotificationService {
     }
 
     /**
-     * 전체 사용자에게 알림 전송
+     * 관리자가 속한 그룹의 멤버들에게 알림 전송
+     */
+    @Transactional
+    public void sendToGroupMembers(Long managerId, NotificationType type, String title, String body) {
+        log.info("Manager {} sending notification to group members: {}", managerId, title);
+
+        // 1. 관리자가 MANAGER인 그룹 목록 조회
+        List<GroupMember> managerGroups = groupMemberRepository.findByUserIdAndRole(managerId, GroupRole.MANAGER);
+
+        if (managerGroups.isEmpty()) {
+            throw new IllegalArgumentException("관리자 권한이 없습니다.");
+        }
+
+        // 2. 해당 그룹들의 모든 멤버 조회 (관리자 본인 제외)
+        Set<Long> targetUserIds = new HashSet<>();
+        for (GroupMember managerGroup : managerGroups) {
+            List<GroupMember> members = groupMemberRepository.findByGroupId(managerGroup.getGroup().getId());
+            members.stream()
+                    .map(GroupMember::getUserId)
+                    .filter(userId -> !userId.equals(managerId))  // 관리자 본인 제외
+                    .forEach(targetUserIds::add);
+        }
+
+        if (targetUserIds.isEmpty()) {
+            log.warn("No members found in manager's groups");
+            return;
+        }
+
+        log.info("Sending to {} members", targetUserIds.size());
+
+        // 3. 각 멤버에게 알림 전송 (권한 검증 없이)
+        for (Long userId : targetUserIds) {
+            sendToUser(userId, type, title, body);
+        }
+    }
+
+    /**
+     * 전체 사용자에게 알림 전송 (시스템용)
      */
     @Transactional
     public void sendToAllUsers(NotificationType type, String title, String body) {
