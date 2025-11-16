@@ -89,11 +89,11 @@ fun DiaryCalendar(
 
                         val score = scoreMap[thisDateStr] ?: -1
                         val circleColor = when (score) {
-                            in 0..19 -> Color(0xFFC2B1FF)
-                            in 20..39 -> Color(0xFFED7E1C)
+                            in 0..19 -> Color(0xFFFFCE5C)
+                            in 20..39 -> Color(0xFF9BB167)
                             in 40..59 -> Color(0xFFC0A091)
-                            in 60..79 -> Color(0xFF9BB167)
-                            in 80..100 -> Color(0xFFFFCE5C)
+                            in 60..79 -> Color(0xFFED7E1C)
+                            in 80..100 -> Color(0xFFC2B1FF)
                             else -> Color.White
                         }
 

@@ -8,6 +8,7 @@ import retrofit2.http.Path
 import retrofit2.http.Query
 
 interface DiaryInterface {
+
     @GET("v1/diaries/my")
     fun getMyDiaryList(
         @Query("startDate") startDate: String,
@@ -19,8 +20,5 @@ interface DiaryInterface {
     @GET("v1/diaries/{sessionId}")
     fun getDiaryDetail(
         @Path("sessionId") sessionId: Long
-    ): Call<DiaryDetailResponse>
-
-
-
+    ): Call<DiaryDetailWrapper>
 }

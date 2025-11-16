@@ -50,6 +50,7 @@ fun DiaryHomeScreen(onBackClick: () -> Unit) {
     val configuration = LocalConfiguration.current
     val screenHeight = configuration.screenHeightDp.dp
 
+
     var diaryList by remember { mutableStateOf<List<DiaryItem>>(emptyList()) }
     var isLoading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
@@ -142,7 +143,7 @@ fun DiaryHomeScreen(onBackClick: () -> Unit) {
                         context.startActivity(intent)
                     } else {
                         val intent = Intent(context, DiaryDetailActivity::class.java)
-                        intent.putExtra("sessionId", diaryItem.sessionId)
+                        intent.putExtra("sessionId", diaryItem.sessionId.toLong())
                         Log.i("DiaryHome", "→ 전달 sessionId = ${diaryItem.sessionId}")
                         context.startActivity(intent)
                     }
@@ -249,12 +250,14 @@ fun DiaryHistoryBox(item: DiaryItem) {
                 Spacer(modifier = Modifier.height(6.dp))
 
                 val score = item.depressionScore ?: -1
+                val diaryscore = 100 - score
                 val boxColor = when (score) {
-                    in 0..19 -> Color(0xFFC2B1FF)
-                    in 20..39 -> Color(0xFFED7E1C)
+                    in 0..19 -> Color(0xFF9BB167)
+                    in 20..39 -> Color(0xFFFFCE5C)
                     in 40..59 -> Color(0xFFC0A091)
-                    in 60..79 -> Color(0xFF9BB167)
-                    in 80..100 -> Color(0xFFFFCE5C)
+                    in 60..79 -> Color(0xFFED7E1C)
+                    in 80..100 -> Color(0xFFC2B1FF)
+
                     else -> Color.Gray
                 }
 
@@ -265,7 +268,7 @@ fun DiaryHistoryBox(item: DiaryItem) {
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = if (score >= 0) "$score 점" else "-",
+                        text = if (score >= 0) "$diaryscore 점" else "-",
                         fontFamily = BrandFontFamily,
                         fontWeight = FontWeight.Medium,
                         fontSize = (screenHeight * 0.018f).value.sp,
@@ -342,12 +345,12 @@ fun DiaryCalendar2(
                         val thisDateStr = sdf.format(thisDate.time)
 
                         val score = scoreMap[thisDateStr] ?: -1
-                        val circleColor = when (score) {
+                        val circleColor = when (100 - score) {
                             in 0..19 -> Color(0xFFC2B1FF)
                             in 20..39 -> Color(0xFFED7E1C)
                             in 40..59 -> Color(0xFFC0A091)
-                            in 60..79 -> Color(0xFF9BB167)
-                            in 80..100 -> Color(0xFFFFCE5C)
+                            in 60..79 -> Color(0xFFFFCE5C)
+                            in 80..100 -> Color(0xFF9BB167)
                             else -> Color.White
                         }
 
