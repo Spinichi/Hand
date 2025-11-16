@@ -112,6 +112,32 @@ fun HomeScreen() {
         )
     }
 
+    // ⭐ 오늘의 수면 데이터 조회
+    var todaySleepMinutes by remember { mutableStateOf(0) }
+    var hasSleepData by remember { mutableStateOf(false) }
+    var sleepDataLoaded by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        com.hand.hand.api.Sleep.SleepManager.getTodaySleep(
+            onSuccess = { data ->
+                sleepDataLoaded = true
+                if (data != null) {
+                    todaySleepMinutes = data.sleepDurationMinutes
+                    hasSleepData = true
+                    android.util.Log.d("HomeScreen", "✅ 오늘의 수면 데이터: ${data.sleepDurationMinutes}분")
+                } else {
+                    hasSleepData = false
+                    android.util.Log.d("HomeScreen", "ℹ️ 오늘의 수면 데이터 없음")
+                }
+            },
+            onFailure = { error ->
+                sleepDataLoaded = true
+                hasSleepData = false
+                android.util.Log.e("HomeScreen", "❌ 수면 데이터 조회 실패: ${error.message}")
+            }
+        )
+    }
+
     var organizations by remember { mutableStateOf<List<Organization>>(emptyList()) }
 
     LaunchedEffect(Unit) {
@@ -221,7 +247,21 @@ fun HomeScreen() {
             item {
                 MyHealthInfoSection(
                     horizontalPadding = gutter,
-                    stressScore = personalMoodScore
+                    stressScore = personalMoodScore,
+                    sleepMinutes = todaySleepMinutes,
+                    hasSleepData = hasSleepData,
+                    onSleepDataSaved = {
+                        // 수면 데이터 저장 후 다시 조회
+                        com.hand.hand.api.Sleep.SleepManager.getTodaySleep(
+                            onSuccess = { data ->
+                                if (data != null) {
+                                    todaySleepMinutes = data.sleepDurationMinutes
+                                    hasSleepData = true
+                                }
+                            },
+                            onFailure = { }
+                        )
+                    }
                 )
             }
             item { Spacer(Modifier.height(sdp(16.dp))) }
