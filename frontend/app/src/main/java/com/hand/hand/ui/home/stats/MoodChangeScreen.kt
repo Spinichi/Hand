@@ -200,16 +200,6 @@ private fun MoodChangeHistorySection(
             .fillMaxWidth()
             .padding(horizontal = innerHorizontalPadding)
     ) {
-        Text(
-            text = "오늘의 스트레스 변화",
-            color = Brown80,
-            fontFamily = BrandFontFamily,
-            fontWeight = FontWeight.Bold,
-            fontSize = cardTitleFont
-        )
-
-        Spacer(Modifier.height(smallSpacer))
-
         LazyColumn(
             modifier = Modifier
                 .fillMaxWidth()
@@ -218,6 +208,17 @@ private fun MoodChangeHistorySection(
             userScrollEnabled = true,
             contentPadding = PaddingValues(bottom = screenHeight * 0.02f)
         ) {
+            item {
+                Text(
+                    text = "오늘의 스트레스 변화",
+                    color = Brown80,
+                    fontFamily = BrandFontFamily,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = cardTitleFont
+                )
+                Spacer(Modifier.height(smallSpacer))
+            }
+
             item { Spacer(modifier = Modifier.height(chartTopSpacer)) }
 
             // 감정 변화 그래프
@@ -473,7 +474,7 @@ fun MoodChangeScreen(
     val paddTop: Dp = screenHeight * 0.05f
     val titleStartGap: Dp = 16.dp
     val titleSp = 24.sp
-    val crestFromTop: Dp = screenHeight * 0.25f
+    val crestFromTop: Dp = screenHeight * 0.28f
     val arcHeight: Dp = 70.dp
     val sheetCorner: Dp = 28.dp
     val badgeSize: Dp = 56.dp
@@ -573,8 +574,9 @@ fun MoodChangeScreen(
                     )
             )
         }
-
-        val extraGap = (configuration.screenHeightDp.dp * 0.3f).coerceIn(40.dp, 60.dp)
+//        추후 화면 로직에 따라 반영 예정
+//        val extraGap = (configuration.screenHeightDp.dp * 0.3f).coerceIn(40.dp, 60.dp)
+        val extraGap = 30.dp;
         Column(
             modifier = Modifier
                 .align(Alignment.TopCenter)

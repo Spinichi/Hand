@@ -97,11 +97,17 @@ fun DiaryCalendar(
                             else -> Color.White
                         }
 
+                        val finalCircleColor = if (isFuture) {
+                            Color(0xFFE0E0E0) // ← 미래는 무조건 회색
+                        } else {
+                            circleColor
+                        }
+
                         Box(
                             modifier = Modifier
                                 .size(cellSize)
                                 .background(
-                                    color = circleColor.copy(alpha = alpha),
+                                    color = finalCircleColor,
                                     shape = CircleShape
                                 )
                                 .clickable(enabled = !isFuture) {

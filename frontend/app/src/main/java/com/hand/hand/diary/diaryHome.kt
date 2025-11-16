@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.border
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
@@ -338,6 +339,13 @@ fun DiaryCalendar2(
                         val thisDate = calendar.clone() as Calendar
                         thisDate.set(Calendar.DAY_OF_MONTH, date.toInt())
 
+                        val today = Calendar.getInstance()
+
+                        // 오늘인지 체크
+                        val isToday = thisDate.get(Calendar.YEAR) == today.get(Calendar.YEAR) &&
+                                thisDate.get(Calendar.MONTH) == today.get(Calendar.MONTH) &&
+                                thisDate.get(Calendar.DAY_OF_MONTH) == today.get(Calendar.DAY_OF_MONTH)
+
                         val isFuture = thisDate.after(today)
                         val alpha = if (isFuture) 0.5f else 1f
 
@@ -345,7 +353,7 @@ fun DiaryCalendar2(
                         val thisDateStr = sdf.format(thisDate.time)
 
                         val score = scoreMap[thisDateStr] ?: -1
-                        val circleColor = when (100 - score) {
+                        val baseCircleColor = when (100 - score) {
                             in 0..19 -> Color(0xFFC2B1FF)
                             in 20..39 -> Color(0xFFED7E1C)
                             in 40..59 -> Color(0xFFC0A091)
@@ -354,10 +362,23 @@ fun DiaryCalendar2(
                             else -> Color.White
                         }
 
+                        val circleColor = if (isFuture) {
+                            Color(0xFFE0E0E0)   // 원하는 회색 값으로
+                        } else {
+                            baseCircleColor
+                        }
+
                         Box(
                             modifier = Modifier
                                 .size(cellSize)
-                                .background(circleColor.copy(alpha = alpha), shape = CircleShape)
+                                .background(circleColor, CircleShape)
+                                .then(
+                                    if (isToday) Modifier.border(
+                                        width = 2.dp,
+                                        color = Color(0xFF4F3422), // 은은한 진한 브라운
+                                        shape = CircleShape
+                                    ) else Modifier
+                                )
                                 .clickable(enabled = !isFuture) { onDateClick(date.toInt()) },
                             contentAlignment = Alignment.Center
                         ) {
@@ -366,7 +387,7 @@ fun DiaryCalendar2(
                                 fontFamily = BrandFontFamily,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 16.sp,
-                                color = Color(0xFF4F3422)
+                                color = if (isFuture) Color(0xFFB0A8A4) else Color(0xFF4F3422)
                             )
                         }
                     } else {
