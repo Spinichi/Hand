@@ -170,14 +170,28 @@ fun PrivateAiDocumentScreen(
         when {
             weeklyDetail != null -> {
                 val d = weeklyDetail!!
-                xLabels = listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
 
-                val avgAsInt = d.averageDepressionScore.toInt()  // Double → Int
-                scores = List(xLabels.size) { avgAsInt }
+                // dailyDiaries에서 각 날짜의 depressionScore 추출
+                val dailyScores = d.dailyDiaries?.mapNotNull { diary ->
+                    (diary["depressionScore"] as? Number)?.toInt()
+                } ?: emptyList()
+
+                if (dailyScores.isNotEmpty()) {
+                    // 실제 일별 점수 사용
+                    scores = dailyScores
+                    // 날짜 개수만큼 레이블 생성 (Mon, Tue, Wed, ...)
+                    val dayLabels = listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
+                    xLabels = List(dailyScores.size) { index -> dayLabels[index % 7] }
+                } else {
+                    // 데이터가 없으면 평균값으로 표시
+                    val avgAsInt = d.averageDepressionScore.toInt()
+                    scores = List(7) { avgAsInt }
+                    xLabels = listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
+                }
 
                 summaryText = d.report ?: "주간 요약이 없지롱."
                 adviceText = d.emotionalAdvice ?: "감정 개선 조언이 없지롱."
-                avgScore = avgAsInt
+                avgScore = d.averageDepressionScore.toInt()
             }
 
             isWeeklyDetailLoading -> {
@@ -226,13 +240,29 @@ fun PrivateAiDocumentScreen(
             monthlyDetail != null -> {
                 val d = monthlyDetail!!
 
-                // 그래프/점수는 기존 더미 월간 데이터 사용 (필요하면 나중에 API 값으로 교체)
-                if (monthlyReport != null) {
-                    val weeksInMonth = monthlyReport.weeks.size
-                    xLabels = List(weeksInMonth) { "${it + 1}주" }
-                    scores = monthlyReport.weeks.map { it.avgScore }
-                    avgScore = monthlyReport.monthAvg
+                // dailyDiaries에서 일별 데이터 추출 후 주별로 평균 계산
+                val dailyData = d.dailyDiaries?.mapNotNull { diary ->
+                    val dateStr = diary["date"] as? String
+                    val score = (diary["depressionScore"] as? Number)?.toDouble()
+                    if (dateStr != null && score != null) {
+                        // "2025-11-10" → 일자(10) 추출
+                        val day = dateStr.split("-").lastOrNull()?.toIntOrNull() ?: 0
+                        Pair(day, score)
+                    } else null
+                } ?: emptyList()
+
+                if (dailyData.isNotEmpty()) {
+                    // 주별로 그룹화 (1-7일=1주, 8-14일=2주, ...)
+                    val weeklyScores = dailyData
+                        .groupBy { (day, _) -> (day - 1) / 7 + 1 }  // 1주, 2주, 3주, ...
+                        .toSortedMap()
+                        .mapValues { (_, pairs) -> pairs.map { it.second }.average().toInt() }
+
+                    scores = weeklyScores.values.toList()
+                    xLabels = weeklyScores.keys.map { "${it}주" }
+                    avgScore = scores.average().toInt()
                 } else {
+                    // 데이터가 없으면 빈 그래프
                     xLabels = emptyList()
                     scores = emptyList()
                     avgScore = 0
