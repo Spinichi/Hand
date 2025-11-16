@@ -1,13 +1,15 @@
 package com.hand.hand.ui.model
 
 /**
- * 점수(0..100) -> 단계(1..5), 라벨 텍스트를 공통으로 계산해 주는 유틸.
- * 단계 정의
- * 1단계 = 80~100 (Great)
- * 2단계 = 60~79  (Happy)
- * 3단계 = 40~59  (Okay)
- * 4단계 = 20~39  (Down)
- * 5단계 = 0~19   (Sad)
+ * 스트레스 지수(0..100) -> 단계(1..5), 라벨 텍스트를 공통으로 계산해 주는 유틸.
+ * ⭐ 스트레스 지수가 낮을수록 좋은 상태 (0=매우 편안, 100=고스트레스)
+ *
+ * 단계 정의 (스트레스 지수 기준 - 낮을수록 좋음)
+ * 1단계 = 0~20   (Great) - 매우 편안
+ * 2단계 = 21~40  (Happy) - 편안
+ * 3단계 = 41~60  (Okay)  - 보통
+ * 4단계 = 61~80  (Down)  - 스트레스
+ * 5단계 = 81~100 (Sad)   - 고스트레스
  */
 
 enum class MoodType(val level: Int, val label: String) {
@@ -24,15 +26,15 @@ data class MoodInfo(
     val label: String = type.label   // "Great" 등
 )
 
-/** 점수 → MoodInfo */
+/** 스트레스 지수 → MoodInfo (낮을수록 좋음) */
 fun moodFromScore(scoreRaw: Int): MoodInfo {
     val s = scoreRaw.coerceIn(0, 100)
     val type = when {
-        s >= 80 -> MoodType.GREAT
-        s >= 60 -> MoodType.HAPPY
-        s >= 40 -> MoodType.OKAY
-        s >= 20 -> MoodType.DOWN
-        else    -> MoodType.SAD
+        s <= 20 -> MoodType.GREAT   // 0~20: 매우 편안
+        s <= 40 -> MoodType.HAPPY   // 21~40: 편안
+        s <= 60 -> MoodType.OKAY    // 41~60: 보통
+        s <= 80 -> MoodType.DOWN    // 61~80: 스트레스
+        else    -> MoodType.SAD     // 81~100: 고스트레스
     }
     return MoodInfo(type)
 }

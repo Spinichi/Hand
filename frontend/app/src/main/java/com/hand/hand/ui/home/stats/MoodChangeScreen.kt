@@ -1,35 +1,24 @@
 // file: com/hand/hand/ui/home/stats/MoodChangeScreen.kt
 package com.hand.hand.ui.home.stats
 
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.drawscope.Fill
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-        import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.Fill
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
@@ -39,325 +28,360 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.hand.hand.R
-import com.hand.hand.ui.model.MoodChangeRecord
-import com.hand.hand.ui.model.MoodChangeSource
-import com.hand.hand.ui.model.withTodayCount
 import com.hand.hand.ui.theme.BrandFontFamily
-import com.hand.hand.api.Anomaly.AnomalyManager
-import java.text.SimpleDateFormat
-import java.util.Calendar
-import java.util.Date
-import java.util.Locale
+import androidx.compose.ui.graphics.nativeCanvas
 
 // ----- 공통 색(디자인 유지) -----
-private val Brown80   = Color(0xFF4B2E1E)
-private val MonthGray = Color(0xFFB0ADA9)
-private val CardBig   = Color(0xFFF7F4F2)   // 큰 카드 배경
-private val CardSmall = Color(0xFFFFFFFF)   // 작은 카드 배경
+private val Brown80 = Color(0xFF4B2E1E)
+private val MoodGreen = Color(0xFF9AB067)
+private val TitleWhite = Color(0xFFFEFDFD)
+private val CardWhite = Color(0xFFFFFFFF)
+private val BadgeBrown = Color(0xFF4F3422)
+private val LineGray = Color(0xFFD9D9D9)
+private val CurveColor = Color(0xFF9AB067)
 
-private val MoodGreen  = Color(0xFF9AB067) // 헤더/배경
-private val TitleWhite = Color(0xFFFEFDFD) // 제목 & 본문 흰색
-private val CardWhite  = Color(0xFFFFFFFF) // 시트(카드) 내부
-private val BadgeBrown = Color(0xFF4F3422) // 중앙 배지
-
-// ----- 점수 색 규칙 -----
-private fun chipBgForScore(score: Int): Color = when {
-    score >= 80 -> Color(0xFFF2F4EB)
-    score >= 60 -> Color(0xFFFFF4E0)
-    score >= 40 -> Color(0xFFF5F5F5)
-    score >= 20 -> Color(0xFFFFEEE2)
-    else        -> Color(0xFFF6F1FF)
-}
-private fun chipTextColorForScore(score: Int): Color = when {
-    score >= 80 -> Color(0xFF9BB167)
-    score >= 60 -> Color(0xFFFFCE5C)
-    score >= 40 -> Color(0xFF736B66)
-    score >= 20 -> Color(0xFFED7E1C)
-    else        -> Color(0xFF8978E3)
-}
-
-// ===== 우측 원형 점수 인디케이터 =====
+// ===== 원본 TeamAiDocument 스타일 그래프 (24h + 0h/12h/24h 레이블) =====
 @Composable
-private fun ScoreDonut(
-    score: Int,
-    size: Dp = 64.dp,
-    stroke: Dp = 10.dp
+fun StressLineChart(
+    scores: List<Int>, // 24개
+    modifier: Modifier = Modifier,
+    lineColor: Color = Color(0xFF4F3422),
+    pointColor: Color = Color(0xFF815EFF),
+    gridColor: Color = Color(0xFFE1D4CD),
 ) {
-    val bg = chipBgForScore(score)
-    val fg = chipTextColorForScore(score)
-    val sweep = (score.coerceIn(0, 100) / 100f) * 360f
-    val density = LocalDensity.current
+    Canvas(modifier = modifier) {
+        if (scores.isEmpty()) return@Canvas
 
-    Box(
-        modifier = Modifier.size(size),
-        contentAlignment = Alignment.Center
-    ) {
-        Canvas(modifier = Modifier.fillMaxSize()) {
-            val strokePx = with(density) { stroke.toPx() }
-            drawArc(
-                color = bg,
-                startAngle = 0f,
-                sweepAngle = 360f,
-                useCenter = false,
-                style = Stroke(width = strokePx, cap = StrokeCap.Round)
-            )
-            drawArc(
-                color = fg,
-                startAngle = -90f,
-                sweepAngle = sweep,
-                useCenter = false,
-                style = Stroke(width = strokePx, cap = StrokeCap.Round)
+        val widthPerPoint = size.width / (scores.size - 1).coerceAtLeast(1)
+        val heightScale = size.height / 100f
+
+        // 가로 그리드
+        val gridValues = listOf(0, 20, 40, 60, 80, 100)
+        gridValues.forEach { value ->
+            val y = size.height - (value * heightScale)
+            drawLine(
+                color = gridColor,
+                start = Offset(0f, y),
+                end = Offset(size.width, y),
+                strokeWidth = 4f,
+                pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(10f, 10f), 0f)
             )
         }
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(
-                text = "${score}",
-                color = Brown80,
-                fontFamily = BrandFontFamily,
-                fontWeight = FontWeight.Medium,
-                fontSize = 20.sp
-            )
-            Text(
-                text = "점",
-                color = Brown80,
-                fontFamily = BrandFontFamily,
-                fontWeight = FontWeight.Medium,
-                fontSize = 10.sp
-            )
+
+        // 곡선
+        val path = Path()
+        scores.forEachIndexed { index, score ->
+            val x = index * widthPerPoint
+            val y = size.height - (score * heightScale)
+            if (index == 0) path.moveTo(x, y)
+            else {
+                val prevX = (index - 1) * widthPerPoint
+                val prevY = size.height - (scores[index - 1] * heightScale)
+                val cpx1 = prevX + widthPerPoint / 2
+                val cpy1 = prevY
+                val cpx2 = prevX + widthPerPoint / 2
+                val cpy2 = y
+                path.cubicTo(cpx1, cpy1, cpx2, cpy2, x, y)
+            }
+        }
+        drawPath(path = path, color = lineColor, style = Stroke(width = 8f))
+
+        // 최고점 표시
+        val maxScore = scores.maxOrNull() ?: 0
+        scores.forEachIndexed { index, score ->
+            if (score == maxScore) {
+                val x = index * widthPerPoint
+                val y = size.height - (score * heightScale)
+                drawCircle(color = pointColor, radius = 12f, center = Offset(x, y))
+            }
+        }
+
+        // x축 레이블 0h, 12h, 24h만 표시
+        val labelIndices = listOf(0, 12, 23)
+        val labelTexts = listOf("0h", "12h", "24h")
+        labelIndices.forEachIndexed { i, index ->
+            if (index < scores.size) {
+                val x = index * widthPerPoint
+                val canvas = drawContext.canvas
+                val paint = android.graphics.Paint().apply {
+                    color = android.graphics.Color.parseColor("#867E7A")
+                    textAlign = android.graphics.Paint.Align.CENTER
+                    textSize = size.height * 0.09f
+                    isFakeBoldText = true
+                    typeface = android.graphics.Typeface.DEFAULT_BOLD
+                }
+                canvas.nativeCanvas.drawText(labelTexts[i], x, size.height + size.height * 0.15f, paint)
+            }
         }
     }
 }
 
-// ===== 히스토리 1행 카드 =====
-@Composable
-private fun MoodHistoryItem(
-    record: MoodChangeRecord,
-    modifier: Modifier = Modifier
-) {
-    Row(
-        modifier = modifier
-            // Figma drop shadow 대략 매칭: Y=2, Blur=4, Black 10%
-            .shadow(
-                elevation = 4.dp,
-                shape = RoundedCornerShape(20.dp),
-                ambientColor = Color(0x1A000000),
-                spotColor   = Color(0x1A000000)
-            )
-            .fillMaxWidth()
-            .background(CardBig, shape = RoundedCornerShape(20.dp))
-            .padding(16.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        // ⬅ 날짜 작은 카드 (흰색, radius 15)
-        Column(
-            modifier = Modifier
-                .width(56.dp)
-                .height(56.dp)
-                .background(CardSmall, shape = RoundedCornerShape(15.dp))
-                .padding(vertical = 10.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            // 월: Bold 10sp, MonthGray
-            Text(
-                text = "${record.month}월",
-                color = MonthGray,
-                fontFamily = BrandFontFamily,
-                fontWeight = FontWeight.Bold,
-                fontSize = 10.sp
-            )
-            Spacer(Modifier.height(2.dp))
-            // 일: 20sp, Brown80
-            Text(
-                text = "${record.day}일",
-                color = Brown80,
-                fontFamily = BrandFontFamily,
-                fontWeight = FontWeight.Bold,
-                fontSize = 20.sp
-            )
-        }
-
-        Spacer(Modifier.width(16.dp))
-
-        // 중앙: "N회" 32sp, Brown80
-        Text(
-            text = "${record.count}회",
-            color = Brown80,
-            fontFamily = BrandFontFamily,
-            fontWeight = FontWeight.Bold,
-            fontSize = 32.sp,
-            modifier = Modifier.weight(1f)
-        )
-
-        // ➡ 우측: 점수 도넛
-        ScoreDonut(score = record.score, size = 63.dp, stroke = 10.dp)
-    }
-}
-
-// ===== 섹션 전체 =====
 @Composable
 private fun MoodChangeHistorySection(
-    records: List<MoodChangeRecord>,
     horizontalPadding: Dp,
-    maxListHeight: Dp
+    maxListHeight: Dp,
+    scores: List<Int>,
+    screenHeight: Dp,
+    moodChangeCount: Int
 ) {
-    // 최신(연-월-일) 내림차순
-    val sorted = remember(records) {
-        records.sortedWith(
-            compareByDescending<MoodChangeRecord> { it.year }
-                .thenByDescending { it.month }
-                .thenByDescending { it.day }
-        )
-    }
+    // 반응형 기준값들
+    val smallSpacer = screenHeight * 0.0125f      // 기존 12.dp 정도
+    val chartTopSpacer = screenHeight * 0.02f     // 기존 screenHeight * 0.02f 유지 (반응형)
+    val betweenChartAndCard = screenHeight * 0.04f // 기존 screenHeight * 0.04f
+    val betweenCards = screenHeight * 0.0125f     // 기존 12.dp
+    val cardVerticalPadding = screenHeight * 0.015f
+    val innerHorizontalPadding = horizontalPadding // 원래 주신 horizontalPadding 사용
+
+    // 폰트 크기 (원래 25.sp 정도였던 값들을 반응형으로 대체)
+    val bigTitleFont = (screenHeight * 0.025f).value.sp   // 약 25.sp에 대응
+    val cardTitleFont = (screenHeight * 0.0205f).value.sp // 섹션 타이틀(오늘의 스트레스 변화)
+    val countFont = (screenHeight * 0.0205f).value.sp    // 작은 흰 카드 안의 텍스트
+    val bigCardTextFont = (screenHeight * 0.0205f).value.sp
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = horizontalPadding)
+            .padding(horizontal = innerHorizontalPadding)
     ) {
         Text(
-            text = "감정 변화 히스토리",
+            text = "오늘의 스트레스 변화",
             color = Brown80,
             fontFamily = BrandFontFamily,
             fontWeight = FontWeight.Bold,
-            fontSize = 16.sp
+            fontSize = cardTitleFont
         )
-        Spacer(Modifier.height(12.dp))
+
+        Spacer(Modifier.height(smallSpacer))
 
         LazyColumn(
             modifier = Modifier
                 .fillMaxWidth()
                 .heightIn(max = maxListHeight),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+            verticalArrangement = Arrangement.spacedBy(screenHeight * 0.02f),
             userScrollEnabled = true,
-            contentPadding = PaddingValues(bottom = 20.dp) // 하단 여유(그림자 공간)
+            contentPadding = PaddingValues(bottom = screenHeight * 0.02f)
         ) {
-            items(sorted) { rec ->
-                MoodHistoryItem(record = rec)
+            item { Spacer(modifier = Modifier.height(chartTopSpacer)) }
+
+            // 감정 변화 그래프
+            item {
+                Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                    StressLineChart(
+                        scores = scores,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(screenHeight * 0.20f) // 기존과 비슷한 비율 유지
+                    )
+                }
             }
+
+            item { Spacer(modifier = Modifier.height(betweenChartAndCard)) }
+
+            // 감정 변화 큰 카드
+            item {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(screenHeight * 0.075f), // 기존 56.dp에 대응하는 반응형 높이
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFF7F4F2)),
+                    shape = RoundedCornerShape(screenHeight * 0.025f), // 기존 20.dp-ish
+                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = innerHorizontalPadding),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "감정 변화",
+                            color = Brown80,
+                            fontFamily = BrandFontFamily,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = bigCardTextFont
+                        )
+
+                        Card(
+                            modifier = Modifier
+                                .size(width = screenHeight * 0.095f, height = screenHeight * 0.055f), // 76x41 대응
+                            colors = CardDefaults.cardColors(containerColor = Color.White),
+                            shape = RoundedCornerShape(screenHeight * 0.02f),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "${moodChangeCount}회",
+                                    color = Brown80,
+                                    fontFamily = BrandFontFamily,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = countFont,
+                                    textAlign = TextAlign.Center
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 스트레스 최고점 큰 카드 + 작은 카드 (반응형)
+            item {
+                val maxScore = scores.maxOrNull() ?: 0
+                val maxIndices = scores.mapIndexedNotNull { index, score -> if (score == maxScore) index else null }
+
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .wrapContentHeight(),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFF7F4F2)),
+                    shape = RoundedCornerShape(screenHeight * 0.025f),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = innerHorizontalPadding, vertical = cardVerticalPadding),
+                        verticalArrangement = Arrangement.Top
+                    ) {
+                        // 큰 카드 제목 (가운데)
+                        Box(
+                            modifier = Modifier.fillMaxWidth(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "스트레스 최고점",
+                                color = Brown80,
+                                fontFamily = BrandFontFamily,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = bigTitleFont,
+                                textAlign = TextAlign.Center
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(smallSpacer))
+
+                        // 작은 카드들 (동일 최고점이 여러개면 여러개 생성)
+                        maxIndices.forEachIndexed { idx, index ->
+                            val hourText = "${index}시"
+
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(screenHeight * 0.055f), // 기존 41.dp 정도에 대응
+                                colors = CardDefaults.cardColors(containerColor = Color.White),
+                                shape = RoundedCornerShape(screenHeight * 0.02f),
+                                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .padding(horizontal = innerHorizontalPadding * 0.5f),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = "${maxScore}점 - ",
+                                        color = Brown80,
+                                        fontFamily = BrandFontFamily,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = bigCardTextFont,
+                                    )
+                                    Spacer(modifier = Modifier.width(screenHeight * 0.01f))
+                                    Text(
+                                        text = hourText,
+                                        color = Brown80,
+                                        fontFamily = BrandFontFamily,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = bigCardTextFont,
+                                    )
+                                }
+                            }
+
+                            // 작은 카드 간 간격(반응형)
+                            if (idx != maxIndices.lastIndex) {
+                                Spacer(modifier = Modifier.height(betweenCards))
+                            }
+                        }
+                    }
+                }
+            }
+
+            item { Spacer(modifier = Modifier.height(screenHeight * 0.08f)) }
         }
     }
 }
 
-// ===== 오늘 날짜 구하기(이 파일 내부 전용) =====
-private fun todayYMD(now: Date = Date()): Triple<Int, Int, Int> {
-    val cal = Calendar.getInstance().apply { time = now }
-    return Triple(
-        cal.get(Calendar.YEAR),
-        cal.get(Calendar.MONTH) + 1,
-        cal.get(Calendar.DAY_OF_MONTH)
-    )
-}
 
-// ===== 메인 스크린(디자인 유지) =====
+// ===== 메인 스크린 =====
 @Composable
 fun MoodChangeScreen(
     onBack: () -> Unit = {},
-    moodChangeCount: Int = 2,
+    moodChangeCount: Int = 0,
+    scores: List<Int> = List(24) { (0..100).random() } // 기본 24개
 ) {
-    val context = LocalContext.current
-    val cfg = LocalConfiguration.current
+    val configuration = LocalConfiguration.current
     val density = LocalDensity.current
+    val screenHeight = configuration.screenHeightDp.dp
+    val screenWidth = configuration.screenWidthDp.dp
 
-    val screenH = cfg.screenHeightDp.dp
-    val screenW = cfg.screenWidthDp.dp
-
-    // ⭐ 이상치 히스토리 데이터 (API에서 조회)
-    var historyRecords by remember { mutableStateOf<List<MoodChangeRecord>>(emptyList()) }
-
-    LaunchedEffect(Unit) {
-        val anomalyManager = AnomalyManager()
-        val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-
-        anomalyManager.getWeeklyAnomalies(
-            onSuccess = { weeklyResponse ->
-                // DailyAnomalyResponse를 MoodChangeRecord로 변환
-                val records = weeklyResponse.dailyAnomalies.mapNotNull { daily ->
-                    try {
-                        val date = dateFormat.parse(daily.date) ?: return@mapNotNull null
-                        val cal = Calendar.getInstance().apply { time = date }
-
-                        MoodChangeRecord(
-                            year = cal.get(Calendar.YEAR),
-                            month = cal.get(Calendar.MONTH) + 1,  // Calendar.MONTH는 0부터 시작
-                            day = cal.get(Calendar.DAY_OF_MONTH),
-                            count = daily.anomalyCount,
-                            score = 0  // 점수는 나중에 추가 가능
-                        )
-                    } catch (e: Exception) {
-                        null
-                    }
-                }
-                historyRecords = records
-            },
-            onError = { error ->
-                // 실패 시 빈 리스트 유지
-            }
-        )
-    }
-
-    // 헤더(디자인 유지)
-    val headerHeight: Dp = screenH * 0.20f
-    val backSize: Dp = screenH * 0.06f
-    val paddStart: Dp = screenW * 0.07f
-    val paddTop: Dp = screenH * 0.05f
+    val headerHeight: Dp = screenHeight * 0.20f
+    val backSize: Dp = screenHeight * 0.06f
+    val paddStart: Dp = screenWidth * 0.07f
+    val paddTop: Dp = screenHeight * 0.05f
     val titleStartGap: Dp = 16.dp
     val titleSp = 24.sp
-
-    // 시트(아치) 파라미터 (확정값 유지)
     val crestFromTop: Dp = 310.dp
     val arcHeight: Dp = 70.dp
     val sheetCorner: Dp = 28.dp
-
-    // 중앙 배지
     val badgeSize: Dp = 56.dp
     val badgeIconSize: Dp = 24.dp
-
-    // 아치 정점 보정
     val apexInsidePx = with(density) { arcHeight.toPx() * 0.25f }
     val apexInsideDp = with(density) { apexInsidePx.toDp() }
-
-    // 배지 top 오프셋
     val badgeTopOffset: Dp = crestFromTop + apexInsideDp - (badgeSize / 2)
+    val historyTopGap = 98.dp
+    val maxListHeight = (screenHeight - (crestFromTop + historyTopGap) - 48.dp).coerceAtLeast(140.dp)
 
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(MoodGreen)
     ) {
-        // ── 상단 헤더 ──
-        Row(
+        // 상단 헤더 (Box 방식으로 뒤로가기 절대 위치, 타이틀은 버튼 옆으로)
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(headerHeight)
-                .padding(start = paddStart, top = paddTop, end = paddStart),
-            verticalAlignment = Alignment.CenterVertically
         ) {
-            Surface(
-                color = Color.Transparent,
-                shape = CircleShape,
-                shadowElevation = 0.dp,
-                tonalElevation = 0.dp
-            ) {
-                Image(
-                    painter = painterResource(R.drawable.back_white_btn),
-                    contentDescription = "back",
-                    modifier = Modifier
-                        .size(backSize)
-                        .clickable { onBack() }
-                )
-            }
-            Spacer(modifier = Modifier.width(titleStartGap))
+            // 뒤로가기 버튼을 절대 위치로 배치 (DiaryHeader 방식과 동일하게)
+            Image(
+                painter = painterResource(R.drawable.back_white_btn),
+                contentDescription = "back",
+                modifier = Modifier
+                    .padding(start = paddStart, top = paddTop) // 위치 튜닝은 이 값만 조정하면 됨
+                    .size(backSize) // 크기도 동일 변수로 통제
+                    .align(Alignment.TopStart)
+                    .clickable { onBack() }
+            )
+
+            // 타이틀을 뒤로가기 버튼 옆으로 배치
             Text(
-                text = "감정 변화 횟수",
+                text = "오늘 감정 변화",
                 color = TitleWhite,
                 fontFamily = BrandFontFamily,
                 fontWeight = FontWeight.Bold,
-                fontSize = titleSp
+                fontSize = titleSp,
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(
+                        start = paddStart + backSize + 18.dp, // back 버튼 바로 옆
+                        top = paddTop + (backSize / 4) // 세로로도 버튼과 자연스럽게 정렬
+                    )
             )
         }
 
-        // ── 중앙 타이포 ──
-        val extraGap = (cfg.screenHeightDp.dp * 0.03f).coerceIn(70.dp, 80.dp)
+        val extraGap = (configuration.screenHeightDp.dp * 0.03f).coerceIn(70.dp, 80.dp)
         Column(
             modifier = Modifier
                 .align(Alignment.TopCenter)
@@ -372,18 +396,9 @@ fun MoodChangeScreen(
                 fontSize = 64.sp,
                 textAlign = TextAlign.Center
             )
-            Spacer(Modifier.height(8.dp))
-            Text(
-                text = "오늘 감정 변화",
-                color = TitleWhite,
-                fontFamily = BrandFontFamily,
-                fontWeight = FontWeight.Medium,
-                fontSize = 24.sp,
-                textAlign = TextAlign.Center
-            )
         }
 
-        // ── 하단 흰 시트: Card + Canvas(상단 아치) ──
+        // 하단 시트
         Card(
             modifier = Modifier
                 .fillMaxSize()
@@ -396,14 +411,9 @@ fun MoodChangeScreen(
                 val w = size.width
                 val h = size.height
                 val ah = with(density) { arcHeight.toPx() }
-
                 val path = Path().apply {
                     moveTo(0f, ah)
-                    cubicTo(
-                        w * 0.25f, 0f,
-                        w * 0.75f, 0f,
-                        w, ah
-                    )
+                    cubicTo(w * 0.25f, 0f, w * 0.75f, 0f, w, ah)
                     lineTo(w, h)
                     lineTo(0f, h)
                     close()
@@ -412,7 +422,6 @@ fun MoodChangeScreen(
             }
         }
 
-        // ── 중앙 배지 ──
         Box(
             modifier = Modifier
                 .size(badgeSize)
@@ -429,22 +438,6 @@ fun MoodChangeScreen(
             )
         }
 
-        // ── 감정 변화 히스토리 섹션 ──
-        // ⭐ API에서 가져온 실제 데이터 사용
-        val historyWithToday: List<MoodChangeRecord> = remember(moodChangeCount, historyRecords) {
-            historyRecords.withTodayCount(todayCount = moodChangeCount, defaultScoreIfNew = 0)
-        }
-
-        // …목록에서는 오늘을 숨김
-        val (ty, tm, td) = todayYMD()
-        val history: List<MoodChangeRecord> = remember(historyWithToday) {
-            historyWithToday.filterNot { it.year == ty && it.month == tm && it.day == td }
-        }
-
-        val historyTopGap = 98.dp
-        val maxListHeight =
-            (screenH - (crestFromTop + historyTopGap) - 48.dp).coerceAtLeast(140.dp)
-
         Column(
             modifier = Modifier
                 .align(Alignment.TopStart)
@@ -452,9 +445,11 @@ fun MoodChangeScreen(
                 .fillMaxWidth()
         ) {
             MoodChangeHistorySection(
-                records = history,
                 horizontalPadding = paddStart,
-                maxListHeight = maxListHeight
+                maxListHeight = maxListHeight,
+                scores = scores,
+                screenHeight = screenHeight,
+                moodChangeCount = moodChangeCount
             )
         }
     }

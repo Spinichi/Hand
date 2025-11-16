@@ -19,7 +19,6 @@ import java.util.stream.Collectors;
  * Measurement Service
  * - 측정 데이터 저장 및 조회
  * - 워치에서 계산된 데이터를 수신하여 저장
- * - 스트레스 통계 조회
  */
 @Slf4j
 @Service
@@ -214,6 +213,19 @@ public class MeasurementService {
                 .build();
     }
 
+    /**
+     * 가장 최근 측정 데이터 조회
+     * 홈 화면 표시용
+     *
+     * @param userId 사용자 ID
+     * @return 가장 최근 측정 데이터 (없으면 null)
+     */
+    @Transactional(readOnly = true)
+    public Measurement getLatestMeasurement(Long userId) {
+        return measurementRepository.findTopByUserIdOrderByMeasuredAtDesc(userId)
+                .orElse(null);
+    }
+
     // ===== 스트레스 관련 메서드 =====
 
     /**
@@ -338,5 +350,4 @@ public class MeasurementService {
                 .map(m -> new StressPointDto(m.getStressIndex(), m.getMeasuredAt()))
                 .collect(Collectors.toList());
     }
-
 }

@@ -20,7 +20,6 @@ import java.util.List;
 /**
  * Measurement Controller
  * - 측정 데이터 CRUD API
- * - 스트레스 통계 API
  */
 @RestController
 @RequestMapping("/measurements")
@@ -216,6 +215,30 @@ public class MeasurementController {
         WeeklyAnomalyResponse data = measurementService.getWeeklyAnomalies(userId);
 
         return ResponseEntity.ok(ApiResponse.success(data, "주간 이상치 데이터를 조회했습니다"));
+    }
+
+    /**
+     * 가장 최근 측정 데이터 조회
+     * 홈 화면 표시용 (BPM, 스트레스 레벨 등)
+     *
+     * @param authentication 인증 정보
+     * @return 최근 측정 데이터 (없으면 null)
+     */
+    @GetMapping("/latest")
+    public ResponseEntity<ApiResponse<MeasurementResponse>> getLatestMeasurement(
+            Authentication authentication
+    ) {
+        Long userId = Long.valueOf(authentication.getName());
+
+        Measurement latest = measurementService.getLatestMeasurement(userId);
+
+        if (latest == null) {
+            return ResponseEntity.ok(ApiResponse.success(null, "측정 데이터가 없습니다"));
+        }
+
+        MeasurementResponse data = MeasurementResponse.from(latest);
+
+        return ResponseEntity.ok(ApiResponse.success(data, "최근 측정 데이터를 조회했습니다"));
     }
 
     /**
