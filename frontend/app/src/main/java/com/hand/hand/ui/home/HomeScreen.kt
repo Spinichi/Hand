@@ -101,7 +101,7 @@ fun HomeScreen() {
                             id = api.id.toString(),
                             name = api.name,
                             memberCount = api.memberCount ?: 0,
-                            averageScore = api.avgMemberRiskScore?.toFloat() ?: 50f
+                            averageScore = api.avgMemberRiskScore?.toFloat() ?: 0f
                         )
                     }
                 }

@@ -26,10 +26,14 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.hand.hand.R
+import com.hand.hand.api.ManagerCounseling.ManagerCounselingManager
+import com.hand.hand.api.ManagerCounseling.ManagerCounselingData
 import com.hand.hand.api.Group.GroupManager
 import com.hand.hand.api.Group.GroupMemberData
 import com.hand.hand.ui.theme.BrandFontFamily
 import android.content.Intent
+import java.text.SimpleDateFormat
+import java.util.*
 
 class TeamAiDocumentActivity : ComponentActivity() {
     private var memberId: Int = -1
@@ -55,7 +59,6 @@ class TeamAiDocumentActivity : ComponentActivity() {
                 memberId = memberId,
                 memberName = memberName,
                 onBackClick = {
-                    // 뒤로가기 시 수정된 note 저장 (빈 문자열 포함)
                     GroupManager.updateMemberNotes(
                         groupId = orgId,
                         userId = memberId,
@@ -94,8 +97,12 @@ fun TeamAiDocumentScreen(
     val screenWidth = configuration.screenWidthDp.dp
 
     var memberData by remember { mutableStateOf<GroupMemberData?>(null) }
+    var counselingData by remember { mutableStateOf<ManagerCounselingData?>(null) }
     var isLoading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
+
+    val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+    val calendar = Calendar.getInstance()
 
     LaunchedEffect(orgId, memberId) {
         isLoading = true
@@ -108,19 +115,43 @@ fun TeamAiDocumentScreen(
                 } else {
                     error = "멤버 정보를 찾을 수 없습니다."
                 }
-                isLoading = false
             },
             onError = { apiError ->
                 error = "데이터 로딩 실패: $apiError"
+            }
+        )
+
+        ManagerCounselingManager.getLatestCounseling(
+            groupId = orgId,
+            userId = memberId,
+            onSuccess = { data ->
+                counselingData = data
+                isLoading = false
+            },
+            onError = { err ->
+                Log.w("TeamAiDocument", "상담 데이터 없음 또는 오류: $err")
+                counselingData = null // 상담 없으면 null
                 isLoading = false
             }
         )
     }
 
-    val avgScore = memberData?.weeklyAvgRiskScore?.toInt()?.coerceIn(0, 100) ?: 0
-    val scores = List(7) { avgScore }
-    val xLabels = listOf("Day1", "Day2", "Day3", "Day4", "Day5", "Day6", "Day7")
-    val adviceText = memberData?.let { "주간 평균 점수(${it.weeklyAvgRiskScore?.toInt()}) 기반의 조언입니다." } ?: ""
+    val scores = remember(counselingData) {
+        val map = mutableMapOf<String, Double>()
+        counselingData?.dailyDiaries?.forEach {
+            it.date?.let { d -> it.depressionScore?.let { score -> map[d] = score } }
+        }
+        val list = mutableListOf<Double>()
+        for (i in 6 downTo 0) {
+            calendar.time = Date()
+            calendar.add(Calendar.DAY_OF_YEAR, -i)
+            val dateStr = dateFormat.format(calendar.time)
+            list.add(map[dateStr] ?: 0.0)
+        }
+        list
+    }
+
+    val xLabels = List(7) { "Day${it + 1}" }
     val specialNote = memberData?.specialNotes ?: ""
     var noteText by rememberSaveable(memberData) { mutableStateOf(specialNote) }
 
@@ -202,7 +233,13 @@ fun TeamAiDocumentScreen(
                     )
                     Spacer(modifier = Modifier.height(screenHeight * 0.02f))
                     Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                        // EmotionLineChart(scores = scores, xLabels = xLabels, modifier = Modifier.fillMaxWidth(0.8f).height(screenHeight * 0.2f))
+                        EmotionLineChart(
+                            scores = scores.map { it.toInt() },
+                            xLabels = xLabels,
+                            modifier = Modifier
+                                .fillMaxWidth(0.8f)
+                                .height(screenHeight * 0.2f)
+                        )
                     }
                     Spacer(modifier = Modifier.height(screenHeight * 0.08f))
                     Text(
@@ -263,7 +300,7 @@ fun TeamAiDocumentScreen(
                             .padding(16.dp)
                     ) {
                         Text(
-                            text = adviceText,
+                            text = counselingData?.counselingAdvice ?: "",
                             fontFamily = BrandFontFamily,
                             fontWeight = FontWeight.Bold,
                             fontSize = (screenHeight * 0.023f).value.sp,
@@ -275,10 +312,11 @@ fun TeamAiDocumentScreen(
                 }
             }
         }
+        val weeklyAvgRiskScore = memberData?.weeklyAvgRiskScore ?: 0f
 
         Image(
             painter = painterResource(
-                id = when (avgScore) {
+                id = when (weeklyAvgRiskScore.toInt()) {
                     in 0..19 -> R.drawable.ai_document_sad
                     in 20..39 -> R.drawable.ai_document_down
                     in 40..59 -> R.drawable.ai_document_okay
