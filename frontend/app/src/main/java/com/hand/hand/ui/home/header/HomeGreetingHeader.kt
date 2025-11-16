@@ -33,6 +33,7 @@ fun HomeGreetingHeader(
     moodLabel: String,
     recommendation: String,
     modifier: Modifier = Modifier,
+    diaryStatus: String = if (isWritten) "작성 완료" else "작성 전",
 
     // CareHeader2와 매칭되는 값들
     headerHeightRatio: Float = 0.25f,
@@ -157,7 +158,7 @@ fun HomeGreetingHeader(
                                     modifier = Modifier.size(22.dp)
                                 )
                             },
-                            text = if (isWritten) "작성 완료" else "작성 전",
+                            text = diaryStatus,
                             color = White,
                             fontSize = 18.sp,
                         )

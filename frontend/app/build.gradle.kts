@@ -69,6 +69,10 @@ dependencies {
     implementation("androidx.compose.ui:ui-text")
     implementation("androidx.navigation:navigation-compose:2.8.3")
 
+    // Accompanist Pager for onboarding carousel
+    implementation("com.google.accompanist:accompanist-pager:0.32.0")
+    implementation("com.google.accompanist:accompanist-pager-indicators:0.32.0")
+
     implementation(platform("com.google.firebase:firebase-bom:34.5.0"))
 
     // Firebase Cloud Messaging (BOM 34+ 부터 KTX 기능이 기본 포함)
