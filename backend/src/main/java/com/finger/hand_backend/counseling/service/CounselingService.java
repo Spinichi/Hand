@@ -99,10 +99,12 @@ public class CounselingService {
         log.info("No existing report found, creating new counseling report");
 
         // 3. 해당 기간의 다이어리 조회
+        // Between 쿼리에서 endDate 포함을 위해 +1일 (MongoDB LocalDate 변환 이슈 대응)
         List<DiaryConversation> diaries = diaryConversationRepository
-                .findByUserIdAndSessionDateBetweenOrderBySessionDateAsc(userId, startDate, endDate)
+                .findByUserIdAndSessionDateBetweenOrderBySessionDateAsc(userId, startDate.minusDays(1), endDate.plusDays(1))
                 .stream()
                 .filter(d -> d.getEmotionAnalysis() != null) // 완료된 다이어리만
+                .filter(d -> !d.getSessionDate().isBefore(startDate) && !d.getSessionDate().isAfter(endDate)) // 정확한 범위 필터링
                 .collect(Collectors.toList());
 
         log.debug("Found {} completed diaries", diaries.size());

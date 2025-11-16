@@ -68,10 +68,12 @@ public class MonthlyReportService {
         log.debug("Month range: {} ~ {}", monthStart, monthEnd);
 
         // 4. 다이어리 조회 (COMPLETED 상태만)
+        // Between 쿼리에서 endDate 포함을 위해 +1일 (MongoDB LocalDate 변환 이슈 대응)
         List<DiaryConversation> diaries = diaryConversationRepository
-                .findByUserIdAndSessionDateBetweenOrderBySessionDateAsc(userId, monthStart, monthEnd)
+                .findByUserIdAndSessionDateBetweenOrderBySessionDateAsc(userId, monthStart.minusDays(1), monthEnd.plusDays(1))
                 .stream()
                 .filter(d -> d.getEmotionAnalysis() != null) // 완료된 다이어리만
+                .filter(d -> !d.getSessionDate().isBefore(monthStart) && !d.getSessionDate().isAfter(monthEnd)) // 정확한 범위 필터링
                 .collect(Collectors.toList());
 
         log.debug("Found {} completed diaries", diaries.size());

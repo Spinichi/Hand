@@ -17,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.temporal.TemporalAdjusters;
 import java.time.temporal.WeekFields;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -63,16 +64,18 @@ public class WeeklyReportService {
         }
 
         // 3. 주의 시작일(월요일)과 종료일(일요일) 계산
-        LocalDate weekStart = date.with(DayOfWeek.MONDAY);
-        LocalDate weekEnd = date.with(DayOfWeek.SUNDAY);
+        LocalDate weekStart = date.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
+        LocalDate weekEnd = date.with(TemporalAdjusters.nextOrSame(DayOfWeek.SUNDAY));
 
         log.debug("Week range: {} ~ {}", weekStart, weekEnd);
 
         // 4. 다이어리 조회 (COMPLETED 상태만)
+        // Between 쿼리에서 endDate 포함을 위해 +1일 (MongoDB LocalDate 변환 이슈 대응)
         List<DiaryConversation> diaries = diaryConversationRepository
-                .findByUserIdAndSessionDateBetweenOrderBySessionDateAsc(userId, weekStart, weekEnd)
+                .findByUserIdAndSessionDateBetweenOrderBySessionDateAsc(userId, weekStart.minusDays(1), weekEnd.plusDays(1))
                 .stream()
                 .filter(d -> d.getEmotionAnalysis() != null) // 완료된 다이어리만 (emotionAnalysis 존재)
+                .filter(d -> !d.getSessionDate().isBefore(weekStart) && !d.getSessionDate().isAfter(weekEnd)) // 정확한 범위 필터링
                 .collect(Collectors.toList());
 
         log.debug("Found {} completed diaries", diaries.size());
