@@ -54,7 +54,7 @@ private fun GroupData.toOrganization(): Organization? {
         id = this.id.toString(),
         name = this.name,
         memberCount = this.memberCount ?: 0,
-        averageScore = this.avgMemberRiskScore?.toFloat()?.coerceIn(0f, 100f) ?: 50f
+        averageScore = this.avgMemberRiskScore?.toFloat()?.coerceIn(0f, 100f) ?: 0f
     )
 }
 
