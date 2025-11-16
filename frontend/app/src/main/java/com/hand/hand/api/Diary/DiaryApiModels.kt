@@ -49,7 +49,8 @@ data class DiaryItem(
     val sessionDate: String,
     val createdAt: String,
     val depressionScore: Int?,
-    val shortSummary: String?
+    val shortSummary: String?,
+    val status: String?
 )
 
 fun DiaryItemResponse.toDiaryItem(): DiaryItem {
@@ -58,7 +59,8 @@ fun DiaryItemResponse.toDiaryItem(): DiaryItem {
         sessionDate = sessionDate,
         createdAt = createdAt,
         depressionScore = depressionScore,
-        shortSummary = shortSummary
+        shortSummary = shortSummary,
+        status = status
     )
 }
 

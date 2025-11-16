@@ -34,7 +34,7 @@
             android:name="com.google.android.gms.version"
             android:value="@integer/google_play_services_version" />
         <activity
-            android:name=".feature.auth.SignInActivity"
+            android:name=".feature.splash.SplashActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -42,6 +42,8 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <activity android:name=".feature.onboarding.OnboardingActivity" />
+        <activity android:name=".feature.auth.SignInActivity" />
         <activity android:name="com.hand.hand.care.CareActivity" />
         <activity android:name="com.hand.hand.care.CareSafeZone1Activity" />
         <activity android:name="com.hand.hand.care.CareSafeZone2Activity" />

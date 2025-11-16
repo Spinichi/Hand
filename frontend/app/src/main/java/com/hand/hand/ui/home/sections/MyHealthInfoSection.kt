@@ -238,22 +238,35 @@ fun MyHealthInfoSection(
 
                             // ⭐ ISO-8601 형식으로 변환
                             val now = java.util.Calendar.getInstance()
-                            val yesterday = (now.clone() as java.util.Calendar).apply { add(java.util.Calendar.DATE, -1) }
+
+                            val sleepStartCal = now.clone() as java.util.Calendar
+                            val sleepEndCal = now.clone() as java.util.Calendar
+
+                            // 잠든 시간 > 일어난 시간이면 자정을 넘긴 것 (예: 22시 > 7시)
+                            val startTimeInMinutes = startHour24 * 60 + sleepStartMinute
+                            val endTimeInMinutes = endHour24 * 60 + sleepEndMinute
+                            val crossedMidnight = startTimeInMinutes > endTimeInMinutes
+
+                            if (crossedMidnight) {
+                                // 자정 넘김: 어제 자고 오늘 일어남
+                                sleepStartCal.add(java.util.Calendar.DATE, -1)
+                            }
+                            // else: 자정 안 넘김 (같은 날): 오늘 자고 오늘 일어남
 
                             val sleepStartTime = String.format(
                                 "%04d-%02d-%02dT%02d:%02d:00",
-                                yesterday.get(java.util.Calendar.YEAR),
-                                yesterday.get(java.util.Calendar.MONTH) + 1,
-                                yesterday.get(java.util.Calendar.DATE),
+                                sleepStartCal.get(java.util.Calendar.YEAR),
+                                sleepStartCal.get(java.util.Calendar.MONTH) + 1,
+                                sleepStartCal.get(java.util.Calendar.DATE),
                                 startHour24,
                                 sleepStartMinute
                             )
 
                             val sleepEndTime = String.format(
                                 "%04d-%02d-%02dT%02d:%02d:00",
-                                now.get(java.util.Calendar.YEAR),
-                                now.get(java.util.Calendar.MONTH) + 1,
-                                now.get(java.util.Calendar.DATE),
+                                sleepEndCal.get(java.util.Calendar.YEAR),
+                                sleepEndCal.get(java.util.Calendar.MONTH) + 1,
+                                sleepEndCal.get(java.util.Calendar.DATE),
                                 endHour24,
                                 sleepEndMinute
                             )
@@ -363,13 +376,14 @@ private fun StressInfoCard(
     iconSize: Dp = 32.dp
 ) {
     // ⭐ 스트레스 레벨별 색상 (1=Great, 2=Happy, 3=Okay, 4=Down, 5=Sad)
+    // 감정일기 페이지 색상 매핑과 동일하게 적용
     val (iconBgColor, barActiveColor) = when (level) {
-        1 -> Pair(Green10, Green40)    // Great - 초록색
-        2 -> Pair(Purple10, Purple40)  // Happy - 보라색
-        3 -> Pair(Yellow10, Yellow40)  // Okay - 노란색
-        4 -> Pair(Color(0xFFFFE5E5), Color(0xFFFF9999))  // Down - 연한 빨강
-        5 -> Pair(Color(0xFFFFCCCC), Color(0xFFFF6666))  // Sad - 빨강
-        else -> Pair(Yellow10, Yellow40)
+        1 -> Pair(Color(0xFFE8F5E0), Color(0xFF9BB167))  // Great - 초록색
+        2 -> Pair(Color(0xFFFFF7E6), Color(0xFFFFCE5C))  // Happy - 노란색
+        3 -> Pair(Color(0xFFF5EDE8), Color(0xFFC0A091))  // Okay - 베이지색
+        4 -> Pair(Color(0xFFFEF0E6), Color(0xFFED7E1C))  // Down - 주황색
+        5 -> Pair(Color(0xFFF0EBFF), Color(0xFFC2B1FF))  // Sad - 보라색
+        else -> Pair(Color(0xFFF5EDE8), Color(0xFFC0A091))
     }
 
     Card(

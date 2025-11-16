@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
@@ -46,6 +47,7 @@ import com.hand.hand.api.Group.GroupData // ✅ 추가된 Import
 @Composable
 fun HomeScreen() {
     var showDialog by rememberSaveable { mutableStateOf(false) }
+    var isRefreshing by remember { mutableStateOf(false) }
 
     val context = LocalContext.current
 
@@ -65,7 +67,32 @@ fun HomeScreen() {
         )
     }
 
-    val isWritten = false
+    // ⭐ 오늘의 다이어리 작성 상태 조회
+    var diaryStatus by remember { mutableStateOf("작성 전") }
+
+    LaunchedEffect(Unit) {
+        val today = SimpleDateFormat("yyyy-MM-dd", Locale.KOREA).format(Date())
+        com.hand.hand.api.Diary.DiaryManager.getMyDiaryList(
+            startDate = today,
+            endDate = today,
+            page = 0,
+            size = 1,
+            onSuccess = { items ->
+                diaryStatus = when {
+                    items.isEmpty() -> "작성 전"
+                    items.first().status == "COMPLETED" -> "작성 완료"
+                    items.first().status == "IN_PROGRESS" -> "작성 중"
+                    else -> "작성 전"
+                }
+                android.util.Log.d("HomeScreen", "✅ 오늘의 다이어리 상태: $diaryStatus (status=${items.firstOrNull()?.status})")
+            },
+            onFailure = { error ->
+                android.util.Log.e("HomeScreen", "❌ 다이어리 작성 여부 조회 실패: ${error.message}")
+            }
+        )
+    }
+
+    val isWritten = diaryStatus == "작성 완료"
 
     // ⭐ 최근 측정 데이터 조회
     var heartRateBpm by remember { mutableStateOf(75) }
@@ -200,7 +227,8 @@ fun HomeScreen() {
                 moodLabel = mood.label,
                 recommendation = recommendation,
                 modifier = Modifier.fillMaxWidth(),
-                horizontalGutter = gutter
+                horizontalGutter = gutter,
+                diaryStatus = diaryStatus
             )
         },
         // ✅ 커브드 네비게이션 바
@@ -230,41 +258,102 @@ fun HomeScreen() {
             )
         }
     ) { paddingValues ->
-        LazyColumn(
-            modifier = Modifier.padding(paddingValues),
-            verticalArrangement = Arrangement.spacedBy(sdp(24.dp)),
-            contentPadding = PaddingValues(top = sdp(16.dp), bottom = 0.dp)
+        PullToRefreshBox(
+            isRefreshing = isRefreshing,
+            onRefresh = {
+                isRefreshing = true
+
+                // 모든 데이터 재조회
+                com.hand.hand.api.Measurements.MeasurementsManager.getLatestMeasurement(
+                    onSuccess = { data ->
+                        data?.let {
+                            heartRateBpm = it.heartRate?.toInt() ?: 75
+                            personalMoodScore = it.stressIndex?.toInt() ?: 79
+                            stressLevel = it.stressLevel ?: 2
+                        }
+                    },
+                    onFailure = { }
+                )
+
+                val anomalyManager = AnomalyManager()
+                anomalyManager.getAnomalyCount(
+                    onSuccess = { count ->
+                        todayAnomalyCount = count
+                    },
+                    onError = { }
+                )
+
+                com.hand.hand.api.Sleep.SleepManager.getTodaySleep(
+                    onSuccess = { data ->
+                        if (data != null) {
+                            todaySleepMinutes = data.sleepDurationMinutes
+                            hasSleepData = true
+                        } else {
+                            hasSleepData = false
+                        }
+                    },
+                    onFailure = { }
+                )
+
+                // 다이어리 작성 여부 재조회
+                val today = SimpleDateFormat("yyyy-MM-dd", Locale.KOREA).format(Date())
+                com.hand.hand.api.Diary.DiaryManager.getMyDiaryList(
+                    startDate = today,
+                    endDate = today,
+                    page = 0,
+                    size = 1,
+                    onSuccess = { items ->
+                        diaryStatus = when {
+                            items.isEmpty() -> "작성 전"
+                            items.first().status == "COMPLETED" -> "작성 완료"
+                            items.first().status == "IN_PROGRESS" -> "작성 중"
+                            else -> "작성 전"
+                        }
+                        isRefreshing = false
+                    },
+                    onFailure = {
+                        isRefreshing = false
+                    }
+                )
+            },
+            modifier = Modifier.padding(paddingValues)
         ) {
-            item {
-                MyRecordsSection(
-                    horizontalPadding = gutter,
-                    moodChangeCount = todayAnomalyCount,
-                    onMoodChangeClick = {
-                        context.startActivity(MoodChangeActivity.intent(context, todayAnomalyCount))
-                    }
-                )
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.spacedBy(sdp(24.dp)),
+                contentPadding = PaddingValues(top = sdp(16.dp), bottom = 0.dp)
+            ) {
+                item {
+                    MyRecordsSection(
+                        horizontalPadding = gutter,
+                        moodChangeCount = todayAnomalyCount,
+                        onMoodChangeClick = {
+                            context.startActivity(MoodChangeActivity.intent(context, todayAnomalyCount))
+                        }
+                    )
+                }
+                item {
+                    MyHealthInfoSection(
+                        horizontalPadding = gutter,
+                        stressScore = personalMoodScore,
+                        sleepMinutes = todaySleepMinutes,
+                        hasSleepData = hasSleepData,
+                        onSleepDataSaved = {
+                            // 수면 데이터 저장 후 다시 조회
+                            com.hand.hand.api.Sleep.SleepManager.getTodaySleep(
+                                onSuccess = { data ->
+                                    if (data != null) {
+                                        todaySleepMinutes = data.sleepDurationMinutes
+                                        hasSleepData = true
+                                    }
+                                },
+                                onFailure = { }
+                            )
+                        }
+                    )
+                }
+                item { Spacer(Modifier.height(sdp(16.dp))) }
             }
-            item {
-                MyHealthInfoSection(
-                    horizontalPadding = gutter,
-                    stressScore = personalMoodScore,
-                    sleepMinutes = todaySleepMinutes,
-                    hasSleepData = hasSleepData,
-                    onSleepDataSaved = {
-                        // 수면 데이터 저장 후 다시 조회
-                        com.hand.hand.api.Sleep.SleepManager.getTodaySleep(
-                            onSuccess = { data ->
-                                if (data != null) {
-                                    todaySleepMinutes = data.sleepDurationMinutes
-                                    hasSleepData = true
-                                }
-                            },
-                            onFailure = { }
-                        )
-                    }
-                )
-            }
-            item { Spacer(Modifier.height(sdp(16.dp))) }
         }
     }
 
