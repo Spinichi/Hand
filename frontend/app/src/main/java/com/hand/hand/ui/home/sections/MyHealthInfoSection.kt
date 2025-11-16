@@ -1,5 +1,6 @@
 package com.hand.hand.ui.home.sections
 
+import android.content.Intent
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
@@ -28,6 +29,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -35,6 +37,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.hand.hand.R
+import com.hand.hand.carehistory.CareHistoryActivity
 import com.hand.hand.ui.theme.*
 import kotlin.math.abs
 import kotlin.math.atan2
@@ -66,6 +69,7 @@ fun MyHealthInfoSection(
         )
 
         // 마음 완화 기록
+        val context = LocalContext.current
         HealthInfoCardRes(
             iconRes = R.drawable.ic_heath_calander,
             title = "마음 완화 기록",
@@ -80,6 +84,11 @@ fun MyHealthInfoSection(
                         .height(40.dp)
                         .width(72.dp)
                 )
+            },
+            modifier = Modifier.clickable {
+                // 클릭 시 CareHistoryActivity로 이동
+                val intent = Intent(context, CareHistoryActivity::class.java)
+                context.startActivity(intent)
             }
         )
 
