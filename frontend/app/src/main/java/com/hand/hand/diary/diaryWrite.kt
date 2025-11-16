@@ -1,6 +1,8 @@
 package com.hand.hand.diary
 
 import android.os.Bundle
+import android.util.Log
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.Image
@@ -16,6 +18,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -24,11 +27,32 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.hand.hand.R
+import com.hand.hand.api.GMS.GmsSttManager
+import com.hand.hand.api.Write.DiaryAnswerResponse
+import com.hand.hand.api.Write.DiaryStartResponse
+import com.hand.hand.api.Write.WriteManager
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
+
+
 import com.hand.hand.ui.theme.BrandFontFamily
 
 class DiaryWriteActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO)
+            != PackageManager.PERMISSION_GRANTED
+        ) {
+            ActivityCompat.requestPermissions(
+                this,
+                arrayOf(Manifest.permission.RECORD_AUDIO),
+                1001
+            )
+        }
 
         val selectedDate = intent.getStringExtra("selectedDate") ?: "날짜 없음"
 
@@ -42,9 +66,7 @@ class DiaryWriteActivity : ComponentActivity() {
 }
 
 /**
- * ✅ 공백 기준으로 자연스럽게 줄바꿈하는 함수
- * @param text 줄바꿈 처리할 문자열
- * @param maxCharPerLine 한 줄당 최대 문자 수
+ * 공백 기준 줄바꿈
  */
 fun autoWrapText(text: String, maxCharPerLine: Int): String {
     val words = text.split(" ")
@@ -52,7 +74,6 @@ fun autoWrapText(text: String, maxCharPerLine: Int): String {
     var currentLine = ""
 
     for (word in words) {
-        // 현재 줄에 단어를 추가했을 때 최대 글자 수를 넘으면 줄바꿈
         if ((currentLine + word).length > maxCharPerLine) {
             lines.add(currentLine.trim())
             currentLine = ""
@@ -61,8 +82,6 @@ fun autoWrapText(text: String, maxCharPerLine: Int): String {
     }
 
     if (currentLine.isNotEmpty()) lines.add(currentLine.trim())
-
-    // 줄바꿈으로 연결해서 반환
     return lines.joinToString("\n")
 }
 
@@ -71,22 +90,42 @@ fun DiaryWriteScreen(selectedDate: String, onBackClick: () -> Unit) {
     val configuration = LocalConfiguration.current
     val screenHeight = configuration.screenHeightDp.dp
     val screenWidth = configuration.screenWidthDp.dp
+    val context = LocalContext.current
 
     val backButtonSize: Dp = screenHeight * 0.06f
     val backButtonPaddingStart: Dp = screenWidth * 0.07f
     val backButtonPaddingTop: Dp = screenHeight * 0.05f
 
-    var isRecording by remember { mutableStateOf(false) }
+    var isRecording by remember { mutableStateOf(false) }   // 녹음 중 여부
+    var isSending by remember { mutableStateOf(false) }     // STT + answer 전송 중 여부
     var showExitDialog by remember { mutableStateOf(false) }
 
-    // ✅ 여러 질문 관리
-    var questions by remember {
-        mutableStateOf(
-            listOf(
-                "오늘 있었던 일 중에 기억에 남는 순간이 있나요?",
-                "그때 어떤 감정이 들었나요?",
-                "그 감정은 왜 그렇게 느꼈던 걸까요?"
-            )
+    // 백엔드 질문 리스트
+    var questions by remember { mutableStateOf<List<String>>(emptyList()) }
+
+    // 세션 / 질문 번호
+    var sessionId by remember { mutableStateOf<Long?>(null) }
+    var questionNumber by remember { mutableStateOf(0) }
+
+    // 다이어리 세션 시작
+    LaunchedEffect(Unit) {
+        WriteManager.startDiary(
+            onSuccess = { res: DiaryStartResponse ->
+                Log.d("DiaryWrite", "다이어리 시작 성공: $res")
+
+                val data = res.data
+                if (res.success && data != null) {
+                    sessionId = data.sessionId
+                    questionNumber = data.questionNumber
+                    questions = listOf(data.questionText)
+                } else {
+                    questions = listOf("질문을 불러오지 못했어요.")
+                }
+            },
+            onFailure = { t ->
+                Log.e("DiaryWrite", "다이어리 시작 실패", t)
+                questions = listOf("질문을 불러오는 중 오류가 발생했어요.")
+            }
         )
     }
 
@@ -164,7 +203,7 @@ fun DiaryWriteScreen(selectedDate: String, onBackClick: () -> Unit) {
                 val isLast = index == questions.lastIndex
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    // 🔹 아이콘: 마지막 질문만 주황색
+                    // 아이콘
                     Image(
                         painter = painterResource(
                             id = if (isLast)
@@ -178,7 +217,7 @@ fun DiaryWriteScreen(selectedDate: String, onBackClick: () -> Unit) {
 
                     Spacer(modifier = Modifier.width(screenWidth * 0.03f))
 
-                    // 🔸 질문 텍스트 박스
+                    // 질문 텍스트 박스
                     Box(
                         modifier = Modifier
                             .width(screenWidth * 0.7f)
@@ -216,14 +255,13 @@ fun DiaryWriteScreen(selectedDate: String, onBackClick: () -> Unit) {
             contentScale = ContentScale.FillWidth
         )
 
-        // 🔴 하단 녹음 버튼 (토글)
-        // 🔴 하단 녹음 버튼 (토글)
+        // 🔴 하단 녹음 버튼 (마이크 ↔ 체크)
         Image(
             painter = painterResource(
                 id = if (isRecording)
-                    R.drawable.diary_write_record_stop
+                    R.drawable.diary_write_record_stop   // 체크 아이콘 (녹음 중)
                 else
-                    R.drawable.diary_write_record_btn
+                    R.drawable.diary_write_record_btn     // 마이크 아이콘 (대기)
             ),
             contentDescription = "Record Button",
             modifier = Modifier
@@ -231,19 +269,88 @@ fun DiaryWriteScreen(selectedDate: String, onBackClick: () -> Unit) {
                 .padding(bottom = screenHeight * 0.02f)
                 .size(screenHeight * 0.09f)
                 .clickable {
-                    // ✅ 녹음 종료 시에만 새로운 질문 추가
-                    if (isRecording) {
-                        questions = questions + "새로운 질문이 도착했어요!"
+
+                    // STT + answer 전송 중이면 클릭 막기
+                    if (isSending) {
+                        Log.d("DiaryWrite", "지금 전송 중이라 클릭 무시")
+                        return@clickable
                     }
 
-                    // 🔁 녹음 상태 토글
-                    isRecording = !isRecording
+                    if (!isRecording) {
+                        // 1차 클릭: 녹음 시작
+                        isRecording = true
+                        Log.d("DiaryWrite", "🎙 녹음 시작")
+                        RecordManager.startRecording(context)
+
+                    } else {
+                        // 2차 클릭: 녹음 종료 + GMS STT + answer POST
+                        isRecording = false
+                        Log.d("DiaryWrite", "🎙 녹음 종료, STT 요청 준비")
+
+                        val audioFile = RecordManager.stopRecording()
+                        if (audioFile == null) {
+                            Log.e("DiaryWriteDebug", "[REC FAIL] 녹음 파일 null")
+                            Toast.makeText(context, "녹음에 실패했어요. 다시 시도해주세요.", Toast.LENGTH_SHORT).show()
+                            return@clickable
+                        }
+
+                        isSending = true
+
+                        GmsSttManager.requestStt(
+                            audioFile = audioFile,
+                            onSuccess = { text ->
+                                Log.d("DiaryWrite", "GMS STT 결과: '$text'")
+
+                                val currentSessionId = sessionId
+                                if (currentSessionId == null || text.isBlank()) {
+                                    Log.e(
+                                        "DiaryWrite",
+                                        "STT 이후 sessionId 없거나 text 비어있음: sessionId=$currentSessionId, text='$text'"
+                                    )
+                                    Toast.makeText(context, "음성을 인식하지 못했어요.", Toast.LENGTH_SHORT).show()
+                                    isSending = false
+                                    return@requestStt
+                                }
+
+                                // 👉 답변 POST
+                                WriteManager.sendAnswer(
+                                    sessionId = currentSessionId,
+                                    answerText = text,
+                                    onSuccess = { res: DiaryAnswerResponse ->
+                                        Log.d("DiaryWrite", "answer 성공: $res")
+                                        isSending = false
+
+                                        if (res.success && res.data != null) {
+                                            sessionId = res.data.sessionId
+                                            questionNumber = res.data.questionNumber
+                                            questions = questions + res.data.questionText
+
+                                            if (res.data.canFinish) {
+                                                Log.d("DiaryWrite", "이제 다이어리 종료 가능")
+                                            }
+                                        } else {
+                                            Toast.makeText(context, "답변 전송에 실패했어요.", Toast.LENGTH_SHORT).show()
+                                        }
+                                    },
+                                    onFailure = { t ->
+                                        Log.e("DiaryWrite", "answer 실패", t)
+                                        Toast.makeText(context, "답변 전송에 실패했어요.", Toast.LENGTH_SHORT).show()
+                                        isSending = false
+                                    }
+                                )
+                            },
+                            onFailure = { t ->
+                                Log.e("DiaryWrite", "GMS STT 요청 실패", t)
+                                Toast.makeText(context, "음성 인식에 실패했어요.", Toast.LENGTH_SHORT).show()
+                                isSending = false
+                            }
+                        )
+                    }
                 },
             contentScale = ContentScale.Fit
         )
 
-
-        // ⚪ 모달 표시
+        // ⚪ 나가기 모달
         if (showExitDialog) {
             Box(
                 modifier = Modifier
@@ -303,4 +410,3 @@ fun DiaryWriteScreen(selectedDate: String, onBackClick: () -> Unit) {
         }
     }
 }
-
