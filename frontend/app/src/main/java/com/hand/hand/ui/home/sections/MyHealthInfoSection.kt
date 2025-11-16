@@ -52,9 +52,15 @@ fun MyHealthInfoSection(
     horizontalPadding: Dp = 0.dp,
     soothingHours: Float = 2.5f,
     stressScore: Int = 0,
-    sleepHours: Int = 8
+    sleepMinutes: Int = 0,
+    hasSleepData: Boolean = false,
+    onSleepDataSaved: () -> Unit = {}
 ) {
     var showSleepDialog by remember { mutableStateOf(false) }
+
+    // 분 → 시간 + 분 파싱
+    val sleepHours = sleepMinutes / 60
+    val sleepMins = sleepMinutes % 60
 
     Column(
         Modifier.padding(horizontal = horizontalPadding),
@@ -93,7 +99,15 @@ fun MyHealthInfoSection(
         )
 
         // 오늘의 수면
-        val sleepText = "${sleepHours}시간 / Today"
+        val sleepText = if (hasSleepData) {
+            if (sleepMins > 0) {
+                "${sleepHours}시간 ${sleepMins}분 / Today"
+            } else {
+                "${sleepHours}시간 / Today"
+            }
+        } else {
+            "오늘의 수면 시간을 입력해주세요!"
+        }
         HealthInfoCardRes(
             iconRes = R.drawable.ic_heath_sleep,
             title = "오늘의 수면",
@@ -101,16 +115,18 @@ fun MyHealthInfoSection(
             iconBg = Purple10,
             iconSize = 32.dp,
             trailing = {
-                SleepRing(
-                    progressValue = sleepHours.coerceIn(0, 12),
-                    labelText = sleepHours.toString(),
-                    max = 12,
-                    size = 44.dp,
-                    stroke = 8.dp,
-                    colorTrack = Color(0xFFEFE9FF),
-                    colorProgress = Purple40,
-                    textColor = Brown40
-                )
+                if (hasSleepData) {
+                    SleepRing(
+                        progressValue = sleepHours.coerceIn(0, 12),
+                        labelText = sleepHours.toString(),
+                        max = 12,
+                        size = 44.dp,
+                        stroke = 8.dp,
+                        colorTrack = Color(0xFFEFE9FF),
+                        colorProgress = Purple40,
+                        textColor = Brown40
+                    )
+                }
             },
             modifier = Modifier.clickable { showSleepDialog = true } // 클릭 시 모달
         )
@@ -128,8 +144,16 @@ fun MyHealthInfoSection(
     }
 
     // 수면 모달
-    // 수면 모달
     if (showSleepDialog) {
+        // 수면 시간 상태
+        var sleepStartHour by remember { mutableStateOf(22) }
+        var sleepStartMinute by remember { mutableStateOf(0) }
+        var sleepStartAmPm by remember { mutableStateOf("PM") }
+
+        var sleepEndHour by remember { mutableStateOf(7) }
+        var sleepEndMinute by remember { mutableStateOf(0) }
+        var sleepEndAmPm by remember { mutableStateOf("AM") }
+
         androidx.compose.ui.window.Dialog(
             onDismissRequest = { showSleepDialog = false }
         ) {
@@ -164,17 +188,25 @@ fun MyHealthInfoSection(
 
                         SleepWheelPicker(
                             label = "잠든 시간",
-                            initialHour = 10,
-                            initialMinute = 0,
-                            initialAmPm = "PM"
-                        ) { hour, minute, amPm -> }
+                            initialHour = sleepStartHour,
+                            initialMinute = sleepStartMinute,
+                            initialAmPm = sleepStartAmPm
+                        ) { hour, minute, amPm ->
+                            sleepStartHour = hour
+                            sleepStartMinute = minute
+                            sleepStartAmPm = amPm
+                        }
 
                         SleepWheelPicker(
                             label = "일어난 시간",
-                            initialHour = 7,
-                            initialMinute = 0,
-                            initialAmPm = "AM"
-                        ) { hour, minute, amPm -> }
+                            initialHour = sleepEndHour,
+                            initialMinute = sleepEndMinute,
+                            initialAmPm = sleepEndAmPm
+                        ) { hour, minute, amPm ->
+                            sleepEndHour = hour
+                            sleepEndMinute = minute
+                            sleepEndAmPm = amPm
+                        }
                     }
                 }
 
@@ -182,13 +214,63 @@ fun MyHealthInfoSection(
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(bottom = 100.dp), // 화면 아래에서 32dp 위
+                        .padding(bottom = 100.dp),
                     contentAlignment = Alignment.BottomCenter
                 ) {
                     androidx.compose.material3.Button(
                         onClick = {
-                            // 저장 로직
-                            showSleepDialog = false
+                            // ⭐ 12시간 형식 → 24시간 형식 변환
+                            val startHour24 = if (sleepStartAmPm == "PM" && sleepStartHour != 12) {
+                                sleepStartHour + 12
+                            } else if (sleepStartAmPm == "AM" && sleepStartHour == 12) {
+                                0
+                            } else {
+                                sleepStartHour
+                            }
+
+                            val endHour24 = if (sleepEndAmPm == "PM" && sleepEndHour != 12) {
+                                sleepEndHour + 12
+                            } else if (sleepEndAmPm == "AM" && sleepEndHour == 12) {
+                                0
+                            } else {
+                                sleepEndHour
+                            }
+
+                            // ⭐ ISO-8601 형식으로 변환
+                            val now = java.util.Calendar.getInstance()
+                            val yesterday = (now.clone() as java.util.Calendar).apply { add(java.util.Calendar.DATE, -1) }
+
+                            val sleepStartTime = String.format(
+                                "%04d-%02d-%02dT%02d:%02d:00",
+                                yesterday.get(java.util.Calendar.YEAR),
+                                yesterday.get(java.util.Calendar.MONTH) + 1,
+                                yesterday.get(java.util.Calendar.DATE),
+                                startHour24,
+                                sleepStartMinute
+                            )
+
+                            val sleepEndTime = String.format(
+                                "%04d-%02d-%02dT%02d:%02d:00",
+                                now.get(java.util.Calendar.YEAR),
+                                now.get(java.util.Calendar.MONTH) + 1,
+                                now.get(java.util.Calendar.DATE),
+                                endHour24,
+                                sleepEndMinute
+                            )
+
+                            // ⭐ API 호출
+                            com.hand.hand.api.Sleep.SleepManager.saveSleep(
+                                sleepStartTime = sleepStartTime,
+                                sleepEndTime = sleepEndTime,
+                                onSuccess = { data ->
+                                    android.util.Log.d("MyHealthInfoSection", "✅ 수면 데이터 저장 성공: ${data.sleepDurationHours}시간")
+                                    onSleepDataSaved()
+                                    showSleepDialog = false
+                                },
+                                onFailure = { error ->
+                                    android.util.Log.e("MyHealthInfoSection", "❌ 수면 데이터 저장 실패: ${error.message}")
+                                }
+                            )
                         },
                         shape = RoundedCornerShape(50.dp),
                         modifier = Modifier
