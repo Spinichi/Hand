@@ -4,19 +4,31 @@ import androidx.annotation.DrawableRes
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
@@ -24,20 +36,36 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.hand.hand.R
 import com.hand.hand.ui.theme.*
+import kotlin.math.abs
+import kotlin.math.atan2
+import kotlin.math.cos
+import kotlin.math.roundToInt
+import kotlin.math.sin
+import kotlin.math.PI
+import kotlin.math.min
 
 @Composable
-fun MyHealthInfoSection(horizontalPadding: Dp = 0.dp,
-                        soothingHours: Float = 2.5f,
-                        stressScore: Int = 0,
-                        sleepHours: Int = 8
+fun MyHealthInfoSection(
+    horizontalPadding: Dp = 0.dp,
+    soothingHours: Float = 2.5f,
+    stressScore: Int = 0,
+    sleepHours: Int = 8
 ) {
+    var showSleepDialog by remember { mutableStateOf(false) }
+
     Column(
-        Modifier.padding(horizontal = horizontalPadding),   // 16.dp → param
+        Modifier.padding(horizontal = horizontalPadding),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Text("내 건강 정보", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Brown80, fontFamily = BrandFontFamily)
+        Text(
+            "내 건강 정보",
+            fontWeight = FontWeight.Bold,
+            fontSize = 16.sp,
+            color = Brown80,
+            fontFamily = BrandFontFamily
+        )
 
-        // 1) 마음 완화 기록 — 우측 미니 그래프 이미지
+        // 마음 완화 기록
         HealthInfoCardRes(
             iconRes = R.drawable.ic_heath_calander,
             title = "마음 완화 기록",
@@ -55,9 +83,8 @@ fun MyHealthInfoSection(horizontalPadding: Dp = 0.dp,
             }
         )
 
-        // 2) 오늘의 수면 — 우측 원형 링(0..12) + 중앙 숫자
+        // 오늘의 수면
         val sleepText = "${sleepHours}시간 / Today"
-
         HealthInfoCardRes(
             iconRes = R.drawable.ic_heath_sleep,
             title = "오늘의 수면",
@@ -66,8 +93,8 @@ fun MyHealthInfoSection(horizontalPadding: Dp = 0.dp,
             iconSize = 32.dp,
             trailing = {
                 SleepRing(
-                    progressValue = sleepHours.coerceIn(0, 12), // 링 진행도는 0..12로 캡
-                    labelText = sleepHours.toString(),          // 가운데 숫자는 입력 그대로 표시
+                    progressValue = sleepHours.coerceIn(0, 12),
+                    labelText = sleepHours.toString(),
                     max = 12,
                     size = 44.dp,
                     stroke = 8.dp,
@@ -75,11 +102,13 @@ fun MyHealthInfoSection(horizontalPadding: Dp = 0.dp,
                     colorProgress = Purple40,
                     textColor = Brown40
                 )
-            }
+            },
+            modifier = Modifier.clickable { showSleepDialog = true } // 클릭 시 모달
         )
+
+        // 스트레스 레벨
         val level = com.hand.hand.ui.model.moodFromScore(stressScore).level
         val caption = com.hand.hand.ui.model.moodCaption(stressScore)
-        // 3) 스트레스 레벨 — 제목 → 탭바 → 캡션
         StressInfoCard(
             iconRes = R.drawable.ic_heath_stress,
             title = "스트레스 레벨",
@@ -88,9 +117,87 @@ fun MyHealthInfoSection(horizontalPadding: Dp = 0.dp,
             iconSize = 32.dp
         )
     }
+
+    // 수면 모달
+    // 수면 모달
+    if (showSleepDialog) {
+        androidx.compose.ui.window.Dialog(
+            onDismissRequest = { showSleepDialog = false }
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                // 모달 내용
+                Card(
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFF7F4F2)),
+                    modifier = Modifier
+                        .fillMaxWidth(0.9f)
+                        .wrapContentHeight()
+                        .clickable(enabled = false) {} // Card 안쪽 클릭은 닫지 않음
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(32.dp)
+                    ) {
+                        Text(
+                            text = "오늘의 수면 기록",
+                            fontSize = 30.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Brown80,
+                            fontFamily = BrandFontFamily
+                        )
+
+                        SleepWheelPicker(
+                            label = "잠든 시간",
+                            initialHour = 10,
+                            initialMinute = 0,
+                            initialAmPm = "PM"
+                        ) { hour, minute, amPm -> }
+
+                        SleepWheelPicker(
+                            label = "일어난 시간",
+                            initialHour = 7,
+                            initialMinute = 0,
+                            initialAmPm = "AM"
+                        ) { hour, minute, amPm -> }
+                    }
+                }
+
+                // 모달 바깥쪽 아래 저장 버튼
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(bottom = 100.dp), // 화면 아래에서 32dp 위
+                    contentAlignment = Alignment.BottomCenter
+                ) {
+                    androidx.compose.material3.Button(
+                        onClick = {
+                            // 저장 로직
+                            showSleepDialog = false
+                        },
+                        shape = RoundedCornerShape(50.dp),
+                        modifier = Modifier
+                            .fillMaxWidth(0.5f)
+                            .height(48.dp)
+                    ) {
+                        Text(text = "저장", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                    }
+                }
+            }
+        }
+    }
+
+
+
 }
 
-/** 공통 카드: 좌측 아이콘(webp; 배경 없음) + 타이틀/서브텍스트 + 우측 트레일링 슬롯 */
+/** 공통 카드 */
 @Composable
 private fun HealthInfoCardRes(
     @DrawableRes iconRes: Int,
@@ -98,10 +205,11 @@ private fun HealthInfoCardRes(
     value: String,
     iconBg: Color,
     iconSize: Dp = 32.dp,
-    trailing: @Composable () -> Unit = {}
+    trailing: @Composable () -> Unit = {},
+    modifier: Modifier = Modifier
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
@@ -133,8 +241,20 @@ private fun HealthInfoCardRes(
                 Column(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Text(title, fontWeight = FontWeight.Bold, fontSize = 18.sp, color = Brown80,  fontFamily = BrandFontFamily)
-                    Text(value, fontWeight = FontWeight.Medium, fontSize = 14.sp, color = Gray50,  fontFamily = BrandFontFamily)
+                    Text(
+                        title,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 18.sp,
+                        color = Brown80,
+                        fontFamily = BrandFontFamily
+                    )
+                    Text(
+                        value,
+                        fontWeight = FontWeight.Medium,
+                        fontSize = 14.sp,
+                        color = Gray50,
+                        fontFamily = BrandFontFamily
+                    )
                 }
             }
             trailing()
@@ -142,7 +262,7 @@ private fun HealthInfoCardRes(
     }
 }
 
-/** 스트레스 전용 카드: 제목 → 탭바 → 캡션. 아이콘은 배경 박스 + 큰 아이콘 */
+/** 스트레스 카드 */
 @Composable
 private fun StressInfoCard(
     @DrawableRes iconRes: Int,
@@ -180,11 +300,29 @@ private fun StressInfoCard(
             Spacer(Modifier.width(14.dp))
 
             Column(modifier = Modifier.weight(1f)) {
-                Text(text = title, color = Brown80, fontSize = 18.sp, fontWeight = FontWeight.Bold, fontFamily = BrandFontFamily)
+                Text(
+                    text = title,
+                    color = Brown80,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = BrandFontFamily
+                )
                 Spacer(Modifier.height(8.dp))
-                StressLevelBar(level = level, barHeight = 6.dp, gap = 8.dp, active = Yellow40, inactive = Gray20)
+                StressLevelBar(
+                    level = level,
+                    barHeight = 6.dp,
+                    gap = 8.dp,
+                    active = Yellow40,
+                    inactive = Gray20
+                )
                 Spacer(Modifier.height(8.dp))
-                Text(text = caption, color = Gray50, fontSize = 14.sp, fontWeight = FontWeight.Medium, fontFamily = BrandFontFamily)
+                Text(
+                    text = caption,
+                    color = Gray50,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium,
+                    fontFamily = BrandFontFamily
+                )
             }
         }
     }
@@ -217,11 +355,11 @@ private fun StressLevelBar(
     }
 }
 
-/** 원형 수면 링(0..max). 중앙에 값 표시 */
+/** 원형 수면 링 */
 @Composable
 private fun SleepRing(
-    progressValue: Int,                 // ← 진행도(0..max)
-    labelText: String,                  // ← 가운데 표시 텍스트(캡 안함)
+    progressValue: Int,
+    labelText: String,
     max: Int = 12,
     size: Dp = 44.dp,
     stroke: Dp = 8.dp,
@@ -239,29 +377,27 @@ private fun SleepRing(
         Canvas(modifier = Modifier.fillMaxSize()) {
             val strokePx = stroke.toPx()
             val inset = strokePx / 2f
-            // 배경
             drawArc(
                 color = colorTrack,
                 startAngle = 0f,
                 sweepAngle = 360f,
                 useCenter = false,
                 style = Stroke(width = strokePx, cap = StrokeCap.Round),
-                topLeft = androidx.compose.ui.geometry.Offset(inset, inset),
+                topLeft = Offset(inset, inset),
                 size = androidx.compose.ui.geometry.Size(size.toPx() - strokePx, size.toPx() - strokePx)
             )
-            // 진행
             drawArc(
                 color = colorProgress,
                 startAngle = -90f,
                 sweepAngle = sweep,
                 useCenter = false,
                 style = Stroke(width = strokePx, cap = StrokeCap.Round),
-                topLeft = androidx.compose.ui.geometry.Offset(inset, inset),
+                topLeft = Offset(inset, inset),
                 size = androidx.compose.ui.geometry.Size(size.toPx() - strokePx, size.toPx() - strokePx)
             )
         }
         Text(
-            text = labelText,            // ← 입력 그대로 표시(예: 13)
+            text = labelText,
             color = textColor,
             fontSize = 20.sp,
             fontWeight = FontWeight.Bold,
@@ -269,8 +405,152 @@ private fun SleepRing(
         )
     }
 }
-//마음 완화 기록 밑에 시간 뒤에 .0제거용
+
+// 마음 완화 기록 소수 제거
 private fun format1d(x: Float): String {
     return if (x % 1f == 0f) x.toInt().toString()
     else String.format(java.util.Locale.US, "%.1f", x)
+}
+
+@Composable
+fun SleepWheelPicker(
+    initialHour: Int = 10,
+    initialMinute: Int = 0,
+    initialAmPm: String = "PM",
+    label: String = "잠든 시간",
+    onTimeChange: (hour: Int, minute: Int, amPm: String) -> Unit = { _, _, _ -> }
+) {
+    var selectedHour by remember { mutableStateOf(initialHour.coerceIn(1,12)) }
+    var selectedMinute by remember { mutableStateOf(initialMinute.coerceIn(0,59)) }
+    var selectedAmPm by remember { mutableStateOf(initialAmPm) }
+
+    val hours = (1..12).toList()
+    val minutes = (0..59).toList()
+    val ampmList = listOf("AM", "PM")
+
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(20.dp) // 라벨과 WheelPicker 간 간격 줄임
+    ) {
+        Text(
+            text = label,
+            fontSize = 26.sp,
+            fontWeight = FontWeight.Medium,
+            color = Brown80,
+            fontFamily = BrandFontFamily
+        )
+
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            // Hour
+            WheelPicker(items = hours.map { it.toString() }, selectedItem = selectedHour.toString()) { value ->
+                selectedHour = value.toInt()
+                onTimeChange(selectedHour, selectedMinute, selectedAmPm)
+            }
+            // Minute
+            WheelPicker(items = minutes.map { it.toString().padStart(2,'0') }, selectedItem = selectedMinute.toString().padStart(2,'0')) { value ->
+                selectedMinute = value.toInt()
+                onTimeChange(selectedHour, selectedMinute, selectedAmPm)
+            }
+            // AM/PM
+            WheelPicker(items = ampmList, selectedItem = selectedAmPm) { value ->
+                selectedAmPm = value
+                onTimeChange(selectedHour, selectedMinute, selectedAmPm)
+            }
+        }
+    }
+}
+
+@Composable
+fun WheelPicker(
+    items: List<String>,
+    selectedItem: String,
+    visibleCount: Int = 3,
+    onItemSelected: (String) -> Unit
+) {
+    val itemHeight = 36.dp // 높이 조금 줄임
+    var selectedIndex by remember { mutableStateOf(items.indexOf(selectedItem)) }
+    var offsetY by remember { mutableStateOf(0f) }
+
+    Box(
+        modifier = Modifier
+            .width(60.dp)
+            .height(itemHeight * visibleCount)
+            .background(Color(0xFFEFEFEF), shape = RoundedCornerShape(8.dp))
+            .pointerInput(Unit) {
+                detectVerticalDragGestures { _, dragAmount ->
+                    offsetY += dragAmount
+                    if (offsetY > itemHeight.toPx() / 2) {
+                        offsetY = 0f
+                        selectedIndex = (selectedIndex - 1).coerceIn(0, items.size - 1)
+                        onItemSelected(items[selectedIndex])
+                    } else if (offsetY < -itemHeight.toPx() / 2) {
+                        offsetY = 0f
+                        selectedIndex = (selectedIndex + 1).coerceIn(0, items.size - 1)
+                        onItemSelected(items[selectedIndex])
+                    }
+                }
+            },
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            modifier = Modifier.fillMaxHeight(),
+            verticalArrangement = Arrangement.Center
+        ) {
+            // 위 숫자
+            if (selectedIndex > 0) {
+                Box(
+                    modifier = Modifier
+                        .height(itemHeight)
+                        .fillMaxWidth()
+                        .background(Color(0xFFEFEFEF), RoundedCornerShape(6.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = items[selectedIndex - 1],
+                        fontSize = 14.sp, // 위/아래 숫자 작게
+                        color = Color.Gray,
+                        fontWeight = FontWeight.Normal
+                    )
+                }
+            } else {
+                Spacer(modifier = Modifier.height(itemHeight))
+            }
+
+            // 중앙 선택 숫자
+            Box(
+                modifier = Modifier
+                    .height(itemHeight)
+                    .fillMaxWidth()
+                    .background(Color(0xFFC2B1FF), RoundedCornerShape(8.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = items[selectedIndex],
+                    fontSize = 18.sp, // 중앙 숫자 조금 줄임
+                    fontWeight = FontWeight.Bold,
+                    color = Brown80
+                )
+            }
+
+            // 아래 숫자
+            if (selectedIndex < items.size - 1) {
+                Box(
+                    modifier = Modifier
+                        .height(itemHeight)
+                        .fillMaxWidth()
+                        .background(Color(0xFFEFEFEF), RoundedCornerShape(6.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = items[selectedIndex + 1],
+                        fontSize = 14.sp,
+                        color = Color.Gray,
+                        fontWeight = FontWeight.Normal
+                    )
+                }
+            } else {
+                Spacer(modifier = Modifier.height(itemHeight))
+            }
+        }
+    }
 }
