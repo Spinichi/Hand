@@ -66,10 +66,36 @@ fun HomeScreen() {
     }
 
     val isWritten = false
-    val heartRateBpm = 75
-    val personalMoodScore = 79
+
+    // ⭐ 최근 측정 데이터 조회
+    var heartRateBpm by remember { mutableStateOf(75) }
+    var personalMoodScore by remember { mutableStateOf(79) }
+    var stressLevel by remember { mutableStateOf(2) }
+
     val mood = moodFromScore(personalMoodScore)
     val recommendation = "봉인 연습"
+
+    LaunchedEffect(Unit) {
+        com.hand.hand.api.Measurements.MeasurementsManager.getLatestMeasurement(
+            onSuccess = { data ->
+                data?.let {
+                    // BPM 업데이트
+                    heartRateBpm = it.heartRate?.toInt() ?: 75
+
+                    // 스트레스 지수 업데이트 (0-100 → mood 계산용)
+                    personalMoodScore = it.stressIndex?.toInt() ?: 79
+
+                    // 스트레스 레벨 업데이트 (1-5)
+                    stressLevel = it.stressLevel ?: 2
+
+                    android.util.Log.d("HomeScreen", "✅ 최근 측정 데이터: BPM=$heartRateBpm, Score=$personalMoodScore, Level=$stressLevel")
+                }
+            },
+            onFailure = { error ->
+                android.util.Log.e("HomeScreen", "❌ 최근 측정 데이터 조회 실패: ${error.message}")
+            }
+        )
+    }
 
     // ⭐ 오늘의 이상치 개수 조회
     var todayAnomalyCount by remember { mutableStateOf(0) }

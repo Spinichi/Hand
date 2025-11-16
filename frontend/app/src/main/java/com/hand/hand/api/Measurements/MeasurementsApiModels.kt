@@ -87,3 +87,35 @@ data class MeasurementResponse(
     val data: MeasurementCreateResponse?,
     val message: String?
 )
+
+/**
+ * 최근 측정 데이터 응답 DTO (상세 데이터)
+ */
+data class LatestMeasurementData(
+    val id: Long,
+    val heartRate: Double?,
+    val hrvSdnn: Double?,
+    val hrvRmssd: Double?,
+    val objectTemp: Double?,
+    val ambientTemp: Double?,
+    val accelX: Double?,
+    val accelY: Double?,
+    val accelZ: Double?,
+    val movementIntensity: Double?,
+    val stressIndex: Double?,
+    val stressLevel: Int?,
+    val isAnomaly: Boolean,
+    val totalSteps: Int?,
+    val stepsPerMinute: Double?,
+    val measuredAt: String,
+    val createdAt: String
+)
+
+/**
+ * 최근 측정 데이터 응답 래퍼
+ */
+data class LatestMeasurementResponse(
+    val success: Boolean,
+    val data: LatestMeasurementData?,
+    val message: String?
+)

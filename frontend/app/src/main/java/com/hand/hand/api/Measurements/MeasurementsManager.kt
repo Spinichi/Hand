@@ -64,5 +64,52 @@ class MeasurementsManager {
                 }
             })
         }
+
+        /**
+         * 최근 측정 데이터 조회
+         * 홈 화면 표시용 (BPM, 스트레스 레벨 등)
+         *
+         * @param onSuccess 성공 콜백
+         * @param onFailure 실패 콜백
+         */
+        fun getLatestMeasurement(
+            onSuccess: ((LatestMeasurementData?) -> Unit)? = null,
+            onFailure: ((Throwable) -> Unit)? = null
+        ) {
+            Log.d(TAG, "📤 최근 측정 데이터 조회 요청")
+
+            httpCall.getLatestMeasurement().enqueue(object : Callback<LatestMeasurementResponse> {
+                override fun onResponse(
+                    call: Call<LatestMeasurementResponse>,
+                    response: Response<LatestMeasurementResponse>
+                ) {
+                    val body = response.body()
+                    val errorBodyStr = try {
+                        response.errorBody()?.string()
+                    } catch (_: Exception) {
+                        null
+                    }
+
+                    Log.d(
+                        TAG,
+                        "📥 응답코드=${response.code()} body=$body errorBody=$errorBodyStr"
+                    )
+
+                    if (response.isSuccessful && body != null && body.success) {
+                        Log.d(TAG, "✅ 최근 측정 데이터 조회 성공: data=${body.data}")
+                        onSuccess?.invoke(body.data)
+                    } else {
+                        val msg = "최근 측정 데이터 조회 실패: ${response.code()} - ${body?.message ?: response.message()}"
+                        Log.e(TAG, msg)
+                        onFailure?.invoke(Throwable(msg))
+                    }
+                }
+
+                override fun onFailure(call: Call<LatestMeasurementResponse>, t: Throwable) {
+                    Log.e(TAG, "🚨 통신 실패: ${t.localizedMessage}", t)
+                    onFailure?.invoke(t)
+                }
+            })
+        }
     }
 }

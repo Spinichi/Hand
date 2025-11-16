@@ -123,4 +123,13 @@ public interface MeasurementRepository extends JpaRepository<Measurement, Long> 
   ORDER BY m.measuredAt ASC, m.id ASC
 """)
     List<Measurement> findFirstBetween(Long userId, LocalDateTime from, LocalDateTime to, Pageable pageable);
+
+    /**
+     * 가장 최근 측정 데이터 1개 조회
+     * 홈 화면 표시용
+     *
+     * @param userId 사용자 ID
+     * @return 가장 최근 측정 데이터
+     */
+    Optional<Measurement> findTopByUserIdOrderByMeasuredAtDesc(Long userId);
 }

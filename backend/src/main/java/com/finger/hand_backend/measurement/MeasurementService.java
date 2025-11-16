@@ -213,4 +213,17 @@ public class MeasurementService {
                 .dailyAnomalies(dailyAnomalies)
                 .build();
     }
+
+    /**
+     * 가장 최근 측정 데이터 조회
+     * 홈 화면 표시용
+     *
+     * @param userId 사용자 ID
+     * @return 가장 최근 측정 데이터 (없으면 null)
+     */
+    @Transactional(readOnly = true)
+    public Measurement getLatestMeasurement(Long userId) {
+        return measurementRepository.findTopByUserIdOrderByMeasuredAtDesc(userId)
+                .orElse(null);
+    }
 }

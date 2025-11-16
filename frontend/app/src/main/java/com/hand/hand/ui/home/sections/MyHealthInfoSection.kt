@@ -120,7 +120,7 @@ fun MyHealthInfoSection(
         val caption = com.hand.hand.ui.model.moodCaption(stressScore)
         StressInfoCard(
             iconRes = R.drawable.ic_heath_stress,
-            title = "스트레스 레벨",
+            title = "현재 스트레스 레벨",
             level = level,
             caption = caption,
             iconSize = 32.dp
@@ -280,6 +280,16 @@ private fun StressInfoCard(
     caption: String,
     iconSize: Dp = 32.dp
 ) {
+    // ⭐ 스트레스 레벨별 색상 (1=Great, 2=Happy, 3=Okay, 4=Down, 5=Sad)
+    val (iconBgColor, barActiveColor) = when (level) {
+        1 -> Pair(Green10, Green40)    // Great - 초록색
+        2 -> Pair(Purple10, Purple40)  // Happy - 보라색
+        3 -> Pair(Yellow10, Yellow40)  // Okay - 노란색
+        4 -> Pair(Color(0xFFFFE5E5), Color(0xFFFF9999))  // Down - 연한 빨강
+        5 -> Pair(Color(0xFFFFCCCC), Color(0xFFFF6666))  // Sad - 빨강
+        else -> Pair(Yellow10, Yellow40)
+    }
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
@@ -296,7 +306,7 @@ private fun StressInfoCard(
                 modifier = Modifier
                     .size(56.dp)
                     .clip(RoundedCornerShape(18.dp))
-                    .background(Yellow10),
+                    .background(iconBgColor),
                 contentAlignment = Alignment.Center
             ) {
                 Image(
@@ -321,7 +331,7 @@ private fun StressInfoCard(
                     level = level,
                     barHeight = 6.dp,
                     gap = 8.dp,
-                    active = Yellow40,
+                    active = barActiveColor,
                     inactive = Gray20
                 )
                 Spacer(Modifier.height(8.dp))
