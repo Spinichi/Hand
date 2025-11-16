@@ -1,11 +1,9 @@
 package com.finger.hand_backend.measurement;
 
-import com.finger.hand_backend.measurement.dto.DailyAnomalyResponse;
-import com.finger.hand_backend.measurement.dto.MeasurementRequest;
-import com.finger.hand_backend.measurement.dto.MeasurementResponse;
-import com.finger.hand_backend.measurement.dto.WeeklyAnomalyResponse;
+import com.finger.hand_backend.measurement.dto.*;
 import com.finger.hand_backend.relief.ReliefAfterBackfill;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -13,15 +11,17 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
+import java.time.LocalTime;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
  * Measurement Service
  * - 측정 데이터 저장 및 조회
  * - 워치에서 계산된 데이터를 수신하여 저장
+ * - 스트레스 통계 조회
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class MeasurementService {
@@ -213,4 +213,130 @@ public class MeasurementService {
                 .dailyAnomalies(dailyAnomalies)
                 .build();
     }
+
+    // ===== 스트레스 관련 메서드 =====
+
+    /**
+     * 오늘의 스트레스 변화 조회
+     * - 이상치 횟수
+     * - 시간대별 통계 (최고/최저/평균)
+     * - 최고점/최저점 시각
+     */
+    @Transactional(readOnly = true)
+    public TodayStressResponse getTodayStress(Long userId, LocalDate date) {
+        log.info("Getting today stress for user {} on {}", userId, date);
+
+        // 1. 오늘 하루 범위 계산 (00:00:00 ~ 23:59:59)
+        LocalDateTime startOfDay = date.atStartOfDay();
+        LocalDateTime endOfDay = date.atTime(LocalTime.MAX);
+
+        // 2. 오늘의 모든 측정 데이터 조회
+        List<Measurement> measurements = measurementRepository
+                .findByUserIdAndMeasuredAtBetween(userId, startOfDay, endOfDay);
+
+        log.debug("Found {} measurements for date {}", measurements.size(), date);
+
+        // 3. 이상치 횟수 계산
+        long anomalyCount = measurements.stream()
+                .filter(Measurement::getIsAnomaly)
+                .count();
+
+        // 4. 시간대별 통계 계산 (0시~23시)
+        List<HourlyStatsDto> hourlyStats = calculateHourlyStats(measurements);
+
+        // 5. 최고점 찾기 (여러 개 가능)
+        List<StressPointDto> peakStress = findPeakStress(measurements);
+
+        // 6. 최저점 찾기 (여러 개 가능)
+        List<StressPointDto> lowestStress = findLowestStress(measurements);
+
+        return new TodayStressResponse(
+                date,
+                (int) anomalyCount,
+                hourlyStats,
+                peakStress,
+                lowestStress
+        );
+    }
+
+    /**
+     * 시간대별 통계 계산 (0시~23시, 총 24개)
+     */
+    private List<HourlyStatsDto> calculateHourlyStats(List<Measurement> measurements) {
+        // 시간대별로 그룹화
+        Map<Integer, List<Measurement>> hourlyGrouped = measurements.stream()
+                .collect(Collectors.groupingBy(m -> m.getMeasuredAt().getHour()));
+
+        // 0시~23시까지 24개 통계 생성
+        List<HourlyStatsDto> hourlyStats = new ArrayList<>();
+        for (int hour = 0; hour < 24; hour++) {
+            List<Measurement> hourMeasurements = hourlyGrouped.getOrDefault(hour, Collections.emptyList());
+
+            if (hourMeasurements.isEmpty()) {
+                // 해당 시간대에 측정 데이터가 없으면 null 값
+                hourlyStats.add(new HourlyStatsDto(hour, null, null, null, 0));
+            } else {
+                // 최고/최저/평균 계산
+                DoubleSummaryStatistics stats = hourMeasurements.stream()
+                        .filter(m -> m.getStressIndex() != null)
+                        .mapToDouble(Measurement::getStressIndex)
+                        .summaryStatistics();
+
+                hourlyStats.add(new HourlyStatsDto(
+                        hour,
+                        stats.getMax(),
+                        stats.getMin(),
+                        stats.getAverage(),
+                        hourMeasurements.size()
+                ));
+            }
+        }
+
+        return hourlyStats;
+    }
+
+    /**
+     * 최고점 찾기 (stressIndex가 최대인 모든 측정값)
+     */
+    private List<StressPointDto> findPeakStress(List<Measurement> measurements) {
+        if (measurements.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        // 최댓값 찾기
+        double maxStress = measurements.stream()
+                .filter(m -> m.getStressIndex() != null)
+                .mapToDouble(Measurement::getStressIndex)
+                .max()
+                .orElse(0.0);
+
+        // 최댓값과 같은 모든 측정값 반환
+        return measurements.stream()
+                .filter(m -> m.getStressIndex() != null && m.getStressIndex() == maxStress)
+                .map(m -> new StressPointDto(m.getStressIndex(), m.getMeasuredAt()))
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * 최저점 찾기 (stressIndex가 최소인 모든 측정값)
+     */
+    private List<StressPointDto> findLowestStress(List<Measurement> measurements) {
+        if (measurements.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        // 최솟값 찾기
+        double minStress = measurements.stream()
+                .filter(m -> m.getStressIndex() != null)
+                .mapToDouble(Measurement::getStressIndex)
+                .min()
+                .orElse(0.0);
+
+        // 최솟값과 같은 모든 측정값 반환
+        return measurements.stream()
+                .filter(m -> m.getStressIndex() != null && m.getStressIndex() == minStress)
+                .map(m -> new StressPointDto(m.getStressIndex(), m.getMeasuredAt()))
+                .collect(Collectors.toList());
+    }
+
 }

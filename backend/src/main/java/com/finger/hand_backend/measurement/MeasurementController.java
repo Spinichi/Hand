@@ -20,6 +20,7 @@ import java.util.List;
 /**
  * Measurement Controller
  * - 측정 데이터 CRUD API
+ * - 스트레스 통계 API
  */
 @RestController
 @RequestMapping("/measurements")
@@ -215,5 +216,28 @@ public class MeasurementController {
         WeeklyAnomalyResponse data = measurementService.getWeeklyAnomalies(userId);
 
         return ResponseEntity.ok(ApiResponse.success(data, "주간 이상치 데이터를 조회했습니다"));
+    }
+
+    /**
+     * 오늘의 스트레스 변화 조회
+     * - 시간대별 스트레스 통계 (0시~23시, 최고/최저/평균)
+     * - 이상치 횟수
+     * - 최고점/최저점 시각
+     *
+     * @param authentication 인증 정보
+     * @param date           조회 날짜 (선택, 기본값: 오늘)
+     * @return 오늘의 스트레스 통계 데이터
+     */
+    @GetMapping("/stress/today")
+    public ResponseEntity<ApiResponse<TodayStressResponse>> getTodayStress(
+            Authentication authentication,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date
+    ) {
+        Long userId = Long.valueOf(authentication.getName());
+        LocalDate targetDate = date != null ? date : LocalDate.now();
+
+        TodayStressResponse data = measurementService.getTodayStress(userId, targetDate);
+
+        return ResponseEntity.ok(ApiResponse.success(data, "오늘 감정변화 stat"));
     }
 }
