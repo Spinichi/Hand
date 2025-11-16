@@ -286,11 +286,13 @@ fun SignInTypeScreen(
             // ── 조직 리스트 (API 연동 완료) ──
             organizations.forEach { org ->
                 val ui = org.toOrgMoodUi()
+                val rawCount = org.memberCount
+                val memberOnlyCount = maxOf(0, rawCount - 1)
                 OrganizationCard(
                     moodIconRes = ui.moodIconRes,
                     moodBg = ui.moodBg,
                     title = org.name,
-                    count = org.memberCount,
+                    count = memberOnlyCount,
                     titleColor = Brown80,
                     metaColor = Color(0xFFA5A39F)
                 ) {
