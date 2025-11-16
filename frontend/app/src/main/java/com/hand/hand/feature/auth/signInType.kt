@@ -208,13 +208,18 @@ fun SignInTypeScreen(
                 elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
                 onClick = {
                     if (isCheckingPersonal) return@Card
-                    val intent = if (isPersonalRegistered == true) {
-                        Intent(context, HomeActivity::class.java)
+
+                    if (isPersonalRegistered == true) {
+                        // HomeActivity로 즉시 이동 (배경색 설정으로 검은 화면 방지)
+                        val intent = Intent(context, HomeActivity::class.java).apply {
+                            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                        }
+                        context.startActivity(intent)
+                        (context as? ComponentActivity)?.finish()
                     } else {
-                        Intent(context, SignUpPrivateActivity::class.java)
+                        val intent = Intent(context, SignUpPrivateActivity::class.java)
+                        context.startActivity(intent)
                     }
-                    if (context !is android.app.Activity) intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                    context.startActivity(intent)
                 },
                 shape = MaterialTheme.shapes.large
             ) {

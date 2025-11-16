@@ -32,6 +32,7 @@ import com.hand.hand.ui.home.BottomTab
 import com.hand.hand.ui.home.CurvedBottomNavBar
 import com.hand.hand.ui.home.HomeActivity
 import com.hand.hand.ui.theme.BrandFontFamily
+import com.hand.hand.ui.common.LoadingDialog
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -104,7 +105,12 @@ fun DiaryHomeScreen(onBackClick: () -> Unit) {
         bottomBar = {
             CurvedBottomNavBar(
                 selectedTab = BottomTab.Write,
-                onClickHome = { context.startActivity(Intent(context, HomeActivity::class.java)) },
+                onClickHome = {
+                    val intent = Intent(context, HomeActivity::class.java).apply {
+                        flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                    }
+                    context.startActivity(intent)
+                },
                 onClickWrite = { /* 현재 페이지 */ },
                 onClickDiary = { context.startActivity(Intent(context, PrivateAiDocumentHomeActivity::class.java)) },
                 onClickProfile = { /* TODO */ },
@@ -191,6 +197,11 @@ fun DiaryHomeScreen(onBackClick: () -> Unit) {
 
             Spacer(modifier = Modifier.height(80.dp))
         }
+    }
+
+    // 로딩 다이얼로그
+    if (isLoading) {
+        LoadingDialog(message = "다이어리 불러오는 중...")
     }
 }
 

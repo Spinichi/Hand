@@ -6,7 +6,9 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
+import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.OnBackPressedCallback
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
@@ -15,6 +17,9 @@ import com.hand.hand.fcm.FCMTokenManager
 import com.hand.hand.wear.WearListenerForegroundService
 
 class HomeActivity : ComponentActivity() {
+
+    private var backPressedTime: Long = 0
+    private val backPressInterval: Long = 2000 // 2초
 
     private val permissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -30,6 +35,21 @@ class HomeActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // 뒤로가기 콜백 등록
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                val currentTime = System.currentTimeMillis()
+                if (currentTime - backPressedTime < backPressInterval) {
+                    // 2초 이내에 다시 눌렀으면 앱 종료
+                    finish()
+                } else {
+                    // 처음 눌렀을 때 Toast 표시
+                    backPressedTime = currentTime
+                    Toast.makeText(this@HomeActivity, "한 번 더 누르면 종료됩니다", Toast.LENGTH_SHORT).show()
+                }
+            }
+        })
 
         // ⭐ 로그인 후 HomeActivity 진입 시 Wear 데이터 수신 서비스 시작
         requestPermissionsAndStartService()

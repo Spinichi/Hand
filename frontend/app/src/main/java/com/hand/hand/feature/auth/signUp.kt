@@ -35,6 +35,7 @@ import com.hand.hand.api.SignUp.SignUpManager
 import com.hand.hand.api.SignUp.SignupRequest
 import com.hand.hand.api.SignUp.SignupResponse
 import com.hand.hand.ui.common.BrandWaveHeader
+import com.hand.hand.ui.common.LoadingDialog
 import com.hand.hand.ui.theme.BrandFontFamily
 import com.hand.hand.ui.theme.Green60
 
@@ -57,6 +58,7 @@ fun SignUpScreen() {
     var id by remember { mutableStateOf("") }
     var pw by remember { mutableStateOf("") }
     var showPw by remember { mutableStateOf(false) }
+    var isLoading by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -78,7 +80,7 @@ fun SignUpScreen() {
                 .height(centerY)
         ) {
             BrandWaveHeader(
-                fillColor = Color(0xFF9BB168),
+                fillColor = Color(0xFFC2B1FF), // 보라색으로 변경
                 edgeY = edgeY,
                 centerY = centerY,
                 overhang = overhang,
@@ -137,11 +139,11 @@ fun SignUpScreen() {
             ),
             shape = RoundedCornerShape(28.dp),
             colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = Green60,
-                unfocusedBorderColor = Color(0xFFBFD19B),
+                focusedBorderColor = Color(0xFFC2B1FF), // 보라색
+                unfocusedBorderColor = Color(0xFFE5DCFF), // 연한 보라색
                 focusedContainerColor = Color.White,
                 unfocusedContainerColor = Color.White,
-                cursorColor = Green60
+                cursorColor = Color(0xFFC2B1FF)
             )
         )
 
@@ -188,11 +190,11 @@ fun SignUpScreen() {
             ),
             shape = RoundedCornerShape(28.dp),
             colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = Green60,
-                unfocusedBorderColor = Color(0xFFBFD19B),
+                focusedBorderColor = Color(0xFFC2B1FF), // 보라색
+                unfocusedBorderColor = Color(0xFFE5DCFF), // 연한 보라색
                 focusedContainerColor = Color.White,
                 unfocusedContainerColor = Color.White,
-                cursorColor = Green60
+                cursorColor = Color(0xFFC2B1FF)
             )
         )
 
@@ -201,17 +203,21 @@ fun SignUpScreen() {
         // 회원가입 버튼
         Button(
             onClick = {
+                isLoading = true
                 // Retrofit 회원가입 API 호출
                 val signupRequest = SignupRequest(email = id, password = pw)
                 SignUpManager.signup(
                     signupRequest,
                     onSuccess = { response: SignupResponse ->
+                        isLoading = false
                         Toast.makeText(context, "회원가입 성공!", Toast.LENGTH_SHORT).show()
-                        // 로그인 화면으로 이동
+                        // 로그인 화면으로 이동 (SignUp 종료)
                         val intent = Intent(context, SignInActivity::class.java)
                         context.startActivity(intent)
+                        (context as? ComponentActivity)?.finish()
                     },
                     onFailure = { throwable ->
+                        isLoading = false
                         Toast.makeText(context, "회원가입 실패: ${throwable.message}", Toast.LENGTH_SHORT).show()
                     }
                 )
@@ -256,7 +262,7 @@ fun SignUpScreen() {
             )
             Text(
                 text = "로그인",
-                color = Color(0xFFE67E22),
+                color = Color(0xFF9BB168), // 로그인 페이지 초록색
                 fontSize = (screenWidthDp * 0.035f).sp,
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.clickable {
@@ -266,5 +272,10 @@ fun SignUpScreen() {
                 fontFamily = BrandFontFamily
             )
         }
+    }
+
+    // 로딩 다이얼로그
+    if (isLoading) {
+        LoadingDialog(message = "회원가입 중...")
     }
 }

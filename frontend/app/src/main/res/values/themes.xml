@@ -6,4 +6,9 @@
     </style>
 
     <style name="Theme.Hand" parent="Base.Theme.Hand" />
+
+    <!-- HomeActivity 전용 테마: 배경색을 앱 배경색으로 설정 -->
+    <style name="Theme.Hand.Home" parent="Theme.Hand">
+        <item name="android:windowBackground">@color/app_background</item>
+    </style>
 </resources>

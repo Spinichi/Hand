@@ -42,6 +42,7 @@ import com.hand.hand.api.SignUp.IndividualUserManager
 import com.hand.hand.api.Anomaly.AnomalyManager
 import com.hand.hand.api.Group.GroupManager // ✅ 추가된 Import
 import com.hand.hand.api.Group.GroupData // ✅ 추가된 Import
+import com.hand.hand.ui.common.LoadingDialog
 
 
 @Composable
@@ -51,6 +52,14 @@ fun HomeScreen() {
 
     val context = LocalContext.current
 
+    // 로딩 완료 체크 (변수는 유지하되 로딩 다이얼로그는 표시 안 함)
+    var userLoaded by remember { mutableStateOf(false) }
+    var diaryLoaded by remember { mutableStateOf(false) }
+    var measurementLoaded by remember { mutableStateOf(false) }
+    var anomalyLoaded by remember { mutableStateOf(false) }
+    var sleepLoaded by remember { mutableStateOf(false) }
+    var groupLoaded by remember { mutableStateOf(false) }
+
     // 개인용 헤더 데이터
     var userName by remember { mutableStateOf("싸피님") }
     LaunchedEffect(Unit) {
@@ -59,10 +68,11 @@ fun HomeScreen() {
                 if (exists && data != null) {
                     userName = data.name.ifBlank { "싸피" } + "님"
                 }
+                userLoaded = true
             },
             onFailure = { e ->
                 e.printStackTrace()
-                // 실패 시엔 그냥 기본 이름 유지
+                userLoaded = true
             }
         )
     }
@@ -84,9 +94,11 @@ fun HomeScreen() {
                     items.first().status == "IN_PROGRESS" -> "작성 중"
                     else -> "작성 전"
                 }
+                diaryLoaded = true
                 android.util.Log.d("HomeScreen", "✅ 오늘의 다이어리 상태: $diaryStatus (status=${items.firstOrNull()?.status})")
             },
             onFailure = { error ->
+                diaryLoaded = true
                 android.util.Log.e("HomeScreen", "❌ 다이어리 작성 여부 조회 실패: ${error.message}")
             }
         )
@@ -117,8 +129,10 @@ fun HomeScreen() {
 
                     android.util.Log.d("HomeScreen", "✅ 최근 측정 데이터: BPM=$heartRateBpm, Score=$personalMoodScore, Level=$stressLevel")
                 }
+                measurementLoaded = true
             },
             onFailure = { error ->
+                measurementLoaded = true
                 android.util.Log.e("HomeScreen", "❌ 최근 측정 데이터 조회 실패: ${error.message}")
             }
         )
@@ -132,8 +146,10 @@ fun HomeScreen() {
             onSuccess = { count ->
                 android.util.Log.d("HomeScreen", "✅ 오늘 이상치 개수: $count")
                 todayAnomalyCount = count
+                anomalyLoaded = true
             },
             onError = { error ->
+                anomalyLoaded = true
                 android.util.Log.e("HomeScreen", "❌ 이상치 조회 실패: $error")
             }
         )
@@ -142,12 +158,11 @@ fun HomeScreen() {
     // ⭐ 오늘의 수면 데이터 조회
     var todaySleepMinutes by remember { mutableStateOf(0) }
     var hasSleepData by remember { mutableStateOf(false) }
-    var sleepDataLoaded by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         com.hand.hand.api.Sleep.SleepManager.getTodaySleep(
             onSuccess = { data ->
-                sleepDataLoaded = true
+                sleepLoaded = true
                 if (data != null) {
                     todaySleepMinutes = data.sleepDurationMinutes
                     hasSleepData = true
@@ -158,7 +173,7 @@ fun HomeScreen() {
                 }
             },
             onFailure = { error ->
-                sleepDataLoaded = true
+                sleepLoaded = true
                 hasSleepData = false
                 android.util.Log.e("HomeScreen", "❌ 수면 데이터 조회 실패: ${error.message}")
             }
@@ -185,10 +200,11 @@ fun HomeScreen() {
                             averageScore = api.avgMemberRiskScore?.toFloat() ?: 0f
                         )
                     }
+                    groupLoaded = true
                 }
             },
             onError = { err ->
-                // 에러 처리 (로그 출력 등)
+                groupLoaded = true
             }
         )
     }
@@ -236,8 +252,7 @@ fun HomeScreen() {
             CurvedBottomNavBar(
                 selectedTab = BottomTab.Home,
                 onClickHome = {
-                    // ✅ 홈 화면으로 이동
-                    context.startActivity(Intent(context, HomeActivity::class.java))
+                    // ✅ 이미 홈 화면이므로 아무것도 안 함
                 },
                 onClickWrite = {
                     // ✅ 글쓰기 (DiaryHomeActivity)

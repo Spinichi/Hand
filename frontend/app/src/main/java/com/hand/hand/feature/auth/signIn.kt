@@ -7,6 +7,7 @@ import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
+import androidx.activity.OnBackPressedCallback
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
@@ -39,6 +40,7 @@ import com.hand.hand.R
 import com.hand.hand.care.CareActivity
 import com.hand.hand.diary.DiaryHomeActivity
 import com.hand.hand.ui.common.BrandWaveHeader
+import com.hand.hand.ui.common.LoadingDialog
 import com.hand.hand.ui.theme.BrandFontFamily
 import com.hand.hand.ui.theme.Green60
 
@@ -49,8 +51,26 @@ import com.hand.hand.api.Login.LoginResponse
 
 class SignInActivity : ComponentActivity() {
 
+    private var backPressedTime: Long = 0
+    private val backPressInterval: Long = 2000 // 2초
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // 뒤로가기 콜백 등록
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                val currentTime = System.currentTimeMillis()
+                if (currentTime - backPressedTime < backPressInterval) {
+                    // 2초 이내에 다시 눌렀으면 앱 종료
+                    finish()
+                } else {
+                    // 처음 눌렀을 때 Toast 표시
+                    backPressedTime = currentTime
+                    Toast.makeText(this@SignInActivity, "한 번 더 누르면 종료됩니다", Toast.LENGTH_SHORT).show()
+                }
+            }
+        })
 
         setContent {
             SignInScreen()
@@ -321,7 +341,7 @@ fun SignInScreen(
             )
             Text(
                 text = "회원가입",
-                color = Color(0xFFE67E22),
+                color = Color(0xFFC2B1FF), // 회원가입 페이지 보라색
                 fontSize = (screenWidthDp * 0.035f).sp,
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.clickable {
@@ -339,5 +359,10 @@ fun SignInScreen(
 
 
 
+    }
+
+    // 로딩 다이얼로그
+    if (loading) {
+        LoadingDialog(message = "로그인 중...")
     }
 }
