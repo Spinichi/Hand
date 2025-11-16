@@ -11,7 +11,9 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -31,8 +33,6 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.hand.hand.R
 import com.hand.hand.api.GMS.GmsSttManager
-import com.hand.hand.api.Write.DiaryAnswerResponse
-import com.hand.hand.api.Write.DiaryStartResponse
 import com.hand.hand.api.Write.WriteManager
 import com.hand.hand.ui.theme.BrandFontFamily
 
@@ -41,7 +41,6 @@ class DiaryWriteActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // 음성 권한 확인
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO)
             != PackageManager.PERMISSION_GRANTED
         ) {
@@ -63,7 +62,7 @@ class DiaryWriteActivity : ComponentActivity() {
     }
 }
 
-/** 공백 기준 줄바꿈 */
+/* 공백 기준 줄바꿈 */
 fun autoWrapText(text: String, maxCharPerLine: Int): String {
     val words = text.split(" ")
     val lines = mutableListOf<String>()
@@ -81,7 +80,7 @@ fun autoWrapText(text: String, maxCharPerLine: Int): String {
     return lines.joinToString("\n")
 }
 
-/** 대화 끝내기 버튼 */
+/* 대화 끝내기 버튼 */
 @Composable
 fun EndConversationButton(
     modifier: Modifier = Modifier,
@@ -130,12 +129,9 @@ fun DiaryWriteScreen(selectedDate: String, onBackClick: () -> Unit) {
     var sessionId by remember { mutableStateOf<Long?>(null) }
     var questionNumber by remember { mutableStateOf(0) }
 
-    // 다이어리 세션 시작 API 호출
     LaunchedEffect(Unit) {
         WriteManager.startDiary(
             onSuccess = { res ->
-                Log.d("DiaryWrite", "다이어리 시작 성공: $res")
-
                 val data = res.data
                 if (res.success && data != null) {
                     sessionId = data.sessionId
@@ -145,8 +141,7 @@ fun DiaryWriteScreen(selectedDate: String, onBackClick: () -> Unit) {
                     questions = listOf("질문을 불러오지 못했어요.")
                 }
             },
-            onFailure = { t ->
-                Log.e("DiaryWrite", "다이어리 시작 실패", t)
+            onFailure = {
                 questions = listOf("질문을 불러오는 중 오류가 발생했어요.")
             }
         )
@@ -158,7 +153,7 @@ fun DiaryWriteScreen(selectedDate: String, onBackClick: () -> Unit) {
             .background(Color(0xFFF7F4F2))
     ) {
 
-        // 🔶 헤더 박스
+        /* 🔶 헤더 */
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -170,7 +165,7 @@ fun DiaryWriteScreen(selectedDate: String, onBackClick: () -> Unit) {
                 .align(Alignment.TopCenter)
         )
 
-        // 🔙 뒤로가기 버튼 (모달 X 바로 뒤로가기)
+        /* 🔙 뒤로가기 버튼 (즉시 뒤로가기) */
         Image(
             painter = painterResource(id = R.drawable.back_white_btn),
             contentDescription = "Back Button",
@@ -178,10 +173,10 @@ fun DiaryWriteScreen(selectedDate: String, onBackClick: () -> Unit) {
                 .padding(start = backButtonPaddingStart, top = backButtonPaddingTop)
                 .size(backButtonSize)
                 .align(Alignment.TopStart)
-                .clickable { onBackClick() }    // 🔥 수정됨
+                .clickable { onBackClick() }
         )
 
-        // 📅 날짜 텍스트
+        /* 📅 날짜 */
         androidx.compose.material3.Text(
             text = selectedDate,
             fontFamily = BrandFontFamily,
@@ -196,7 +191,7 @@ fun DiaryWriteScreen(selectedDate: String, onBackClick: () -> Unit) {
                 )
         )
 
-        // 🟠 제목
+        /* 제목 */
         androidx.compose.material3.Text(
             text = "감정 대화하기",
             fontFamily = BrandFontFamily,
@@ -211,7 +206,7 @@ fun DiaryWriteScreen(selectedDate: String, onBackClick: () -> Unit) {
                 )
         )
 
-        // 🟢 질문 리스트
+        /* 🟢 질문 리스트 + 세로 스크롤 */
         Column(
             modifier = Modifier
                 .align(Alignment.TopStart)
@@ -219,7 +214,8 @@ fun DiaryWriteScreen(selectedDate: String, onBackClick: () -> Unit) {
                     start = screenWidth * 0.07f,
                     top = screenHeight * 0.22f,
                     bottom = screenHeight * 0.15f
-                ),
+                )
+                .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(screenHeight * 0.02f)
         ) {
             questions.forEachIndexed { index, question ->
@@ -264,7 +260,7 @@ fun DiaryWriteScreen(selectedDate: String, onBackClick: () -> Unit) {
             }
         }
 
-        // 하단 장식 이미지
+        /* 하단 이미지 */
         Image(
             painter = painterResource(id = R.drawable.diary_write_bottom),
             contentDescription = "Bottom Decoration",
@@ -274,7 +270,7 @@ fun DiaryWriteScreen(selectedDate: String, onBackClick: () -> Unit) {
             contentScale = ContentScale.FillWidth
         )
 
-        // 🎤 녹음 버튼
+        /* 녹음 버튼 */
         Image(
             painter = painterResource(
                 id = if (isRecording)
@@ -296,10 +292,10 @@ fun DiaryWriteScreen(selectedDate: String, onBackClick: () -> Unit) {
                     } else {
                         isRecording = false
                         val audioFile = RecordManager.stopRecording()
-                        if (audioFile == null) {
-                            Toast.makeText(context, "녹음 실패", Toast.LENGTH_SHORT).show()
-                            return@clickable
-                        }
+                            ?: return@clickable.also {
+                                Toast.makeText(context, "녹음 실패", Toast.LENGTH_SHORT).show()
+                            }
+
                         isSending = true
 
                         GmsSttManager.requestStt(
@@ -338,7 +334,7 @@ fun DiaryWriteScreen(selectedDate: String, onBackClick: () -> Unit) {
                 }
         )
 
-        // 🎯 대화 끝내기 버튼 (중앙)
+        /* 대화 끝내기 버튼 (가운데) */
         EndConversationButton(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
@@ -347,7 +343,7 @@ fun DiaryWriteScreen(selectedDate: String, onBackClick: () -> Unit) {
             onClick = { showExitDialog = true }
         )
 
-        // ⚪ 종료 모달
+        /* 종료 모달 */
         if (showExitDialog) {
             Box(
                 modifier = Modifier
@@ -381,7 +377,6 @@ fun DiaryWriteScreen(selectedDate: String, onBackClick: () -> Unit) {
                         horizontalArrangement = Arrangement.spacedBy(screenWidth * 0.2f),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        // ❌ 취소
                         Image(
                             painter = painterResource(id = R.drawable.diary_write_x),
                             contentDescription = "Cancel Button",
@@ -390,7 +385,6 @@ fun DiaryWriteScreen(selectedDate: String, onBackClick: () -> Unit) {
                                 .clickable { showExitDialog = false }
                         )
 
-                        // ✔️ 확인 → 뒤로가기
                         Image(
                             painter = painterResource(id = R.drawable.diary_write_check),
                             contentDescription = "Confirm Button",
