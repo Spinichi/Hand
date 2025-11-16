@@ -113,3 +113,43 @@ class MeasurementsManager {
         }
     }
 }
+
+
+object StressTodayManager {
+
+    private const val TAG = "StressTodayManager"
+
+    private val httpCall: StressTodayInterface =
+        RetrofitClient.getClient().create(StressTodayInterface::class.java)
+
+    fun getTodayStress(
+        date: String,
+        onSuccess: (StressTodayData) -> Unit,
+        onFailure: (Throwable) -> Unit
+    ) {
+        httpCall.getTodayStress(date).enqueue(object : Callback<StressTodayResponse> {
+            override fun onResponse(
+                call: Call<StressTodayResponse>,
+                response: Response<StressTodayResponse>
+            ) {
+                if (response.isSuccessful) {
+                    val body = response.body()
+                    if (body?.success == true && body.data != null) {
+                        onSuccess(body.data)
+                    } else {
+                        onFailure(IllegalStateException("응답 오류: ${body?.message}"))
+                    }
+                } else {
+                    val err = response.errorBody()?.string()
+                    Log.e(TAG, "API 실패: $err")
+                    onFailure(IllegalStateException("API 실패: $err"))
+                }
+            }
+
+            override fun onFailure(call: Call<StressTodayResponse>, t: Throwable) {
+                Log.e(TAG, "네트워크 오류", t)
+                onFailure(t)
+            }
+        })
+    }
+}

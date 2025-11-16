@@ -30,6 +30,17 @@ import androidx.compose.ui.unit.sp
 import com.hand.hand.R
 import com.hand.hand.ui.theme.BrandFontFamily
 import androidx.compose.ui.graphics.nativeCanvas
+import com.hand.hand.api.Measurements.StressTodayManager
+import com.hand.hand.api.Measurements.StressTodayData
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import kotlin.math.roundToInt
+
 
 // ----- 공통 색(디자인 유지) -----
 private val Brown80 = Color(0xFF4B2E1E)
@@ -40,67 +51,100 @@ private val BadgeBrown = Color(0xFF4F3422)
 private val LineGray = Color(0xFFD9D9D9)
 private val CurveColor = Color(0xFF9AB067)
 
-// ===== 원본 TeamAiDocument 스타일 그래프 (24h + 0h/12h/24h 레이블) =====
+// ===== 3개 라인(최저/평균/최고) 그래프 =====
 @Composable
 fun StressLineChart(
-    scores: List<Int>, // 24개
+    scores: List<Int>,                // 기준 리스트 (없어도 됨)
+    avgScores: List<Int> = emptyList(),  // 평균값(검정)
+    maxScores: List<Int> = emptyList(),  // 최고값(빨강)
+    minScores: List<Int> = emptyList(),  // 최저값(파랑)
     modifier: Modifier = Modifier,
     lineColor: Color = Color(0xFF4F3422),
     pointColor: Color = Color(0xFF815EFF),
     gridColor: Color = Color(0xFFE1D4CD),
 ) {
     Canvas(modifier = modifier) {
-        if (scores.isEmpty()) return@Canvas
+        // 기준 리스트(길이 계산용)
+        val baseList = when {
+            scores.isNotEmpty() -> scores
+            avgScores.isNotEmpty() -> avgScores
+            maxScores.isNotEmpty() -> maxScores
+            minScores.isNotEmpty() -> minScores
+            else -> emptyList()
+        }
+        if (baseList.isEmpty()) return@Canvas
 
-        val widthPerPoint = size.width / (scores.size - 1).coerceAtLeast(1)
+        val widthPerPoint = size.width / (baseList.size - 1).coerceAtLeast(1)
+        // 위/아래 여백 조금 두고 그릴 영역 높이 계산
+        val topPadding = size.height * 0.08f         // 위쪽 8% 여백
+        val bottomPadding = size.height * 0.16f      // 아래 16%는 x축/범례용
+        val drawableHeight = size.height - topPadding - bottomPadding
+
         val heightScale = size.height / 100f
 
-        // 가로 그리드
+        // ===== 가로 그리드 =====
         val gridValues = listOf(0, 20, 40, 60, 80, 100)
         gridValues.forEach { value ->
-            val y = size.height - (value * heightScale)
+            val y = topPadding + (drawableHeight - value * heightScale)
             drawLine(
                 color = gridColor,
                 start = Offset(0f, y),
                 end = Offset(size.width, y),
                 strokeWidth = 4f,
-                pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(10f, 10f), 0f)
+                pathEffect = androidx.compose.ui.graphics.PathEffect
+                    .dashPathEffect(floatArrayOf(10f, 10f), 0f)
             )
         }
 
-        // 곡선
-        val path = Path()
-        scores.forEachIndexed { index, score ->
-            val x = index * widthPerPoint
-            val y = size.height - (score * heightScale)
-            if (index == 0) path.moveTo(x, y)
-            else {
-                val prevX = (index - 1) * widthPerPoint
-                val prevY = size.height - (scores[index - 1] * heightScale)
-                val cpx1 = prevX + widthPerPoint / 2
-                val cpy1 = prevY
-                val cpx2 = prevX + widthPerPoint / 2
-                val cpy2 = y
-                path.cubicTo(cpx1, cpy1, cpx2, cpy2, x, y)
-            }
-        }
-        drawPath(path = path, color = lineColor, style = Stroke(width = 8f))
+        // ===== 공통 곡선 함수 =====
+        fun drawCurve(values: List<Int>, color: Color) {
 
-        // 최고점 표시
-        val maxScore = scores.maxOrNull() ?: 0
-        scores.forEachIndexed { index, score ->
-            if (score == maxScore) {
+            if (values.size < 2) return
+            val path = Path()
+            values.forEachIndexed { index, score ->
                 val x = index * widthPerPoint
-                val y = size.height - (score * heightScale)
-                drawCircle(color = pointColor, radius = 12f, center = Offset(x, y))
+                val y = topPadding + (drawableHeight - score * heightScale)
+                if (index == 0) {
+                    path.moveTo(x, y)
+                } else {
+                    val prevX = (index - 1) * widthPerPoint
+                    val prevY = topPadding + (drawableHeight - values[index - 1] * heightScale)
+                    val cpx1 = prevX + widthPerPoint / 2
+                    val cpy1 = prevY
+                    val cpx2 = prevX + widthPerPoint / 2
+                    val cpy2 = y
+                    path.cubicTo(cpx1, cpy1, cpx2, cpy2, x, y)
+                }
+            }
+            drawPath(path = path, color = color, style = Stroke(width = 8f))
+        }
+
+        // 최저(파랑) → 평균(검정) → 최고(빨강) 순서로 그리기
+        if (minScores.isNotEmpty()) drawCurve(minScores, Color(0xFF007BFF)) // 파랑
+        if (avgScores.isNotEmpty()) drawCurve(avgScores, Color(0xFF000000)) // 검정
+        if (maxScores.isNotEmpty()) drawCurve(maxScores, Color(0xFFFF3B30)) // 빨강
+
+        // 최고값 빨간 점(최고 곡선 기준)
+        if (maxScores.isNotEmpty()) {
+            val maxScore = maxScores.maxOrNull() ?: 0
+            maxScores.forEachIndexed { index, score ->
+                if (score == maxScore) {
+                    val x = index * widthPerPoint
+                    val y = topPadding + (drawableHeight - score * heightScale)
+                    drawCircle(
+                        color = Color(0xFFFF3B30),
+                        radius = 12f,
+                        center = Offset(x, y)
+                    )
+                }
             }
         }
 
-        // x축 레이블 0h, 12h, 24h만 표시
-        val labelIndices = listOf(0, 12, 23)
+        // ===== x축 레이블 (0h / 12h / 24h) =====
+        val labelIndices = listOf(0, 12, baseList.size - 1)
         val labelTexts = listOf("0h", "12h", "24h")
         labelIndices.forEachIndexed { i, index ->
-            if (index < scores.size) {
+            if (index in baseList.indices) {
                 val x = index * widthPerPoint
                 val canvas = drawContext.canvas
                 val paint = android.graphics.Paint().apply {
@@ -110,17 +154,30 @@ fun StressLineChart(
                     isFakeBoldText = true
                     typeface = android.graphics.Typeface.DEFAULT_BOLD
                 }
-                canvas.nativeCanvas.drawText(labelTexts[i], x, size.height + size.height * 0.15f, paint)
+
+                val labelY = size.height - bottomPadding / 2f
+                canvas.nativeCanvas.drawText(
+                    labelTexts[i],
+                    x,
+                    labelY,
+                    paint
+                )
             }
         }
     }
 }
+
+
+
 
 @Composable
 private fun MoodChangeHistorySection(
     horizontalPadding: Dp,
     maxListHeight: Dp,
     scores: List<Int>,
+    avgScores: List<Int>,   // 평균
+    maxScores: List<Int>,   // 최고
+    minScores: List<Int>,   // 최저
     screenHeight: Dp,
     moodChangeCount: Int
 ) {
@@ -165,13 +222,55 @@ private fun MoodChangeHistorySection(
 
             // 감정 변화 그래프
             item {
-                Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                    StressLineChart(
-                        scores = scores,
+                Column(
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    // 그래프 자체
+                    Box(
+                        modifier = Modifier.fillMaxWidth(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        StressLineChart(
+                            scores = scores,
+                            avgScores = avgScores,
+                            maxScores = maxScores,
+                            minScores = minScores,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(screenHeight * 0.20f)
+                        )
+                    }
+
+                    // 그래프 아래 작은 레전드
+                    Spacer(modifier = Modifier.height(screenHeight * 0.008f))
+
+                    Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(screenHeight * 0.20f) // 기존과 비슷한 비율 유지
-                    )
+                            .padding(end = horizontalPadding),
+                        horizontalArrangement = Arrangement.End,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        val legendFont = (screenHeight * 0.015f).value  // 화면 비율에 맞는 작은 글씨
+
+                        LineLegendItem(
+                            color = Color(0xFFFF3B30),      // 빨강: 최고
+                            text = "스트레스 최고 점수",
+                            fontSize = legendFont
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        LineLegendItem(
+                            color = Color(0xFF000000),      // 검정: 평균
+                            text = "스트레스 평균 점수",
+                            fontSize = legendFont
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        LineLegendItem(
+                            color = Color(0xFF007BFF),      // 파랑: 최저
+                            text = "스트레스 최저 점수",
+                            fontSize = legendFont
+                        )
+                    }
                 }
             }
 
@@ -204,7 +303,10 @@ private fun MoodChangeHistorySection(
 
                         Card(
                             modifier = Modifier
-                                .size(width = screenHeight * 0.095f, height = screenHeight * 0.055f), // 76x41 대응
+                                .size(
+                                    width = screenHeight * 0.095f,
+                                    height = screenHeight * 0.055f
+                                ), // 76x41 대응
                             colors = CardDefaults.cardColors(containerColor = Color.White),
                             shape = RoundedCornerShape(screenHeight * 0.02f),
                             elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
@@ -229,8 +331,12 @@ private fun MoodChangeHistorySection(
 
             // 스트레스 최고점 큰 카드 + 작은 카드 (반응형)
             item {
-                val maxScore = scores.maxOrNull() ?: 0
-                val maxIndices = scores.mapIndexedNotNull { index, score -> if (score == maxScore) index else null }
+                // maxScores가 비어있으면 기존 scores 기준으로 표시
+                val sourceForMax = if (maxScores.isNotEmpty()) maxScores else scores
+                val maxScore = sourceForMax.maxOrNull() ?: 0
+                val maxIndices = sourceForMax.mapIndexedNotNull { index, score ->
+                    if (score == maxScore) index else null
+                }
 
                 Card(
                     modifier = Modifier
@@ -243,7 +349,10 @@ private fun MoodChangeHistorySection(
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = innerHorizontalPadding, vertical = cardVerticalPadding),
+                            .padding(
+                                horizontal = innerHorizontalPadding,
+                                vertical = cardVerticalPadding
+                            ),
                         verticalArrangement = Arrangement.Top
                     ) {
                         // 큰 카드 제목 (가운데)
@@ -313,13 +422,45 @@ private fun MoodChangeHistorySection(
     }
 }
 
+// 메인 스크린
 
-// ===== 메인 스크린 =====
+@Composable
+private fun LineLegendItem(
+    color: Color,
+    text: String,
+    fontSize: Float
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(8.dp)
+                .background(color = color, shape = CircleShape)
+        )
+        Spacer(modifier = Modifier.width(4.dp))
+        Text(
+            text = text,
+            color = Brown80,
+            fontFamily = BrandFontFamily,
+            fontSize = fontSize.sp
+        )
+    }
+}
+
+
+
+// 오늘 날짜 만드는 함수
+private fun todayIsoDate(): String {
+    // "2025-11-16" 같은 형식
+    val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+    return sdf.format(Date())
+}
 @Composable
 fun MoodChangeScreen(
     onBack: () -> Unit = {},
     moodChangeCount: Int = 0,
-    scores: List<Int> = List(24) { (0..100).random() } // 기본 24개
+    scores: List<Int> = List(24) { (0..100).random() } // 초기값(백업용)
 ) {
     val configuration = LocalConfiguration.current
     val density = LocalDensity.current
@@ -332,40 +473,92 @@ fun MoodChangeScreen(
     val paddTop: Dp = screenHeight * 0.05f
     val titleStartGap: Dp = 16.dp
     val titleSp = 24.sp
-    val crestFromTop: Dp = 310.dp
+    val crestFromTop: Dp = screenHeight * 0.25f
     val arcHeight: Dp = 70.dp
     val sheetCorner: Dp = 28.dp
     val badgeSize: Dp = 56.dp
     val badgeIconSize: Dp = 24.dp
-    val apexInsidePx = with(density) { arcHeight.toPx() * 0.25f }
-    val apexInsideDp = with(density) { apexInsidePx.toDp() }
-    val badgeTopOffset: Dp = crestFromTop + apexInsideDp - (badgeSize / 2)
-    val historyTopGap = 98.dp
-    val maxListHeight = (screenHeight - (crestFromTop + historyTopGap) - 48.dp).coerceAtLeast(140.dp)
+    val apexFromTopPx = with(density) { arcHeight.toPx() * 0.25f }
+    val apexFromTopDp = with(density) { apexFromTopPx.toDp() }
+    val badgeTopOffset: Dp = crestFromTop + apexFromTopDp - (badgeSize / 2)
+    val historyTopGap = screenHeight * 0.10f
+    val maxListHeight =
+        (screenHeight - (crestFromTop + historyTopGap) - 48.dp).coerceAtLeast(140.dp)
+
+    // ==== 상태: API로 채울 값들 ====
+    var maxScoresState by remember { mutableStateOf(List(24) { 0 }) }
+    var minScoresState by remember { mutableStateOf(List(24) { 0 }) }
+    var avgScoresState by remember { mutableStateOf(List(24) { 0 }) }
+    var moodChangeCountState by remember { mutableStateOf(moodChangeCount) }
+    var isLoading by remember { mutableStateOf(true) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+
+    // ==== API 호출 (오늘 날짜) ====
+    LaunchedEffect(Unit) {
+        val today = todayIsoDate() // "2025-11-16" 형식
+
+        withContext(Dispatchers.IO) {
+            StressTodayManager.getTodayStress(
+                date = today,
+                onSuccess = { data: StressTodayData ->
+                    // 시간(0~23시)에 맞게 배열 채우기
+                    val maxList = MutableList(24) { -1 }
+                    val minList = MutableList(24) { -1 }
+                    val avgList = MutableList(24) { -1 }
+
+                    data.hourlyStats.forEach { stat ->
+                        val h = stat.hour
+                        if (h in 0..23) {
+                            val max = stat.maxStress?.roundToInt() ?: 0
+                            val min = stat.minStress?.roundToInt() ?: 0
+                            val avg = stat.avgStress?.roundToInt() ?: 0
+
+                            maxList[h] = max
+                            minList[h] = min
+                            avgList[h] = avg
+
+                        }
+                    }
+
+                    maxScoresState = maxList
+                    minScoresState = minList
+                    avgScoresState = avgList
+
+                    // 감정 변화 횟수: 일단 anomalyCount 사용 (원하면 measurementCount 기준으로 바꿔도 됨)
+                    moodChangeCountState = data.anomalyCount
+
+                    isLoading = false
+                    errorMessage = null
+                },
+                onFailure = { t ->
+                    errorMessage = t.message
+                    isLoading = false
+                }
+            )
+        }
+    }
 
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(MoodGreen)
     ) {
-        // 상단 헤더 (Box 방식으로 뒤로가기 절대 위치, 타이틀은 버튼 옆으로)
+        // 상단 헤더
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(headerHeight)
         ) {
-            // 뒤로가기 버튼을 절대 위치로 배치 (DiaryHeader 방식과 동일하게)
             Image(
                 painter = painterResource(R.drawable.back_white_btn),
                 contentDescription = "back",
                 modifier = Modifier
-                    .padding(start = paddStart, top = paddTop) // 위치 튜닝은 이 값만 조정하면 됨
-                    .size(backSize) // 크기도 동일 변수로 통제
+                    .padding(start = paddStart, top = paddTop)
+                    .size(backSize)
                     .align(Alignment.TopStart)
                     .clickable { onBack() }
             )
 
-            // 타이틀을 뒤로가기 버튼 옆으로 배치
             Text(
                 text = "오늘 감정 변화",
                 color = TitleWhite,
@@ -375,13 +568,13 @@ fun MoodChangeScreen(
                 modifier = Modifier
                     .align(Alignment.TopStart)
                     .padding(
-                        start = paddStart + backSize + 18.dp, // back 버튼 바로 옆
-                        top = paddTop + (backSize / 4) // 세로로도 버튼과 자연스럽게 정렬
+                        start = paddStart + backSize + 18.dp,
+                        top = paddTop + (backSize / 4)
                     )
             )
         }
 
-        val extraGap = (configuration.screenHeightDp.dp * 0.03f).coerceIn(70.dp, 80.dp)
+        val extraGap = (configuration.screenHeightDp.dp * 0.3f).coerceIn(40.dp, 60.dp)
         Column(
             modifier = Modifier
                 .align(Alignment.TopCenter)
@@ -389,7 +582,7 @@ fun MoodChangeScreen(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                text = "${moodChangeCount}회",
+                text = "${moodChangeCountState}회",
                 color = TitleWhite,
                 fontFamily = BrandFontFamily,
                 fontWeight = FontWeight.Bold,
@@ -444,13 +637,42 @@ fun MoodChangeScreen(
                 .offset(y = crestFromTop + historyTopGap)
                 .fillMaxWidth()
         ) {
-            MoodChangeHistorySection(
-                horizontalPadding = paddStart,
-                maxListHeight = maxListHeight,
-                scores = scores,
-                screenHeight = screenHeight,
-                moodChangeCount = moodChangeCount
-            )
+            // 로딩/에러 처리 간단히
+            if (isLoading) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(120.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(color = Brown80)
+                }
+            } else if (errorMessage != null) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(120.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "데이터를 불러오지 못했어요.\n${errorMessage}",
+                        color = Brown80,
+                        textAlign = TextAlign.Center,
+                        fontFamily = BrandFontFamily
+                    )
+                }
+            } else {
+                MoodChangeHistorySection(
+                    horizontalPadding = paddStart,
+                    maxListHeight = maxListHeight,
+                    scores = scores, // 길이 기준용 백업
+                    avgScores = avgScoresState,
+                    maxScores = maxScoresState,
+                    minScores = minScoresState,
+                    screenHeight = screenHeight,
+                    moodChangeCount = moodChangeCountState
+                )
+            }
         }
     }
 }

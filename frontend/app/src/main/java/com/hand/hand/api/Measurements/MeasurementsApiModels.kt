@@ -119,3 +119,32 @@ data class LatestMeasurementResponse(
     val data: LatestMeasurementData?,
     val message: String?
 )
+
+// stress Today!!
+data class StressTodayResponse(
+    val success: Boolean,
+    val data: StressTodayData?,
+    val message: String?
+)
+
+data class StressTodayData(
+    val date: String,
+    val anomalyCount: Int,
+    val hourlyStats: List<StressHourlyStat>,
+    val peakStress: List<StressPoint>,
+    val lowestStress: List<StressPoint>
+)
+
+data class StressHourlyStat(
+    val hour: Int,
+    val maxStress: Double?,
+    val minStress: Double?,
+    val avgStress: Double?,
+    val measurementCount: Int
+)
+
+data class StressPoint(
+    val stressIndex: Double?,
+    val measuredAt: String
+)
+

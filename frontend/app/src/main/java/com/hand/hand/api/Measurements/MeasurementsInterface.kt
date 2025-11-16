@@ -4,6 +4,7 @@ import retrofit2.Call
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
+import retrofit2.http.Query
 
 interface MeasurementsInterface {
     /**
@@ -21,4 +22,12 @@ interface MeasurementsInterface {
      */
     @GET("v1/measurements/latest")
     fun getLatestMeasurement(): Call<LatestMeasurementResponse>
+}
+
+interface StressTodayInterface {
+
+    @GET("v1/measurements/stress/today")
+    fun getTodayStress(
+        @Query("date") date: String   // "2025-11-16" 이런 형식
+    ): Call<StressTodayResponse>
 }
