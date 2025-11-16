@@ -58,7 +58,7 @@ fun AdminMembersSection(
     searchQuery: String,
     selectedMood: Mood?,
     onSelectMood: (Mood?) -> Unit,
-    onMemberClick: (GroupMember) -> Unit,
+    onMemberClick: (GroupMember) -> Unit, // ★ 부모에게 받은 클릭 이벤트를 사용할 것입니다.
     org: Organization
 ) {
     val context = LocalContext.current
@@ -94,7 +94,6 @@ fun AdminMembersSection(
         val filtered = remember(members, selectedMood, searchQuery) {
             members
                 .asSequence()
-                // ✅ 수정: member.mood 대신 member.avgScore를 Mood로 변환하여 비교
                 .filter { m -> selectedMood == null || scoreToMood(m.avgScore) == selectedMood }
                 .filter { m ->
                     val q = searchQuery.trim()
@@ -105,16 +104,8 @@ fun AdminMembersSection(
 
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             filtered.forEach { member ->
-                MemberCard(member = member, onClick = {
-                    // 클릭 시 TeamAiDocumentActivity로 멤버 정보 전달
-                    context.startActivity(
-                        Intent(context, TeamAiDocumentActivity::class.java).apply {
-                            putExtra("ORG_ID", org.id) // 필요 시 실제 orgId 전달
-                            putExtra("MEMBER_NAME", member.name) // 멤버 이름 전달
-                            putExtra("MEMBER_ID", member.id) // 필요 시 멤버 ID 전달
-                        }
-                    )
-                })
+                // ★ FIX: 하드코딩된 startActivity 대신, 부모에게 받은 onMemberClick을 호출합니다.
+                MemberCard(member = member, onClick = { onMemberClick(member) })
             }
 
             if (filtered.isEmpty()) {
@@ -300,10 +291,10 @@ fun MemberCard(
                     )
                 }
 
-                member.note?.let {
+                if (!member.note.isNullOrBlank()) {
                     Spacer(Modifier.height(6.dp))
                     Text(
-                        text = it,
+                        text = member.note,
                         color = Brown80.copy(alpha = 0.7f),
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Medium,

@@ -144,6 +144,38 @@ object GroupManager {
             }
         })
     }
+
+    fun updateMemberNotes(
+        groupId: Int,
+        userId: Int,
+        notes: String,
+        onSuccess: (GroupMemberData?) -> Unit,
+        onError: (String) -> Unit
+    ) {
+        val req = MemberNotesUpdateRequest(specialNotes = notes)
+        api().updateMemberNotes(groupId, userId, req).enqueue(object : Callback<WrappedResponse<GroupMemberData>> {
+            override fun onResponse(call: Call<WrappedResponse<GroupMemberData>>, response: Response<WrappedResponse<GroupMemberData>>) {
+                if (response.isSuccessful) {
+                    val body = response.body()
+                    if (body != null && body.success) {
+                        onSuccess(body.data)
+                    } else {
+                        val msg = body?.message ?: "Unknown server response"
+                        Log.e(TAG, "updateMemberNotes server error: $msg")
+                        onError(msg)
+                    }
+                } else {
+                    val code = response.code()
+                    val err = response.errorBody()?.string()
+                    Log.e(TAG, "updateMemberNotes http error: code=$code body=$err")
+                    onError("HTTP $code")
+                }
+            }
+
+            override fun onFailure(call: Call<WrappedResponse<GroupMemberData>>, t: Throwable) {
+                Log.e(TAG, "updateMemberNotes failure", t)
+                onError(t.message ?: "Network error")
+            }
+        })
+    }
 }
-
-
