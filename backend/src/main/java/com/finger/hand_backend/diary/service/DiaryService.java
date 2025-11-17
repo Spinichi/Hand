@@ -37,16 +37,44 @@ public class DiaryService {
 
     /**
      * 다이어리 시작
+     * - 오늘 이미 작성 중인 다이어리가 있으면 해당 세션 정보 반환
+     * - 완료된 다이어리가 있으면 에러
+     * - 없으면 새로 생성
      */
     @Transactional
     public DiaryStartResponse startDiary(Long userId) {
         LocalDate today = LocalDate.now();
 
         // 1. 오늘 이미 작성한 다이어리가 있는지 확인
-        sessionRepository.findByUserIdAndSessionDate(userId, today)
-                .ifPresent(session -> {
-                    throw new IllegalStateException("오늘 이미 다이어리를 작성했습니다");
-                });
+        DiarySession existingSession = sessionRepository.findByUserIdAndSessionDate(userId, today)
+                .orElse(null);
+
+        if (existingSession != null) {
+            // 1-1. 완료된 다이어리면 에러
+            if (existingSession.getStatus() == DiaryStatus.COMPLETED) {
+                throw new IllegalStateException("오늘 이미 다이어리를 작성했습니다");
+            }
+
+            // 1-2. 작성 중인 다이어리면 현재 진행 상황 반환
+            DiaryConversation conversation = conversationRepository
+                    .findById(existingSession.getMongodbDiaryId())
+                    .orElseThrow(() -> new IllegalStateException("MongoDB 다이어리 데이터가 없습니다"));
+
+            // 마지막 질문 찾기 (아직 답변 안 한 질문)
+            QuestionAnswer lastQuestion = conversation.getQuestions().stream()
+                    .filter(qa -> qa.getAnswerText() == null)
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalStateException("진행 중인 질문을 찾을 수 없습니다"));
+
+            log.info("작성 중인 다이어리 재개 - userId: {}, sessionId: {}", userId, existingSession.getId());
+
+            return DiaryStartResponse.builder()
+                    .sessionId(existingSession.getId())
+                    .questionNumber(lastQuestion.getQuestionNumber())
+                    .questionText(lastQuestion.getQuestionText())
+                    .isResume(true) // 재개 플래그
+                    .build();
+        }
 
         // 2. 질문 풀에서 랜덤 질문 선택
         QuestionPool firstQuestion = questionPoolRepository.findRandomActiveQuestion()
@@ -89,6 +117,7 @@ public class DiaryService {
                 .sessionId(savedSession.getId())
                 .questionNumber(1)
                 .questionText(firstQuestion.getQuestionText())
+                .isResume(false) // 명시적으로 false 설정
                 .build();
     }
 
@@ -365,5 +394,40 @@ public class DiaryService {
                 .createdAt(session.getCreatedAt())
                 .completedAt(session.getCompletedAt())
                 .build();
+    }
+
+    /**
+     * 오늘의 다이어리 상태 조회
+     * - IN_PROGRESS: 작성 중 (sessionId, 현재까지의 대화 내용 반환)
+     * - COMPLETED: 완료 (sessionId 반환)
+     * - null: 아직 작성 안 함
+     */
+    @Transactional(readOnly = true)
+    public TodayDiaryStatusResponse getTodayDiaryStatus(Long userId) {
+        LocalDate today = LocalDate.now();
+
+        DiarySession session = sessionRepository.findByUserIdAndSessionDate(userId, today)
+                .orElse(null);
+
+        // 1. 오늘 다이어리 없음
+        if (session == null) {
+            return TodayDiaryStatusResponse.notStarted();
+        }
+
+        // 2. 완료된 다이어리
+        if (session.getStatus() == DiaryStatus.COMPLETED) {
+            return TodayDiaryStatusResponse.completed(session.getId());
+        }
+
+        // 3. 작성 중인 다이어리 - MongoDB에서 현재까지의 대화 내용 조회
+        DiaryConversation conversation = conversationRepository
+                .findById(session.getMongodbDiaryId())
+                .orElseThrow(() -> new IllegalStateException("MongoDB 다이어리 데이터가 없습니다"));
+
+        return TodayDiaryStatusResponse.inProgress(
+                session.getId(),
+                conversation.getQuestions(),
+                session.getQuestionCount()
+        );
     }
 }

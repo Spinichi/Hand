@@ -56,3 +56,23 @@ data class DiaryEmotions(
     val hurt: Double,
     val sadness: Double
 )
+
+// 오늘의 다이어리 상태 조회 응답
+data class TodayDiaryStatusResponse(
+    val success: Boolean,
+    val data: TodayDiaryStatusData?,
+    val message: String?
+)
+
+data class TodayDiaryStatusData(
+    val status: String?,  // null: 작성 안함, "IN_PROGRESS": 작성중, "COMPLETED": 완료
+    val sessionId: Long?,
+    val conversations: List<ConversationItem>?,
+    val questionCount: Int?
+)
+
+data class ConversationItem(
+    val questionText: String,
+    val answerText: String?,
+    val questionNumber: Int
+)

@@ -16,6 +16,42 @@ class WriteManager {
             RetrofitClient.getClient().create(WriteInterface::class.java)
 
         /**
+         * 오늘의 다이어리 상태 조회 GET /diaries/today
+         */
+        fun getTodayDiaryStatus(
+            onSuccess: (TodayDiaryStatusResponse) -> Unit,
+            onFailure: (Throwable) -> Unit
+        ) {
+            Log.d(TAG, "📤 오늘의 다이어리 상태 조회 요청")
+
+            httpCall.getTodayDiaryStatus().enqueue(object : Callback<TodayDiaryStatusResponse> {
+                override fun onResponse(
+                    call: Call<TodayDiaryStatusResponse>,
+                    response: Response<TodayDiaryStatusResponse>
+                ) {
+                    val body = response.body()
+                    val code = response.code()
+
+                    Log.d(TAG, "getTodayDiaryStatus 응답 코드: $code, body: $body")
+
+                    if (response.isSuccessful && body != null) {
+                        Log.d(TAG, "✅ 오늘의 다이어리 상태: ${body.data?.status}")
+                        onSuccess(body)
+                    } else {
+                        onFailure(
+                            RuntimeException("getTodayDiaryStatus 실패: code=$code, body=$body")
+                        )
+                    }
+                }
+
+                override fun onFailure(call: Call<TodayDiaryStatusResponse>, t: Throwable) {
+                    Log.e(TAG, "❌ getTodayDiaryStatus 통신 에러", t)
+                    onFailure(t)
+                }
+            })
+        }
+
+        /**
          * 다이어리 세션 시작 POST /diaries/start
          */
         fun startDiary(

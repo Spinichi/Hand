@@ -182,22 +182,96 @@ fun DiaryWriteScreen(
     var isCompleting by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
-        WriteManager.startDiary(
-            onSuccess = { res ->
-                val data = res.data
-                if (res.success && data != null) {
-                    sessionId = data.sessionId
-                    questionNumber = data.questionNumber
-                    questions = listOf(data.questionText)
+        // 🔸 먼저 오늘의 다이어리 상태를 확인
+        WriteManager.getTodayDiaryStatus(
+            onSuccess = { statusRes ->
+                val data = statusRes.data
 
-                    // 🔸 첫 질문을 바로 읽어주기
-                    onSpeak(data.questionText)
+                if (statusRes.success && data != null) {
+                    when (data.status) {
+                        "COMPLETED" -> {
+                            // 이미 완료됨 - 작성 불가
+                            Toast.makeText(context, "오늘 이미 다이어리를 작성했어요.", Toast.LENGTH_SHORT).show()
+                            onBackClick()
+                        }
+                        "IN_PROGRESS" -> {
+                            // 🔸 작성 중 - 기존 대화 내용 복원!
+                            sessionId = data.sessionId
+
+                            val conversations = data.conversations ?: emptyList()
+                            if (conversations.isNotEmpty()) {
+                                // 모든 질문을 questions 리스트에 추가
+                                questions = conversations.map { it.questionText }
+                                questionNumber = conversations.size
+
+                                // 마지막 질문 읽어주기
+                                val lastQuestion = conversations.last().questionText
+                                onSpeak(lastQuestion)
+
+                                Log.d("DiaryWrite", "✅ 작성 중인 다이어리 복원: ${conversations.size}개 질문")
+                            }
+                        }
+                        else -> {
+                            // null - 아직 작성 안함 -> 새로 시작
+                            WriteManager.startDiary(
+                                onSuccess = { res ->
+                                    val startData = res.data
+                                    if (res.success && startData != null) {
+                                        sessionId = startData.sessionId
+                                        questionNumber = startData.questionNumber
+                                        questions = listOf(startData.questionText)
+
+                                        onSpeak(startData.questionText)
+                                    } else {
+                                        questions = listOf("질문을 불러오지 못했어요.")
+                                    }
+                                },
+                                onFailure = {
+                                    questions = listOf("질문을 불러오는 중 오류가 발생했어요.")
+                                }
+                            )
+                        }
+                    }
                 } else {
-                    questions = listOf("질문을 불러오지 못했어요.")
+                    // 상태 조회 실패 - 그냥 새로 시작
+                    WriteManager.startDiary(
+                        onSuccess = { res ->
+                            val startData = res.data
+                            if (res.success && startData != null) {
+                                sessionId = startData.sessionId
+                                questionNumber = startData.questionNumber
+                                questions = listOf(startData.questionText)
+
+                                onSpeak(startData.questionText)
+                            } else {
+                                questions = listOf("질문을 불러오지 못했어요.")
+                            }
+                        },
+                        onFailure = {
+                            questions = listOf("질문을 불러오는 중 오류가 발생했어요.")
+                        }
+                    )
                 }
             },
             onFailure = {
-                questions = listOf("질문을 불러오는 중 오류가 발생했어요.")
+                // 상태 조회 실패 - 그냥 새로 시작
+                WriteManager.startDiary(
+                    onSuccess = { res ->
+                        val startData = res.data
+                        if (res.success && startData != null) {
+                            sessionId = startData.sessionId
+                            questionNumber = startData.questionNumber
+                            questions = listOf(startData.questionText)
+
+                            onSpeak(startData.questionText)
+                        } else {
+                            questions = listOf("질문을 불러오지 못했어요.")
+                        }
+                    },
+                    onFailure = {
+                        questions = listOf("질문을 불러오는 중 오류가 발생했어요.")
+                    }
+                )
             }
         )
     }

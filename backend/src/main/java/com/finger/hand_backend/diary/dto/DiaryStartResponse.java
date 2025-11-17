@@ -26,4 +26,12 @@ public class DiaryStartResponse {
      * 첫 질문 텍스트
      */
     private String questionText;
+
+    /**
+     * 작성 중이던 다이어리 재개 여부
+     * - true: 작성 중인 다이어리 재개
+     * - false 또는 null: 새로 시작
+     */
+    @Builder.Default
+    private Boolean isResume = false;
 }

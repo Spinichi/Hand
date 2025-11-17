@@ -136,4 +136,28 @@ public class DiaryController {
 
         return ResponseEntity.ok(ApiResponse.success(detail, "다이어리 상세 조회"));
     }
+
+    /**
+     * 오늘의 다이어리 상태 조회
+     * GET /api/v1/diaries/today
+     *
+     * @return 오늘의 다이어리 상태 (NOT_STARTED, IN_PROGRESS, COMPLETED)
+     */
+    @GetMapping("/today")
+    public ResponseEntity<ApiResponse<TodayDiaryStatusResponse>> getTodayDiaryStatus(Authentication authentication) {
+        Long userId = Long.valueOf(authentication.getName());
+
+        TodayDiaryStatusResponse response = diaryService.getTodayDiaryStatus(userId);
+
+        String message;
+        if (response.getStatus() == null) {
+            message = "오늘 작성한 다이어리가 없습니다";
+        } else if (response.getStatus() == com.finger.hand_backend.diary.entity.DiaryStatus.IN_PROGRESS) {
+            message = "작성 중인 다이어리가 있습니다";
+        } else {
+            message = "오늘 다이어리 작성을 완료했습니다";
+        }
+
+        return ResponseEntity.ok(ApiResponse.success(response, message));
+    }
 }
