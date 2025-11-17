@@ -462,11 +462,11 @@ fun DiaryCalendar2(
 @Composable
 fun EmotionLegend() {
     val emotions = listOf(
-        Pair(Color(0xFFC2B1FF), "great"),
-        Pair(Color(0xFFED7E1C), "happy"),
+        Pair(Color(0xFF9BB167), "great"),
+        Pair(Color(0xFFFFCE5C), "happy"),
         Pair(Color(0xFFC0A091), "okay"),
-        Pair(Color(0xFFFFCE5C), "down"),
-        Pair(Color(0xFF9BB167), "sad")
+        Pair(Color(0xFFED7E1C), "down"),
+        Pair(Color(0xFFC2B1FF), "sad")
     )
 
     val configuration = LocalConfiguration.current
