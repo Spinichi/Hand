@@ -15,7 +15,7 @@ data class IndividualUserRequest(
     val disease: String,
     val residenceType: String,
     val diaryReminderEnabled: Boolean,
-    val notificationTime: String
+    val notificationHour: Int?   // 0-23 (null 허용)
 )
 
 // 공통 응답 껍데기 (스웨거 예시 기준)
@@ -38,5 +38,5 @@ data class IndividualUserData(
     val disease: String,
     val residenceType: String,
     val diaryReminderEnabled: Boolean,
-    val notificationTime: String
+    val notificationHour: Int?  // 0-23 (null 허용)
 )

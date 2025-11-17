@@ -64,7 +64,6 @@ fun SignUpPrivateScreen(
     var disease by remember { mutableStateOf("") }
     var isAlarmEnabled by remember { mutableStateOf(false) }
     var hour by remember { mutableStateOf("") }
-    var minute by remember { mutableStateOf("") }
      var job by remember { mutableStateOf("") }
      var familyCount by remember { mutableStateOf("") }
 
@@ -201,9 +200,7 @@ fun SignUpPrivateScreen(
                 isAlarmEnabled = isAlarmEnabled,
                 onToggle = { isAlarmEnabled = it },
                 hour = hour,
-                minute = minute,
                 onHourChange = { hour = it },
-                onMinuteChange = { minute = it },
                 screenWidthDp = screenWidthDp,
                 screenHeightDp = screenHeightDp
             )
@@ -223,8 +220,9 @@ fun SignUpPrivateScreen(
                     val heightInt = height.toIntOrNull() ?: 0
                     val weightInt = weight.toIntOrNull() ?: 0
 
-                    val alarmHourInt = if (isAlarmEnabled) hour.toIntOrNull() ?: 0 else 0
-                    val alarmMinuteInt = if (isAlarmEnabled) minute.toIntOrNull() ?: 0 else 0
+                    // 시간 입력 안 했으면(빈칸) 기본값 20시, 알림 꺼져있어도 20시로 저장
+                    // 0시(자정)를 선택하려면 "0"을 입력하면 됨
+                    val alarmHourInt = if (isAlarmEnabled) hour.toIntOrNull() ?: 20 else 20
 
                     val genderCode = when (selectedGender) {
                         "남성" -> "M"
@@ -243,7 +241,6 @@ fun SignUpPrivateScreen(
                         residenceType = familyCount,
                         diaryReminderEnabled = isAlarmEnabled,
                         hour = alarmHourInt,
-                        minute = alarmMinuteInt,
                         onSuccess = {
                             val intent = Intent(context, SignUpPrivateSurveyActivity::class.java)
                             context.startActivity(intent)
@@ -606,9 +603,7 @@ fun DiaryAlarmSection(
     isAlarmEnabled: Boolean,
     onToggle: (Boolean) -> Unit,
     hour: String,
-    minute: String,
     onHourChange: (String) -> Unit,
-    onMinuteChange: (String) -> Unit,
     screenWidthDp: Int,
     screenHeightDp: Int
 ) {
@@ -639,80 +634,40 @@ fun DiaryAlarmSection(
 
         if (isAlarmEnabled) {
             Spacer(Modifier.height(12.dp))
-            Row(
+            OutlinedTextField(
+                value = hour,
+                onValueChange = onHourChange,
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                OutlinedTextField(
-                    value = hour,
-                    onValueChange = onHourChange,
-                    modifier = Modifier.weight(1f),
-                    placeholder = { Text("18", fontFamily = BrandFontFamily, color = Color(0xFFBFBFBF)) },
-                    leadingIcon = {
-                        Image(
-                            painter = painterResource(id = R.drawable.signup_private_time),
-                            contentDescription = null,
-                            modifier = Modifier.size((screenWidthDp * 0.06f).dp)
-                        )
-                    },
-                    trailingIcon = {
-                        Text(
-                            text = "시",
-                            color = Color(0xFF4F3422),
-                            fontSize = (screenWidthDp * 0.035f).sp,
-                            fontFamily = BrandFontFamily,
-                            fontWeight = FontWeight.Bold
-                        )
-                    },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Number,
-                        imeAction = ImeAction.Next
-                    ),
-                    shape = RoundedCornerShape(28.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = Color(0xFF9BB168),
-                        unfocusedBorderColor = Color(0xFFBFD19B),
-                        focusedContainerColor = Color.White,
-                        unfocusedContainerColor = Color.White
+                placeholder = { Text("0-23시 입력 가능", fontFamily = BrandFontFamily, color = Color(0xFFBFBFBF)) },
+                leadingIcon = {
+                    Image(
+                        painter = painterResource(id = R.drawable.signup_private_time),
+                        contentDescription = null,
+                        modifier = Modifier.size((screenWidthDp * 0.06f).dp)
                     )
-                )
-
-                OutlinedTextField(
-                    value = minute,
-                    onValueChange = onMinuteChange,
-                    modifier = Modifier.weight(1f),
-                    placeholder = { Text("00", fontFamily = BrandFontFamily, color = Color(0xFFBFBFBF)) },
-                    leadingIcon = {
-                        Image(
-                            painter = painterResource(id = R.drawable.signup_private_time),
-                            contentDescription = null,
-                            modifier = Modifier.size((screenWidthDp * 0.06f).dp)
-                        )
-                    },
-                    trailingIcon = {
-                        Text(
-                            text = "분",
-                            color = Color(0xFF4F3422),
-                            fontSize = (screenWidthDp * 0.035f).sp,
-                            fontFamily = BrandFontFamily,
-                            fontWeight = FontWeight.Bold
-                        )
-                    },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Number,
-                        imeAction = ImeAction.Done
-                    ),
-                    shape = RoundedCornerShape(28.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = Color(0xFF9BB168),
-                        unfocusedBorderColor = Color(0xFFBFD19B),
-                        focusedContainerColor = Color.White,
-                        unfocusedContainerColor = Color.White
+                },
+                trailingIcon = {
+                    Text(
+                        text = "시",
+                        color = Color(0xFF4F3422),
+                        fontSize = (screenWidthDp * 0.035f).sp,
+                        fontFamily = BrandFontFamily,
+                        fontWeight = FontWeight.Bold
                     )
+                },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Number,
+                    imeAction = ImeAction.Done
+                ),
+                shape = RoundedCornerShape(28.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = Color(0xFF9BB168),
+                    unfocusedBorderColor = Color(0xFFBFD19B),
+                    focusedContainerColor = Color.White,
+                    unfocusedContainerColor = Color.White
                 )
-            }
+            )
         }
     }
 }

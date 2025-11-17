@@ -1,13 +1,11 @@
 package com.finger.hand_backend.user.dto;
 
 
-import com.fasterxml.jackson.annotation.JsonFormat;
 import com.finger.hand_backend.user.entity.IndividualUser.Gender;
 import jakarta.validation.constraints.*;
 
 
 import java.math.BigDecimal;
-import java.time.LocalTime;
 
 
 public class IndividualUserDtos {
@@ -23,7 +21,7 @@ public class IndividualUserDtos {
             @NotBlank String disease,
             @NotBlank String residenceType,
             @NotNull Boolean diaryReminderEnabled,
-            @JsonFormat(pattern = "HH:mm") LocalTime notificationTime
+            @Min(0) @Max(23) Integer notificationHour
     ) {}
 
 
@@ -37,7 +35,7 @@ public class IndividualUserDtos {
             @NotBlank String disease,
             @NotBlank String residenceType,
             @NotNull Boolean diaryReminderEnabled,
-            @JsonFormat(pattern = "HH:mm") LocalTime notificationTime
+            @Min(0) @Max(23) Integer notificationHour
     ) {}
 
 
@@ -53,6 +51,6 @@ public class IndividualUserDtos {
             String disease,
             String residenceType,
             Boolean diaryReminderEnabled,
-            @JsonFormat(pattern = "HH:mm") LocalTime notificationTime
+            Integer notificationHour
     ) {}
 }

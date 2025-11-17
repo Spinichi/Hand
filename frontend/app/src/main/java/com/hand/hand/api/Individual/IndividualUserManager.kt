@@ -27,18 +27,12 @@ class IndividualUserManager {
             residenceType: String,
             diaryReminderEnabled: Boolean,
             hour: Int,
-            minute: Int,
             onSuccess: (IndividualUserData) -> Unit,
             onFailure: (Throwable) -> Unit
         ) {
 
-            val notificationTimeStr =
-                if (diaryReminderEnabled) {
-                    String.format("%02d:%02d", hour, minute)
-                } else {
-                    // 알림 OFF일 때 백엔드랑 맞춘 기본값 (원하면 "00:00" 말고 null 허용으로 바꾸라고 요청해도 됨)
-                    "00:00"
-                }
+            // hour가 유효 범위(0-23) 밖이면 기본값 20으로 설정
+            val notificationHourValue = if (hour in 0..23) hour else 20
 
             val req = IndividualUserRequest(
                 name = name,
@@ -50,7 +44,7 @@ class IndividualUserManager {
                 disease = disease,
                 residenceType = residenceType,
                 diaryReminderEnabled = diaryReminderEnabled,
-                notificationTime = notificationTimeStr
+                notificationHour = notificationHourValue
             )
 
             Log.d("IndividualUserManager", "개인정보 등록 요청: $req")

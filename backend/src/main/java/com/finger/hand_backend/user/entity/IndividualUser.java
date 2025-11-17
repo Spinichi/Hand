@@ -1,7 +1,6 @@
 package com.finger.hand_backend.user.entity;
 
 
-import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
@@ -9,7 +8,6 @@ import org.hibernate.annotations.UpdateTimestamp;
 
 
 import java.math.BigDecimal;
-import java.time.LocalTime;
 import java.time.OffsetDateTime;
 
 
@@ -65,9 +63,8 @@ public class IndividualUser {
     private Boolean diaryReminderEnabled;
 
 
-    @JsonFormat(pattern = "HH:mm")
-    @Column(name = "notification_time")
-    private LocalTime notificationTime; // HH:mm
+    @Column(name = "notification_hour", columnDefinition = "INT DEFAULT 20")
+    private Integer notificationHour; // 0-23 (시간만 저장, 기본값 20)
 
 
     @CreationTimestamp
