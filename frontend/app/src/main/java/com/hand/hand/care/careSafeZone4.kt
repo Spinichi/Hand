@@ -52,8 +52,8 @@ fun CareSafeZone4Screen(onBackClick: () -> Unit, onStartClick: () -> Unit) {
 
     // ✅ 각 입력창의 상태를 리스트로 관리
     val questionList = listOf(
-        Pair("보입니까?", "무엇이 보이나요?"),
-        Pair("들립니까?", "무엇이 들리나요?"),
+        Pair("것이 보입니까?", "무엇이 보이나요?"),
+        Pair("것이 들립니까?", "무엇이 들리나요?"),
         Pair("냄새가 납니까?", "어떤 냄새가 나나요?"),
         Pair("감정이 느껴집니까?", "어떤 감정이 느껴집니까?"),
         Pair("감각이 느껴집니까?", "어떤 감각이 느껴집니까?")
