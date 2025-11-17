@@ -163,4 +163,28 @@ public class DailyRiskScoreService {
                 .average()
                 .orElse(0.0);
     }
+
+    /**
+     * 오늘 위험 점수 존재 여부 확인
+     *
+     * @param userId 사용자 ID
+     * @return 오늘 점수 존재 여부
+     */
+    @Transactional(readOnly = true)
+    public boolean hasTodayScore(Long userId) {
+        LocalDate today = LocalDate.now();
+        return riskScoreRepository.findByUserIdAndScoreDate(userId, today).isPresent();
+    }
+
+    /**
+     * 오늘 위험 점수 조회
+     *
+     * @param userId 사용자 ID
+     * @return 오늘의 DailyRiskScore, 없으면 null
+     */
+    @Transactional(readOnly = true)
+    public DailyRiskScore getTodayScore(Long userId) {
+        LocalDate today = LocalDate.now();
+        return riskScoreRepository.findByUserIdAndScoreDate(userId, today).orElse(null);
+    }
 }
