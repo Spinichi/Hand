@@ -37,6 +37,8 @@ import com.hand.hand.api.Write.WriteManager
 import com.hand.hand.ui.theme.BrandFontFamily
 import android.speech.tts.TextToSpeech
 import java.util.Locale
+import com.hand.hand.ui.common.LoadingDialog
+
 
 class DiaryWriteActivity : ComponentActivity(), TextToSpeech.OnInitListener {
 
@@ -176,6 +178,8 @@ fun DiaryWriteScreen(
     var questions by remember { mutableStateOf<List<String>>(emptyList()) }
     var sessionId by remember { mutableStateOf<Long?>(null) }
     var questionNumber by remember { mutableStateOf(0) }
+
+    var isCompleting by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         WriteManager.startDiary(
@@ -456,9 +460,14 @@ fun DiaryWriteScreen(
                                         ).show()
                                         onBackClick()
                                     } else {
+
+                                        isCompleting = true
+
                                         WriteManager.completeDiary(
                                             sessionId = currentSessionId,
                                             onSuccess = { res ->
+                                                isCompleting = false
+
                                                 if (res.success && res.data != null) {
                                                     Log.d("DiaryWrite", "다이어리 완료 성공: ${res.data}")
 
@@ -481,6 +490,7 @@ fun DiaryWriteScreen(
                                                 }
                                             },
                                             onFailure = { e ->
+                                                isCompleting = false
                                                 Log.e("DiaryWrite", "다이어리 완료 실패", e)
                                                 Toast.makeText(
                                                     context,
@@ -496,6 +506,10 @@ fun DiaryWriteScreen(
                     }
                 }
             }
+
+        }
+        if (isCompleting) {
+            LoadingDialog(message = "다이어리를 저장하는 중이에요")
         }
     }
 }

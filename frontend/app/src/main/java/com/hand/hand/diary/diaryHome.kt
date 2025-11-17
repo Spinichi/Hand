@@ -20,10 +20,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import com.hand.hand.AiDocument.PrivateAiDocumentHomeActivity
 import com.hand.hand.api.Diary.DiaryItem
 import com.hand.hand.api.Diary.DiaryManager
@@ -52,12 +55,15 @@ fun DiaryHomeScreen(onBackClick: () -> Unit) {
     val configuration = LocalConfiguration.current
     val screenHeight = configuration.screenHeightDp.dp
 
-
     var diaryList by remember { mutableStateOf<List<DiaryItem>>(emptyList()) }
     var isLoading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
-    LaunchedEffect(calendar) {
+    // ✅ lifecycle owner
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    // ✅ 공통 일기 목록 조회 함수
+    val fetchDiaryList: () -> Unit = {
         val year = calendar.get(Calendar.YEAR)
         val month = calendar.get(Calendar.MONTH) + 1
 
@@ -87,6 +93,24 @@ fun DiaryHomeScreen(onBackClick: () -> Unit) {
         )
     }
 
+    // ✅ 처음 진입 + 달이 바뀔 때마다 호출
+    LaunchedEffect(calendar) {
+        fetchDiaryList()
+    }
+
+    // ✅ 화면으로 다시 돌아올 때(ON_RESUME)마다 재조회
+    DisposableEffect(lifecycleOwner, calendar) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                fetchDiaryList()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
     val scoreMap: Map<String, Float> = diaryList.associateBy(
         { it.sessionDate },
         { it.depressionScore ?: -1f }
@@ -112,7 +136,14 @@ fun DiaryHomeScreen(onBackClick: () -> Unit) {
                     context.startActivity(intent)
                 },
                 onClickWrite = { /* 현재 페이지 */ },
-                onClickDiary = { context.startActivity(Intent(context, PrivateAiDocumentHomeActivity::class.java)) },
+                onClickDiary = {
+                    context.startActivity(
+                        Intent(
+                            context,
+                            PrivateAiDocumentHomeActivity::class.java
+                        )
+                    )
+                },
                 onClickProfile = { /* TODO */ },
                 onClickCenter = { context.startActivity(Intent(context, CareActivity::class.java)) }
             )
@@ -145,10 +176,12 @@ fun DiaryHomeScreen(onBackClick: () -> Unit) {
                     Log.i("DiaryHome", "clickedDate = $selectedDateStr, diaryItem = $diaryItem")
 
                     if (diaryItem == null) {
+                        // 오늘이면서 아직 작성 안 한 경우 등 → 새 일기 작성
                         val intent = Intent(context, DiaryWriteActivity::class.java)
                         intent.putExtra("selectedDate", selectedDateStr)
                         context.startActivity(intent)
                     } else {
+                        // 해당 날짜 일기 상세 보기
                         val intent = Intent(context, DiaryDetailActivity::class.java)
                         intent.putExtra("sessionId", diaryItem.sessionId.toLong())
                         Log.i("DiaryHome", "→ 전달 sessionId = ${diaryItem.sessionId}")
@@ -156,7 +189,6 @@ fun DiaryHomeScreen(onBackClick: () -> Unit) {
                     }
                 }
             )
-
 
             EmotionLegend()
 
@@ -205,8 +237,7 @@ fun DiaryHomeScreen(onBackClick: () -> Unit) {
     }
 }
 
-// DiaryHistoryBox, DiaryCalendar2, EmotionLegend는 기존 코드 그대로 사용
-
+// ===================== 히스토리 카드 =====================
 
 @Composable
 fun DiaryHistoryBox(item: DiaryItem) {
@@ -262,7 +293,6 @@ fun DiaryHistoryBox(item: DiaryItem) {
                 Spacer(modifier = Modifier.height(6.dp))
 
                 val score = item.depressionScore ?: -1
-                val diaryscore = score
                 val intScore = score.toInt()
                 val boxColor = when (intScore) {
                     in 0..19 -> Color(0xFFC2B1FF)
@@ -272,8 +302,6 @@ fun DiaryHistoryBox(item: DiaryItem) {
                     in 80..100 -> Color(0xFF9BB167)
                     else -> Color.Gray
                 }
-
-
 
                 Box(
                     modifier = Modifier
@@ -294,10 +322,12 @@ fun DiaryHistoryBox(item: DiaryItem) {
     }
 }
 
+// ===================== 캘린더 =====================
+
 @Composable
 fun DiaryCalendar2(
     calendar: Calendar,
-    scoreMap: Map<String, Float> = emptyMap(),  // Int → Float
+    scoreMap: Map<String, Float> = emptyMap(),  // 날짜별 점수
     onDateClick: (Int) -> Unit = {}
 ) {
     val daysOfWeek = listOf("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat")
@@ -313,7 +343,6 @@ fun DiaryCalendar2(
         if (date in 1..daysInMonth) date.toString() else ""
     }
 
-    val today = Calendar.getInstance()
     val configuration = LocalConfiguration.current
     val screenWidth = configuration.screenWidthDp.dp
     val cellSize: Dp = screenWidth / 9
@@ -352,34 +381,42 @@ fun DiaryCalendar2(
                         val thisDate = calendar.clone() as Calendar
                         thisDate.set(Calendar.DAY_OF_MONTH, date.toInt())
 
-                        val today = Calendar.getInstance()
+                        val todayCal = Calendar.getInstance()
 
                         // 오늘인지 체크
-                        val isToday = thisDate.get(Calendar.YEAR) == today.get(Calendar.YEAR) &&
-                                thisDate.get(Calendar.MONTH) == today.get(Calendar.MONTH) &&
-                                thisDate.get(Calendar.DAY_OF_MONTH) == today.get(Calendar.DAY_OF_MONTH)
+                        val isToday = thisDate.get(Calendar.YEAR) == todayCal.get(Calendar.YEAR) &&
+                                thisDate.get(Calendar.MONTH) == todayCal.get(Calendar.MONTH) &&
+                                thisDate.get(Calendar.DAY_OF_MONTH) == todayCal.get(Calendar.DAY_OF_MONTH)
 
-                        val isFuture = thisDate.after(today)
-                        val alpha = if (isFuture) 0.5f else 1f
+                        val isFuture = thisDate.after(todayCal)
 
                         val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.KOREA)
                         val thisDateStr = sdf.format(thisDate.time)
 
-                        val score = scoreMap[thisDateStr] ?: -1
-                        val intScore = score.toInt()
+                        val score = scoreMap[thisDateStr]          // null이면 일기 없음
+                        val hasDiary = score != null
+                        val intScore = score?.toInt() ?: -1
+
                         val baseCircleColor = when (100 - intScore) {
                             in 0..19 -> Color(0xFF9BB167)
                             in 20..39 -> Color(0xFFFFCE5C)
                             in 40..59 -> Color(0xFFC0A091)
                             in 60..79 -> Color(0xFFED7E1C)
                             in 80..100 -> Color(0xFFC2B1FF)
-                            else -> Color.White
+                            else -> Color.White                  // 일기 없음
                         }
 
                         val circleColor = if (isFuture) {
-                            Color(0xFFE0E0E0)   // 원하는 회색 값으로
+                            Color(0xFFE0E0E0)                    // 미래는 회색
                         } else {
                             baseCircleColor
+                        }
+
+                        // ✅ 클릭 가능 조건
+                        val clickableEnabled = when {
+                            isFuture -> false                    // 미래 X
+                            isToday -> true                      // 오늘은 일기 없어도 O
+                            else -> hasDiary                     // 과거는 일기 있는 날만 O
                         }
 
                         Box(
@@ -393,7 +430,9 @@ fun DiaryCalendar2(
                                         shape = CircleShape
                                     ) else Modifier
                                 )
-                                .clickable(enabled = !isFuture) { onDateClick(date.toInt()) },
+                                .clickable(enabled = clickableEnabled) {
+                                    onDateClick(date.toInt())
+                                },
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
@@ -401,7 +440,11 @@ fun DiaryCalendar2(
                                 fontFamily = BrandFontFamily,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 16.sp,
-                                color = if (isFuture) Color(0xFFB0A8A4) else Color(0xFF4F3422)
+                                color = when {
+                                    isFuture -> Color(0xFFB0A8A4)
+                                    !hasDiary && !isToday -> Color(0xFFB0A8A4)   // 일기 없는 과거
+                                    else -> Color(0xFF4F3422)
+                                }
                             )
                         }
                     } else {
@@ -413,6 +456,8 @@ fun DiaryCalendar2(
         }
     }
 }
+
+// ===================== 감정 범례 =====================
 
 @Composable
 fun EmotionLegend() {
