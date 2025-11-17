@@ -1,4 +1,5 @@
-# AI
+# AI 폴더 구성성
+```
 ── ai/                                # FastAPI 백엔드 전체
 │   ├── FastAPI/
 │   │   ├── app/
@@ -41,29 +42,6 @@
 │   └── total_kor_multiturn_counsel_bot.jsonl
 │
 ├── mlflow.db                          # MLflow 로컬 DB
-├── .env                               # 환경 변수(gms key, url 등)
 ├── README.md
 └── requirements.txt
-
-
-# 주소 봐줘야 할 파일들
-
-## FastAPI 폴더 쪽
-### FastAPI/main.py
-- FastAPI 주소 맞추기
-
-### ai\FastAPI\app\services\RAG.py
-- 맨 윗부분의 client = weaviate.connect_to_custom 주석을 풀고 Weaviate로 주소 맞춰주기
-
-### Weaviate 관련
-FastAPI\app\api\weav.py
-vector_db_settings\docker-compose.yml
-
-### Weaviate에 넣을 데이터
-- total_kor_counsel_bot.jsonl
-- total_kor_multiturn_counsel_bot.jsonl
-
-- vector_db_settings\db_setting.py : 얘 주소값을 매칭해줘야 데이터 올릴 때 서버에 있는 weaviate로 드르감.
-
-### Weaviate 도커로 띄운 다음 db_setting 실행. Weaviate에 데이터 삽입 후 print찍히는거 확인해서 vector 리스트가 나와야함.
-- 이거 아마 시간 엄청 걸릴거임. 대충.... 2~3 시간?
+```
