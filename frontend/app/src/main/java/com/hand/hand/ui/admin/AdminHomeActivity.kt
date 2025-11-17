@@ -132,13 +132,18 @@ private fun AdminHomeScreen(
     var showHome by rememberSaveable { mutableStateOf(false) }
 
     var organizations by remember { mutableStateOf<List<Organization>>(emptyList()) }
-    val members = membersState // 외부 상태를 직접 사용
+    val members = membersState
     var currentOrg by rememberSaveable { mutableStateOf<Organization?>(null) }
     var isLoading by rememberSaveable { mutableStateOf(true) }
     var currentOrgId by rememberSaveable { mutableStateOf(currentOrgIdState) }
     var selectedMood by rememberSaveable { mutableStateOf<Mood?>(null) }
     var query by rememberSaveable { mutableStateOf("") }
     var groupCode by rememberSaveable { mutableStateOf("######") }
+
+    // anomalies 관련 state
+    val avgChangeCountState = remember { mutableStateOf(0) }
+    val recentChangeNameState = remember { mutableStateOf("") }
+
     val todayText = remember { SimpleDateFormat("yyyy. MM. dd", Locale.KOREA).format(Date()) }
     val context = LocalContext.current
 
@@ -155,19 +160,21 @@ private fun AdminHomeScreen(
         )
     }
 
-    // Load members whenever currentOrgId changes
+    // Load members & group info whenever currentOrgId changes
     LaunchedEffect(currentOrgId, organizations) {
         val orgIdInt = currentOrgId.toIntOrNull()
         if (orgIdInt != null && organizations.isNotEmpty()) {
             isLoading = true
             currentOrg = organizations.firstOrNull { it.id == currentOrgId }
 
+            // 그룹 정보
             GroupManager.getGroupInfo(
                 groupId = orgIdInt,
                 onSuccess = { groupData -> groupCode = groupData?.getGroupCode() ?: "######" },
                 onError = { error -> Log.e("AdminHome", "Failed to load group info: $error") }
             )
 
+            // 그룹 멤버
             GroupManager.getGroupMembers(
                 groupId = orgIdInt,
                 onSuccess = { memberDatas ->
@@ -182,6 +189,20 @@ private fun AdminHomeScreen(
                     Log.e("AdminHome", "Failed to load members: $error")
                     onMembersUpdate(emptyList())
                     isLoading = false
+                }
+            )
+
+            // 🚀 anomalies 통계
+            GroupManager.getGroupAnomalies(
+                groupId = orgIdInt,
+                onSuccess = { data ->
+                    avgChangeCountState.value = data?.weeklyStatistics?.totalAverageAnomalyCount?.toInt() ?: 0
+                    recentChangeNameState.value = data?.topRiskMember?.userName ?: ""
+                },
+                onError = { error ->
+                    Log.e("AdminHome", "Failed to load anomalies: $error")
+                    avgChangeCountState.value = 0
+                    recentChangeNameState.value = ""
                 }
             )
 
@@ -203,7 +224,6 @@ private fun AdminHomeScreen(
     val org = currentOrg ?: Organization(id = "", name = "로딩 중...", memberCount = 0, averageScore = 50f)
     val registeredCount = remember(members) { members.size }
     val sadCount = remember(members) { members.count { scoreToMood(it.avgScore) == Mood.SAD || scoreToMood(it.avgScore) == Mood.DOWN } }
-    val avgScore100 = remember(org) { org.averageScore.coerceIn(0f, 100f) }
     val searchResults = remember(query, members) { if (query.isBlank()) emptyList() else members.filter { it.name.contains(query, ignoreCase = true) } }
     val moodFilteredMembers = remember(selectedMood, members) { if (selectedMood == null) members else members.filter { scoreToMood(it.avgScore) == selectedMood } }
 
@@ -216,7 +236,7 @@ private fun AdminHomeScreen(
         return
     }
 
-    val ui = org.toOrgMoodUi() // Organization.toOrgMoodUi() 사용 (이미 네 코드에 있음)
+    val ui = org.toOrgMoodUi()
 
     Scaffold(
         containerColor = Brown10,
@@ -228,10 +248,8 @@ private fun AdminHomeScreen(
                 userName = org.name,
                 registeredCount = registeredCount,
                 sadCount = sadCount,
-                moodLabel = ui.moodLabel,           // fallback(호환용)
-                avgScore100 = org.averageScore,     // 여전히 전달 가능
-//                moodIconRes = ui.moodIconRes,       // 핵심: 다이얼로그와 동일한 소스
-//                moodText = ui.moodLabel,            // 핵심: 라벨도 동일하게
+                moodLabel = ui.moodLabel,
+                avgScore100 = org.averageScore,
                 recommendation = "",
                 searchQuery = query,
                 onSearchQueryChange = { query = it },
@@ -297,8 +315,8 @@ private fun AdminHomeScreen(
                     happyCount = members.count { scoreToMood(it.avgScore) == Mood.HAPPY },
                     okayCount  = members.count { scoreToMood(it.avgScore) == Mood.OKAY  },
                     greatCount = members.count { scoreToMood(it.avgScore) == Mood.GREAT },
-                    avgChangeCount = 2,
-                    recentChangeName = members.firstOrNull()?.name ?: ""
+                    avgChangeCount = avgChangeCountState.value,
+                    recentChangeName = recentChangeNameState.value
                 )
             }
 

@@ -6,6 +6,30 @@ data class GroupCreateRequest(
     val groupType: String
 )
 
+data class GroupAnomaliesDaily(
+    val date: String,
+    val averageAnomalyCount: Double
+)
+
+data class TopRiskMember(
+    val userId: Int,
+    val userName: String,
+    val weeklyAverageAnomalyCount: Double
+)
+data class WeeklyStatistics(
+    val startDate: String,
+    val endDate: String,
+    val totalAverageAnomalyCount: Double,
+    val dailyAverages: List<GroupAnomaliesDaily>
+)
+
+data class GroupAnomaliesData(
+    val groupId: Int,
+    val groupName: String,
+    val memberCount: Int,
+    val weeklyStatistics: WeeklyStatistics?,
+    val topRiskMember: TopRiskMember?
+)
 data class GroupJoinRequest(
     val inviteCode: String
 )

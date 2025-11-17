@@ -100,6 +100,35 @@ object GroupManager {
             }
         })
     }
+
+    fun getGroupAnomalies(
+        groupId: Int,
+        onSuccess: (GroupAnomaliesData?) -> Unit,
+        onError: (String) -> Unit
+    ) {
+        api().getGroupAnomalies(groupId).enqueue(object : Callback<WrappedResponse<GroupAnomaliesData>> {
+            override fun onResponse(
+                call: Call<WrappedResponse<GroupAnomaliesData>>,
+                response: Response<WrappedResponse<GroupAnomaliesData>>
+            ) {
+                if (response.isSuccessful) {
+                    val body = response.body()
+                    if (body != null && body.success) {
+                        onSuccess(body.data)
+                    } else {
+                        onError(body?.message ?: "Unknown server response")
+                    }
+                } else {
+                    onError("HTTP ${response.code()}: ${response.errorBody()?.string()}")
+                }
+            }
+
+            override fun onFailure(call: Call<WrappedResponse<GroupAnomaliesData>>, t: Throwable) {
+                onError(t.message ?: "Network error")
+            }
+        })
+    }
+
     fun getGroupMembers(
         groupId: Int,
         onSuccess: (List<GroupMemberData>?) -> Unit,
