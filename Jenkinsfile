@@ -163,120 +163,120 @@ pipeline {
                     }
                 }
 
-                stage('Mobile App CI/CD') {
-                    when {
-                        beforeAgent true
-                        anyOf {
-                            changeset pattern: "frontend/app/**", caseSensitive: true
-                            expression { return params.FORCE_BUILD_MOBILE }
-                        }
-                    }
-                    stages {
-                        stage('Prepare Firebase Credentials') {
-                            steps {
-                                dir('frontend') {
-                                    echo '🔧 Preparing Firebase and Google Services credentials...'
-                                    withCredentials([
-                                        file(credentialsId: 'firebase_sa_json', variable: 'FIREBASE_SA_FILE'),
-                                        file(credentialsId: 'google-services-json', variable: 'GOOGLE_SERVICES_FILE')
-                                    ]) {
-                                        sh """
-                                            # Firebase 서비스 계정 JSON 파일 복사
-                                            echo "📋 Copying Firebase service account..."
-                                            cp \${FIREBASE_SA_FILE} firebase-service-account.json
-                                            chmod 600 firebase-service-account.json
-
-                                            # google-services.json 복사
-                                            echo "📋 Copying google-services.json..."
-                                            cp \${GOOGLE_SERVICES_FILE} app/google-services.json
-                                            chmod 600 app/google-services.json
-
-                                            # 파일 존재 확인
-                                            if [ ! -f "app/google-services.json" ]; then
-                                                echo "❌ google-services.json not found!"
-                                                exit 1
-                                            fi
-                                            echo "✅ google-services.json prepared successfully!"
-                                        """
-                                    }
-                                }
-                            }
-                        }
-
-                        stage('Build & Upload APK') {
-                            agent {
-                                docker {
-                                    image 'mingc/android-build-box:latest'
-                                    args '-v /var/jenkins_home/.gradle:/root/.gradle -u root'
-                                    reuseNode true
-                                }
-                            }
-                            steps {
-                                dir('frontend') {
-                                    withCredentials([
-                                        string(credentialsId: 'firebase_app_id_text', variable: 'FIREBASE_APP_ID_VALUE'),
-                                        string(credentialsId: 'gms-base-url', variable: 'GMS_BASE_URL_VALUE'),
-                                        string(credentialsId: 'gms-api-key', variable: 'GMS_API_KEY_VALUE')
-                                    ]) {
-                                        script {
-                                            def gitCommit = sh(returnStdout: true, script: 'git log -1 --oneline').trim()
-                                            def releaseNotes = """
-빌드 번호: ${BUILD_NUMBER}
-빌드 시간: ${new Date().format('yyyy-MM-dd HH:mm:ss')}
-커밋: ${gitCommit}
-배포자: Jenkins CI/CD
-                                            """.trim()
-
-                                            echo '📦 Building Debug APK and Uploading to Firebase...'
-                                            sh """
-                                                chmod +x gradlew
-                                                ./gradlew --version
-
-                                                # GMS API 환경변수 설정
-                                                export GMS_BASE_URL='${GMS_BASE_URL_VALUE}'
-                                                export GMS_API_KEY='${GMS_API_KEY_VALUE}'
-
-                                                echo "🔨 Building app module APK..."
-                                                ./gradlew :app:assembleDebug
-
-                                                # APK 확인
-                                                if [ -f "app/build/outputs/apk/debug/app-debug.apk" ]; then
-                                                    echo "✅ APK built successfully!"
-                                                    ls -lh app/build/outputs/apk/debug/app-debug.apk
-                                                else
-                                                    echo "❌ APK build failed!"
-                                                    exit 1
-                                                fi
-
-                                                # Firebase 환경변수
-                                                export FIREBASE_SERVICE_ACCOUNT_JSON=\$(pwd)/firebase-service-account.json
-                                                export FIREBASE_APP_ID=${FIREBASE_APP_ID_VALUE}
-                                                export RELEASE_NOTES='${releaseNotes}'
-
-                                                # Firebase 업로드
-                                                echo "📤 Uploading to Firebase..."
-                                                ./gradlew :app:appDistributionUploadDebug
-
-                                                echo "✅ Uploaded to Firebase!"
-                                            """
-                                        }
-                                    }
-                                }
-                            }
-                            post {
-                                always {
-                                    dir('frontend') {
-                                        echo '🧹 Cleaning up sensitive files...'
-                                        sh '''
-                                            rm -f firebase-service-account.json || true
-                                            rm -f app/google-services.json || true
-                                        '''
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
+//                 stage('Mobile App CI/CD') {
+//                     when {
+//                         beforeAgent true
+//                         anyOf {
+//                             changeset pattern: "frontend/app/**", caseSensitive: true
+//                             expression { return params.FORCE_BUILD_MOBILE }
+//                         }
+//                     }
+//                     stages {
+//                         stage('Prepare Firebase Credentials') {
+//                             steps {
+//                                 dir('frontend') {
+//                                     echo '🔧 Preparing Firebase and Google Services credentials...'
+//                                     withCredentials([
+//                                         file(credentialsId: 'firebase_sa_json', variable: 'FIREBASE_SA_FILE'),
+//                                         file(credentialsId: 'google-services-json', variable: 'GOOGLE_SERVICES_FILE')
+//                                     ]) {
+//                                         sh """
+//                                             # Firebase 서비스 계정 JSON 파일 복사
+//                                             echo "📋 Copying Firebase service account..."
+//                                             cp \${FIREBASE_SA_FILE} firebase-service-account.json
+//                                             chmod 600 firebase-service-account.json
+//
+//                                             # google-services.json 복사
+//                                             echo "📋 Copying google-services.json..."
+//                                             cp \${GOOGLE_SERVICES_FILE} app/google-services.json
+//                                             chmod 600 app/google-services.json
+//
+//                                             # 파일 존재 확인
+//                                             if [ ! -f "app/google-services.json" ]; then
+//                                                 echo "❌ google-services.json not found!"
+//                                                 exit 1
+//                                             fi
+//                                             echo "✅ google-services.json prepared successfully!"
+//                                         """
+//                                     }
+//                                 }
+//                             }
+//                         }
+//
+//                         stage('Build & Upload APK') {
+//                             agent {
+//                                 docker {
+//                                     image 'mingc/android-build-box:latest'
+//                                     args '-v /var/jenkins_home/.gradle:/root/.gradle -u root'
+//                                     reuseNode true
+//                                 }
+//                             }
+//                             steps {
+//                                 dir('frontend') {
+//                                     withCredentials([
+//                                         string(credentialsId: 'firebase_app_id_text', variable: 'FIREBASE_APP_ID_VALUE'),
+//                                         string(credentialsId: 'gms-base-url', variable: 'GMS_BASE_URL_VALUE'),
+//                                         string(credentialsId: 'gms-api-key', variable: 'GMS_API_KEY_VALUE')
+//                                     ]) {
+//                                         script {
+//                                             def gitCommit = sh(returnStdout: true, script: 'git log -1 --oneline').trim()
+//                                             def releaseNotes = """
+// 빌드 번호: ${BUILD_NUMBER}
+// 빌드 시간: ${new Date().format('yyyy-MM-dd HH:mm:ss')}
+// 커밋: ${gitCommit}
+// 배포자: Jenkins CI/CD
+//                                             """.trim()
+//
+//                                             echo '📦 Building Debug APK and Uploading to Firebase...'
+//                                             sh """
+//                                                 chmod +x gradlew
+//                                                 ./gradlew --version
+//
+//                                                 # GMS API 환경변수 설정
+//                                                 export GMS_BASE_URL='${GMS_BASE_URL_VALUE}'
+//                                                 export GMS_API_KEY='${GMS_API_KEY_VALUE}'
+//
+//                                                 echo "🔨 Building app module APK..."
+//                                                 ./gradlew :app:assembleDebug
+//
+//                                                 # APK 확인
+//                                                 if [ -f "app/build/outputs/apk/debug/app-debug.apk" ]; then
+//                                                     echo "✅ APK built successfully!"
+//                                                     ls -lh app/build/outputs/apk/debug/app-debug.apk
+//                                                 else
+//                                                     echo "❌ APK build failed!"
+//                                                     exit 1
+//                                                 fi
+//
+//                                                 # Firebase 환경변수
+//                                                 export FIREBASE_SERVICE_ACCOUNT_JSON=\$(pwd)/firebase-service-account.json
+//                                                 export FIREBASE_APP_ID=${FIREBASE_APP_ID_VALUE}
+//                                                 export RELEASE_NOTES='${releaseNotes}'
+//
+//                                                 # Firebase 업로드
+//                                                 echo "📤 Uploading to Firebase..."
+//                                                 ./gradlew :app:appDistributionUploadDebug
+//
+//                                                 echo "✅ Uploaded to Firebase!"
+//                                             """
+//                                         }
+//                                     }
+//                                 }
+//                             }
+//                             post {
+//                                 always {
+//                                     dir('frontend') {
+//                                         echo '🧹 Cleaning up sensitive files...'
+//                                         sh '''
+//                                             rm -f firebase-service-account.json || true
+//                                             rm -f app/google-services.json || true
+//                                         '''
+//                                     }
+//                                 }
+//                             }
+//                         }
+//                     }
+//                 }
 
                 stage('AI CI/CD') {
                     when {
