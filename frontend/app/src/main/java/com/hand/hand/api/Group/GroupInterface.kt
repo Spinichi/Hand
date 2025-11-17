@@ -20,6 +20,9 @@ interface GroupInterface {
     @GET("v1/groups/{id}")
     fun getGroupInfo(@Path("id") groupId: Int): Call<WrappedResponse<GroupData>>
 
+    @GET("v1/groups/{groupId}/statistics/anomalies")
+    fun getGroupAnomalies(@Path("groupId") groupId: Int): Call<WrappedResponse<GroupAnomaliesData>>
+
     @GET("v1/groups/{groupId}/members")
     fun getGroupMembers(@Path("groupId") groupId: Int): Call<WrappedResponse<List<GroupMemberData>>>
 
