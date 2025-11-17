@@ -24,7 +24,6 @@ import com.hand.hand.R
 import com.hand.hand.feature.onboarding.OnboardingActivity
 import com.hand.hand.ui.theme.BrandFontFamily
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 
 class SplashActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -116,7 +115,7 @@ fun SplashScreen(onSplashFinished: () -> Unit) {
 
                 // 아이콘
                 Image(
-                    painter = painterResource(R.drawable.ic_splash_hand),
+                    painter = painterResource(R.drawable.ic_splash_hand2),
                     contentDescription = "Logo",
                     modifier = Modifier.size(160.dp)
                 )
