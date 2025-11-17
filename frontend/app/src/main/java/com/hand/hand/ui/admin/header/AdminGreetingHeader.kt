@@ -30,6 +30,10 @@ import com.hand.hand.R
 import com.hand.hand.ui.home.components.StatusPill
 import com.hand.hand.ui.theme.*
 
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+
+
 // 0~100 점수 → 5단계 라벨 매핑 (디자인/아이콘 변경 없음)
 private fun scoreToLabel(score: Float): String {
     val s = score.coerceIn(0f, 100f)
@@ -332,7 +336,22 @@ private fun AdminSearchField(
                 }
             }
 
-            Spacer(Modifier.width(12.dp))
+            if (value.isNotEmpty()) {
+                Spacer(Modifier.width(8.dp))
+                IconButton(
+                    onClick = { onValueChange("") }
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Close,
+                        contentDescription = "검색어 지우기",
+                        tint = Color(0xFFB9B2AC),
+                        modifier = Modifier.size(iconSizeDp)
+                    )
+                }
+            }
+
+            Spacer(Modifier.width(8.dp))
+
 
             IconButton(
                 onClick = { if (value.isNotBlank()) onSubmit() }
