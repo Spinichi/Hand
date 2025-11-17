@@ -2,6 +2,7 @@ package com.hand.hand.api.Relief
 
 import retrofit2.Call
 import retrofit2.http.Body
+import retrofit2.http.GET
 import retrofit2.http.POST
 import retrofit2.http.Path
 
@@ -52,4 +53,11 @@ interface ReliefInterface {
         @Path("id") sessionId: Long,
         @Body request: ReliefEndRequest
     ): Call<ReliefApiResponse<ReliefEndResponse>>
+
+    /**
+     * 오늘의 세션 개수 조회
+     * GET /v1/relief/today/count
+     */
+    @GET("v1/relief/today/count")
+    fun getTodaySessionCount(): Call<ReliefApiResponse<TodayCountData>>
 }

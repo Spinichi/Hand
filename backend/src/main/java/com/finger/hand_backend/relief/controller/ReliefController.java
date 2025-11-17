@@ -76,6 +76,14 @@ public class ReliefController {
                 queryService.getReliefHistory(userId, page, size), "relief history"));
     }
 
+    @GetMapping("/today/count")
+    public ResponseEntity<?> getTodaySessionCount(Authentication auth) {
+        Long userId = Long.valueOf(auth.getName());
+        long count = queryService.getTodaySessionCount(userId);
+        return ResponseEntity.ok(ApiResponse.success(
+                new TodayCountRes(count), "오늘의 세션 개수를 조회했습니다"));
+    }
+
     // ===== DTOs =====
     @Data
     public static class StartReq {
@@ -93,4 +101,6 @@ public class ReliefController {
         private Integer userRating;    // 1~5 선택
     }
     public record EndRes(Integer afterStress, Integer durationSeconds, LocalDateTime endedAt) {}
+
+    public record TodayCountRes(long count) {}
 }

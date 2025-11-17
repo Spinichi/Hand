@@ -249,5 +249,43 @@ class ReliefManager {
                 })
         }
 
+        /**
+         * 오늘의 세션 개수 조회
+         *
+         * @param onSuccess 성공 콜백 (count 반환)
+         * @param onFailure 실패 콜백
+         */
+        fun getTodaySessionCount(
+            onSuccess: ((Long) -> Unit)? = null,
+            onFailure: ((Throwable) -> Unit)? = null
+        ) {
+            Log.d(TAG, "📤 오늘의 세션 개수 조회 요청")
+
+            httpCall.getTodaySessionCount().enqueue(object : Callback<ReliefApiResponse<TodayCountData>> {
+                override fun onResponse(
+                    call: Call<ReliefApiResponse<TodayCountData>>,
+                    response: Response<ReliefApiResponse<TodayCountData>>
+                ) {
+                    val body = response.body()
+                    Log.d(TAG, "📥 응답코드=${response.code()} body=$body")
+
+                    if (response.isSuccessful && body != null && body.success) {
+                        val count = body.data?.count ?: 0L
+                        Log.d(TAG, "✅ 오늘의 세션 개수: $count")
+                        onSuccess?.invoke(count)
+                    } else {
+                        val msg = "오늘의 세션 개수 조회 실패: ${response.code()} - ${body?.message ?: response.message()}"
+                        Log.e(TAG, msg)
+                        onFailure?.invoke(Throwable(msg))
+                    }
+                }
+
+                override fun onFailure(call: Call<ReliefApiResponse<TodayCountData>>, t: Throwable) {
+                    Log.e(TAG, "🚨 통신 실패: ${t.localizedMessage}", t)
+                    onFailure?.invoke(t)
+                }
+            })
+        }
+
     }
 }

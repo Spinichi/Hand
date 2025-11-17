@@ -42,4 +42,14 @@ public interface InterventionLogRepository extends JpaRepository<InterventionLog
     // 완화 기록 히스토리 (날짜별 세션 목록)
     List<InterventionLog> findByUserIdAndAfterStressIsNotNullOrderByStartedAtDesc(Long userId);
 
+    // 오늘의 완료된 세션 개수 조회
+    @Query("""
+        SELECT COUNT(il)
+        FROM InterventionLog il
+        WHERE il.userId = :userId
+        AND DATE(il.startedAt) = CURRENT_DATE
+        AND il.endedAt IS NOT NULL
+        """)
+    long countTodayCompletedSessions(Long userId);
+
 }

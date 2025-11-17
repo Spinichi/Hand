@@ -129,3 +129,10 @@ data class ReliefSessionEndRequest(
     val endedAt: String,   // "2025-11-13T07:03:32"
     val userRating: Int    // 유저 불편감 점수
 )
+
+/**
+ * 오늘의 세션 개수 응답 데이터
+ */
+data class TodayCountData(
+    val count: Long
+)

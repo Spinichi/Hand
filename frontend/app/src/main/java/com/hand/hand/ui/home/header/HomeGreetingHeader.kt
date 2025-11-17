@@ -149,6 +149,7 @@ fun HomeGreetingHeader(
                     Spacer(Modifier.height(8.dp))
 
                     Row(verticalAlignment = Alignment.CenterVertically) {
+                        /*
                         StatusPill(
                             leading = {
                                 Icon(
@@ -164,6 +165,7 @@ fun HomeGreetingHeader(
                         )
 
                         Spacer(Modifier.width(10.dp))
+                        */
 
                         StatusPill(
                             leading = {

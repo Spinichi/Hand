@@ -112,7 +112,7 @@ fun HomeScreen() {
     var stressLevel by remember { mutableStateOf(2) }
 
     val mood = moodFromScore(personalMoodScore)
-    val recommendation = "봉인 연습"
+    val recommendation = "안전지대연습"
 
     LaunchedEffect(Unit) {
         com.hand.hand.api.Measurements.MeasurementsManager.getLatestMeasurement(
@@ -173,6 +173,21 @@ fun HomeScreen() {
                 sleepLoaded = true
                 todaySleepData = null
                 android.util.Log.e("HomeScreen", "❌ 수면 데이터 조회 실패: ${error.message}")
+            }
+        )
+    }
+
+    // ⭐ 오늘의 마음 완화 세션 개수 조회
+    var todaySessionCount by remember { mutableStateOf(0) }
+
+    LaunchedEffect(Unit) {
+        com.hand.hand.api.Relief.ReliefManager.getTodaySessionCount(
+            onSuccess = { count ->
+                todaySessionCount = count.toInt()
+                android.util.Log.d("HomeScreen", "✅ 오늘의 세션 개수: $count")
+            },
+            onFailure = { error ->
+                android.util.Log.e("HomeScreen", "❌ 세션 개수 조회 실패: ${error.message}")
             }
         )
     }
@@ -344,6 +359,7 @@ fun HomeScreen() {
                         horizontalPadding = gutter,
                         stressScore = personalMoodScore,
                         sleepData = todaySleepData,
+                        todaySessionCount = todaySessionCount,
                         onSleepDataSaved = {
                             // 수면 데이터 저장 후 다시 조회
                             com.hand.hand.api.Sleep.SleepManager.getTodaySleep(

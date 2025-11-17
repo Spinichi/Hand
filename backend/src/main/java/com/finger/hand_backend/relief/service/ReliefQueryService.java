@@ -152,5 +152,12 @@ public class ReliefQueryService {
             int currentPage,
             int pageSize
     ) {}
+
+    /**
+     * 오늘의 완료된 세션 개수 조회
+     */
+    public long getTodaySessionCount(Long userId) {
+        return logRepo.countTodayCompletedSessions(userId);
+    }
 }
 
