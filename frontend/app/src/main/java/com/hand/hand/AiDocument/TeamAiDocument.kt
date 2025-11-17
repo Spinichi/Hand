@@ -106,30 +106,38 @@ fun TeamAiDocumentScreen(
 
     LaunchedEffect(orgId, memberId) {
         isLoading = true
+
+        //.멤버 조회
         GroupManager.getGroupMembers(
             groupId = orgId,
             onSuccess = { members ->
-                val foundMember = members?.find { it.userId == memberId }
-                if (foundMember != null) {
-                    memberData = foundMember
-                } else {
-                    error = "멤버 정보를 찾을 수 없습니다."
-                }
+                memberData = members?.find { it.userId == memberId }
             },
             onError = { apiError ->
                 error = "데이터 로딩 실패: $apiError"
             }
         )
 
-        ManagerCounselingManager.getLatestCounseling(
+        // 2) 분석 요청 (POST /v1/manager/counseling/analyze)
+        val today = Date()
+        val endDate = dateFormat.format(today)
+        calendar.time = today
+        calendar.add(Calendar.DAY_OF_YEAR, -6)
+        val startDate = dateFormat.format(calendar.time)
+
+        Log.d("TeamAiDocument", "📡 분석 요청: $startDate ~ $endDate")
+
+        ManagerCounselingManager.analyzeCounseling(
             groupId = orgId,
             userId = memberId,
+            startDate = startDate,
+            endDate = endDate,
             onSuccess = { data ->
                 counselingData = data
                 isLoading = false
             },
             onError = { err ->
-                Log.w("TeamAiDocument", "상담 데이터 없음 또는 오류: $err")
+                Log.w("TeamAiDocument", "상담 분석 실패: $err")
                 counselingData = null // 상담 없으면 null
                 isLoading = false
             }
@@ -300,7 +308,7 @@ fun TeamAiDocumentScreen(
                             .padding(16.dp)
                     ) {
                         Text(
-                            text = counselingData?.counselingAdvice ?: "",
+                            text = counselingData?.advice  ?: "",
                             fontFamily = BrandFontFamily,
                             fontWeight = FontWeight.Bold,
                             fontSize = (screenHeight * 0.023f).value.sp,

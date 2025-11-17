@@ -41,7 +41,12 @@ object ManagerCounselingManager {
                     val code = response.code()
                     val err = response.errorBody()?.string()
                     Log.e(TAG, "getLatestCounseling http error: code=$code body=$err")
-                    onError("HTTP $code")
+
+                    if (code == 400 && err?.contains("상담 보고서를 찾을 수 없습니다.") == true) {
+                        onSuccess(null)
+                    } else { onError("HTTP $code") }
+
+
                 }
             }
 
@@ -51,4 +56,53 @@ object ManagerCounselingManager {
             }
         })
     }
+
+    fun analyzeCounseling(
+        groupId: Int,
+        userId: Int,
+        startDate: String,
+        endDate: String,
+        onSuccess: (ManagerCounselingData?) -> Unit,
+        onError: (String) -> Unit
+    ) {
+        val req = ManagerCounselingAnalyzeRequest(
+            groupId = groupId,
+            userId = userId,
+            startDate = startDate,
+            endDate = endDate
+        )
+
+        api().analyzeCounseling(req)
+            .enqueue(object : Callback<WrappedResponse<ManagerCounselingData>> {
+                override fun onResponse(
+                    call: Call<WrappedResponse<ManagerCounselingData>>,
+                    response: Response<WrappedResponse<ManagerCounselingData>>
+                ) {
+                    if (response.isSuccessful) {
+                        val body = response.body()
+                        if (body != null && body.success) {
+                            onSuccess(body.data)
+                        } else {
+                            val msg = body?.message ?: "Unknown server response"
+                            Log.e(TAG, "analyzeCounseling server error: $msg")
+                            onError(msg)
+                        }
+                    } else {
+                        val code = response.code()
+                        val err = response.errorBody()?.string()
+                        Log.e(TAG, "analyzeCounseling http error: code=$code body=$err")
+                        onError("HTTP $code")
+                    }
+                }
+
+                override fun onFailure(
+                    call: Call<WrappedResponse<ManagerCounselingData>>,
+                    t: Throwable
+                ) {
+                    Log.e(TAG, "analyzeCounseling failure", t)
+                    onError(t.message ?: "Network error")
+                }
+            })
+    }
+
 }

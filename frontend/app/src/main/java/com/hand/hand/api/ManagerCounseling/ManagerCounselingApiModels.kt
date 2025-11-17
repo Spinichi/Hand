@@ -34,3 +34,10 @@ data class WrappedResponse<T>(
     val data: T?,
     val message: String?
 )
+
+data class ManagerCounselingAnalyzeRequest(
+    val groupId: Int,
+    val userId: Int,
+    val startDate: String, // "2025-11-17"
+    val endDate: String    // "2025-11-17"
+)
