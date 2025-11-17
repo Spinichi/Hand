@@ -44,14 +44,15 @@ class CareHistoryActivity : ComponentActivity() {
 fun CareHistoryScreen(onBackClick: () -> Unit) {
 
     val config = LocalConfiguration.current
-    val screenHeight = config.screenHeightDp.dp
-    val screenWidth = config.screenWidthDp.dp
+    val screenHeightDp = config.screenHeightDp.takeIf { it > 0 } ?: 800
+    val screenWidthDp = config.screenWidthDp.takeIf { it > 0 } ?: 400
+    val screenHeight = screenHeightDp.dp
+    val screenWidth = screenWidthDp.dp
 
     // 🔹 API 데이터 상태
     var mostEffectiveName by remember { mutableStateOf("불러오는 중...") }
     var mostUsedName by remember { mutableStateOf("불러오는 중...") }
     var historyData by remember { mutableStateOf(listOf<CareHistoryDay>()) }
-
 
     // 🔹 API 호출
     LaunchedEffect(Unit) {
@@ -59,9 +60,9 @@ fun CareHistoryScreen(onBackClick: () -> Unit) {
             page = 0,
             size = 7,
             onSuccess = { response: CareHistoryResponse ->
-                mostEffectiveName = response.data.statistics.mostEffective.name
-                mostUsedName = response.data.statistics.mostUsed.name
-                historyData = response.data.history
+                mostEffectiveName = response.data.statistics.mostEffective?.name ?: "없음"
+                mostUsedName = response.data.statistics.mostUsed?.name ?: "없음"
+                historyData = response.data.history ?: emptyList()
                 Log.d(
                     "CareHistoryScreen",
                     "API 성공: mostEffective=$mostEffectiveName, mostUsed=$mostUsedName, history=${historyData.size}"
@@ -71,6 +72,7 @@ fun CareHistoryScreen(onBackClick: () -> Unit) {
                 Log.e("CareHistoryScreen", "API 실패", t)
                 mostEffectiveName = "불러오기 실패"
                 mostUsedName = "불러오기 실패"
+                historyData = emptyList()
             }
         )
     }
@@ -78,7 +80,7 @@ fun CareHistoryScreen(onBackClick: () -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.White) // 전체 배경을 흰색으로 변경
+            .background(Color.White)
     ) {
 
         // 🔥 헤더 Wave
@@ -117,7 +119,6 @@ fun CareHistoryScreen(onBackClick: () -> Unit) {
         )
 
         // 📌 메인 컨텐츠 (스크롤용)
-        // 🔥 스크롤 외 영역 (고정 영역)
         Column(
             modifier = Modifier
                 .align(Alignment.TopStart)
@@ -144,30 +145,38 @@ fun CareHistoryScreen(onBackClick: () -> Unit) {
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(20.dp)
             ) {
+                if (historyData.isEmpty()) {
+                    Text(
+                        text = "마음 완화 히스토리가 없습니다.",
+                        fontFamily = BrandFontFamily,
+                        fontSize = 18.sp,
+                        color = Color.Gray,
+                        modifier = Modifier.padding(16.dp)
+                    )
+                } else {
+                    historyData.forEach { dayHistory ->
+                        val dateParts = dayHistory.date?.split("-") ?: listOf("", "", "")
+                        val month = dateParts.getOrNull(1)?.takeIf { it.isNotEmpty() } ?: "00"
+                        val day = dateParts.getOrNull(2)?.takeIf { it.isNotEmpty() } ?: "00"
 
-                historyData.forEach { dayHistory: CareHistoryDay ->
-
-                    val dateParts = dayHistory.date.split("-")
-                    val month = dateParts.getOrNull(1) ?: ""
-                    val day = dateParts.getOrNull(2) ?: ""
-
-                    dayHistory.sessions.forEach { session: CareSession ->
-                        CalmHistoryItem(
-                            month = month,
-                            day = day,
-                            method = session.interventionName,
-                            score = session.reduction,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(start = 20.dp)
-                        )
+                        dayHistory.sessions?.forEach { session ->
+                            val safeScore = (session.reduction ?: 0).coerceIn(0, 100)
+                            CalmHistoryItem(
+                                month = month,
+                                day = day,
+                                method = session.interventionName ?: "알 수 없음",
+                                score = safeScore,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(start = 20.dp)
+                            )
+                        }
                     }
                 }
             }
         }
 
-
-        // 📌 FloatingCard: 화면 어디든 자유롭게 배치 가능
+        // 📌 FloatingCard
         FloatingRowCalmCards(
             card1Title = "효과가 좋은 완화법",
             card1Tag = mostEffectiveName,
@@ -178,28 +187,19 @@ fun CareHistoryScreen(onBackClick: () -> Unit) {
             spacing = 16.dp
         )
 
-        // 📌 FloatingIcon: 화면 어디든 자유롭게 배치 가능
-        val iconSize = screenHeight * 0.08f  // 아이콘 크기
+        // 📌 FloatingIcon
+        val iconSize = screenHeight * 0.08f
         FloatingIcon(
             resId = R.drawable.carehistory_icon,
-            x = screenWidth / 2 - iconSize / 2,  // 화면 가운데
-            y = screenHeight * 0.29f,           // 원하는 y 위치
-            size = iconSize                      // 아이콘 크기
+            x = screenWidth / 2 - iconSize / 2,
+            y = screenHeight * 0.29f,
+            size = iconSize
         )
     }
-
 }
-
 // -------------------------
-// 나머지 컴포저블은 이전 코드와 동일
-// BrandWaveHeader2, CalmHistoryItem, FloatingRowCalmCards, FloatingIcon 등
+// 하단 컴포저블
 // -------------------------
-
-
-
-// --------------------------------------------------
-// 🔹 하단 UI 컴포넌트 (기존 그대로)
-// --------------------------------------------------
 
 @Composable
 fun BrandWaveHeader2(
@@ -219,34 +219,32 @@ fun BrandWaveHeader2(
         contentAlignment = Alignment.TopCenter
     ) {
         Canvas(modifier = Modifier.matchParentSize()) {
-            val w = size.width
-            val edgeYpx = edgeY.toPx()
-            val centerYpx = centerY.toPx()
-            val oh = overhang.toPx()
+            if (size.width > 0 && size.height > 0) {
+                val w = size.width
+                val edgeYpx = edgeY.toPx()
+                val centerYpx = centerY.toPx()
+                val oh = overhang.toPx()
 
-            val p = Path().apply {
-                moveTo(-oh, 0f)
-                lineTo(w + oh, 0f)
-                lineTo(w + oh, edgeYpx)
-                quadraticBezierTo(
-                    w / 2, centerYpx,
-                    -oh, edgeYpx
-                )
-                close()
+                val p = Path().apply {
+                    moveTo(-oh, 0f)
+                    lineTo(w + oh, 0f)
+                    lineTo(w + oh, edgeYpx)
+                    quadraticBezierTo(
+                        w / 2, centerYpx,
+                        -oh, edgeYpx
+                    )
+                    close()
+                }
+
+                drawPath(p, fillColor)
             }
-
-            drawPath(p, fillColor)
         }
         content()
     }
 }
 
 @Composable
-fun CalmItemCard(
-    title: String,
-    tagText: String,
-    modifier: Modifier = Modifier
-) {
+fun CalmItemCard(title: String, tagText: String, modifier: Modifier = Modifier) {
     Box(
         modifier = modifier
             .background(Color.White, shape = RoundedCornerShape(20.dp))
@@ -303,12 +301,7 @@ fun FloatingRowCalmCards(
 }
 
 @Composable
-fun FloatingIcon(
-    resId: Int,
-    x: Dp,
-    y: Dp,
-    size: Dp
-) {
+fun FloatingIcon(resId: Int, x: Dp, y: Dp, size: Dp) {
     Box(modifier = Modifier.fillMaxSize()) {
         Image(
             painter = painterResource(id = resId),
@@ -328,8 +321,8 @@ fun CalmHistoryItem(
     score: Int,
     modifier: Modifier = Modifier
 ) {
-    val screenHeight = LocalConfiguration.current.screenHeightDp.dp
-    val screenWidth = LocalConfiguration.current.screenWidthDp.dp
+    val screenHeight = LocalConfiguration.current.screenHeightDp.takeIf { it > 0 }?.dp ?: 800.dp
+    val screenWidth = LocalConfiguration.current.screenWidthDp.takeIf { it > 0 }?.dp ?: 400.dp
 
     Row(
         modifier = modifier
@@ -382,14 +375,16 @@ fun CalmHistoryItem(
             contentAlignment = Alignment.Center
         ) {
             Canvas(modifier = Modifier.fillMaxSize()) {
-                drawCircle(color = Color(0xFFDAE3C3))
-                val sweep = 360 * (score / 100f)
-                drawArc(
-                    color = Color(0xFF9BB167),
-                    startAngle = -90f,
-                    sweepAngle = sweep,
-                    useCenter = true
-                )
+                if (size.width > 0 && size.height > 0) {
+                    drawCircle(color = Color(0xFFDAE3C3))
+                    val sweep = 360 * (score / 100f)
+                    drawArc(
+                        color = Color(0xFF9BB167),
+                        startAngle = -90f,
+                        sweepAngle = sweep,
+                        useCenter = true
+                    )
+                }
             }
 
             Box(
