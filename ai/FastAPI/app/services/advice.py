@@ -83,6 +83,9 @@ async def retrieve_similar_cases(query: str, top_k: int = 2):
         print(f"❌ 상담 검색 중 오류: {e}")
         return [], []
 
+    finally:
+        client.close()
+
 # 관리자 조언 생성 함수
 async def manager_advice(report: str, summary: str):
     single, multi = await retrieve_similar_cases(summary)
@@ -114,7 +117,6 @@ async def manager_advice(report: str, summary: str):
         제안은 최대 3개까지만 제공해주세요.
         상태 요약을 짧고 간략하게 핵심만 뽑아주세요.
 
-        당신의 답변 : 
         
         상태 요약 : 요즘 화재 출동이 많아지면서 스트레스가 누적되고, 수면 부족까지 겹쳐 많이 힘드실 것 같습니다. 누구라도 이런 상황이 지속되면 집중력이 떨어질 수밖에 없습니다.
         현재 본인의 상태를 스스로 인지하고 계신 것은 정말 중요한 부분이라고 생각합니다. 업무 특성상 긴장 상태가 길게 이어지면 몸과 마음 모두 지치기 쉽기  때문에, 작은 변화라도 시도해보는 것이 필요합니다.
@@ -199,7 +201,6 @@ async def private_advice(report: str, summary: str):
         아래의 형식을 참고하여 비슷한 형태로 생성하되, 아래의 형식의 내용은 참고하지 마세요.
         제안은 최대 3개까지만 짧게 제공해주세요.
 
-        당신의 답변 : 
         
         제안:
         1. 짧은 휴식이라도 챙기기
@@ -242,6 +243,7 @@ async def private_advice(report: str, summary: str):
             result = response.json()
             
         advice = result["choices"][0]["message"]["content"].strip()
+        client.close()
         return advice
 
     except Exception as e:
@@ -280,7 +282,6 @@ async def daily_advice(text: str):
         "Content-Type": "application/json",
         "Authorization": f"Bearer {GMS_KEY}",
     }
-
     messages = [
         {
             "role": "system",
@@ -306,6 +307,7 @@ async def daily_advice(text: str):
             result = response.json()
 
         advice = result["choices"][0]["message"]["content"].strip()
+        client.close()
         return advice
 
     except Exception as e:
