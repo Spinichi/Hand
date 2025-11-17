@@ -68,7 +68,13 @@ public class NotificationService {
         // 기존 토큰이 있는지 확인
         deviceTokenRepository.findByDeviceToken(token).ifPresentOrElse(
                 existingToken -> {
-                    // 토큰이 이미 존재하면 lastUsedAt만 업데이트
+                    // 토큰이 이미 존재하면 userId와 lastUsedAt 업데이트 (다른 사용자가 같은 디바이스 사용 가능)
+                    if (!existingToken.getUserId().equals(userId)) {
+                        log.warn("Token {} ownership changed: {} -> {}",
+                                token.substring(0, Math.min(20, token.length())),
+                                existingToken.getUserId(), userId);
+                    }
+                    existingToken.setUserId(userId);  // 중요: userId 업데이트
                     existingToken.setLastUsedAt(LocalDateTime.now());
                     existingToken.setIsActive(true);
                     deviceTokenRepository.save(existingToken);
@@ -158,13 +164,28 @@ public class NotificationService {
 
         // 3. FCM 전송 (data를 String Map으로 변환)
         Map<String, String> fcmData = convertToStringMap(data);
-        for (DeviceToken token : tokens) {
-            boolean success = fcmService.sendToToken(token.getDeviceToken(), title, body, fcmData);
 
+        // 토큰이 1개면 단일 전송, 여러 개면 멀티캐스트
+        if (tokens.size() == 1) {
+            String tokenStr = tokens.get(0).getDeviceToken();
+            boolean success = fcmService.sendToToken(tokenStr, title, body, fcmData);
             if (!success) {
-                // 전송 실패 로그만 남기고 토큰은 유지 (서버 문제일 수 있음)
-                log.warn("Failed to send to token (token still active): {}", token.getDeviceToken());
+                log.warn("Failed to send to token (token still active): {}", tokenStr);
             }
+        } else {
+            // 멀티캐스트 전송 (효율적)
+            List<String> tokenStrings = tokens.stream()
+                    .map(DeviceToken::getDeviceToken)
+                    .toList();
+
+            Map<String, Boolean> results = fcmService.sendToTokens(tokenStrings, title, body, fcmData);
+
+            // 실패한 토큰 로그 기록
+            results.forEach((token, success) -> {
+                if (!success) {
+                    log.warn("Failed to send to token (token still active): {}", token);
+                }
+            });
         }
     }
 
