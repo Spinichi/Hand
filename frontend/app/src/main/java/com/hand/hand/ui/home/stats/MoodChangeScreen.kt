@@ -127,15 +127,17 @@ fun StressLineChart(
         // 최고값 빨간 점(최고 곡선 기준)
         if (maxScores.isNotEmpty()) {
             val maxScore = maxScores.maxOrNull() ?: 0
-            maxScores.forEachIndexed { index, score ->
-                if (score == maxScore) {
-                    val x = index * widthPerPoint
-                    val y = topPadding + (drawableHeight - score * heightScale)
-                    drawCircle(
-                        color = Color(0xFFEF8834),
-                        radius = 20f,
-                        center = Offset(x, y)
-                    )
+            if (maxScore > 0){
+                maxScores.forEachIndexed { index, score ->
+                    if (score == maxScore) {
+                        val x = index * widthPerPoint
+                        val y = topPadding + (drawableHeight - score * heightScale)
+                        drawCircle(
+                            color = Color(0xFFEF8834),
+                            radius = 20f,
+                            center = Offset(x, y)
+                        )
+                    }
                 }
             }
         }
@@ -369,46 +371,47 @@ private fun MoodChangeHistorySection(
                         }
 
                         Spacer(modifier = Modifier.height(smallSpacer))
+                        if (maxScore > 0) {
+                            // 작은 카드들 (동일 최고점이 여러개면 여러개 생성)
+                            maxIndices.forEachIndexed { idx, index ->
+                                val hourText = "${index}시"
 
-                        // 작은 카드들 (동일 최고점이 여러개면 여러개 생성)
-                        maxIndices.forEachIndexed { idx, index ->
-                            val hourText = "${index}시"
-
-                            Card(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(screenHeight * 0.055f), // 기존 41.dp 정도에 대응
-                                colors = CardDefaults.cardColors(containerColor = Color.White),
-                                shape = RoundedCornerShape(screenHeight * 0.02f),
-                                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-                            ) {
-                                Row(
+                                Card(
                                     modifier = Modifier
-                                        .fillMaxSize()
-                                        .padding(horizontal = innerHorizontalPadding * 0.5f),
-                                    verticalAlignment = Alignment.CenterVertically
+                                        .fillMaxWidth()
+                                        .height(screenHeight * 0.055f), // 기존 41.dp 정도에 대응
+                                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                                    shape = RoundedCornerShape(screenHeight * 0.02f),
+                                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
                                 ) {
-                                    Text(
-                                        text = "${maxScore}점 - ",
-                                        color = Brown80,
-                                        fontFamily = BrandFontFamily,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = bigCardTextFont,
-                                    )
-                                    Spacer(modifier = Modifier.width(screenHeight * 0.01f))
-                                    Text(
-                                        text = hourText,
-                                        color = Brown80,
-                                        fontFamily = BrandFontFamily,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = bigCardTextFont,
-                                    )
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .padding(horizontal = innerHorizontalPadding * 0.5f),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            text = "${maxScore}점 - ",
+                                            color = Brown80,
+                                            fontFamily = BrandFontFamily,
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = bigCardTextFont,
+                                        )
+                                        Spacer(modifier = Modifier.width(screenHeight * 0.01f))
+                                        Text(
+                                            text = hourText,
+                                            color = Brown80,
+                                            fontFamily = BrandFontFamily,
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = bigCardTextFont,
+                                        )
+                                    }
                                 }
-                            }
 
-                            // 작은 카드 간 간격(반응형)
-                            if (idx != maxIndices.lastIndex) {
-                                Spacer(modifier = Modifier.height(betweenCards))
+                                // 작은 카드 간 간격(반응형)
+                                if (idx != maxIndices.lastIndex) {
+                                    Spacer(modifier = Modifier.height(betweenCards))
+                                }
                             }
                         }
                     }
