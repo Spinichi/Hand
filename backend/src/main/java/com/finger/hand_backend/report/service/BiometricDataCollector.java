@@ -63,76 +63,116 @@ public class BiometricDataCollector {
 
     /**
      * 사용자 베이스라인 조회
+     * - 데이터가 없으면 기본값으로 채워서 반환 (FastAPI 422 에러 방지)
      */
     private Map<String, Object> getUserBaseline(Long userId) {
         Optional<Baseline> baselineOpt = baselineRepository.findByUserIdAndIsActiveTrue(userId);
 
         if (baselineOpt.isEmpty()) {
-            log.warn("No active baseline found for user {}", userId);
-            return new HashMap<>();
+            log.warn("No active baseline found for user {}, returning default values", userId);
+            return getDefaultBaseline();
         }
 
         Baseline baseline = baselineOpt.get();
         Map<String, Object> result = new HashMap<>();
 
-        result.put("version", baseline.getVersion());
-        result.put("measurementCount", baseline.getMeasurementCount());
-        result.put("dataStartDate", baseline.getDataStartDate() != null ? baseline.getDataStartDate().toString() : null);
-        result.put("dataEndDate", baseline.getDataEndDate() != null ? baseline.getDataEndDate().toString() : null);
+        result.put("version", baseline.getVersion() != null ? baseline.getVersion() : 0);
+        result.put("measurementCount", baseline.getMeasurementCount() != null ? baseline.getMeasurementCount() : 0);
+        result.put("dataStartDate", baseline.getDataStartDate() != null ? baseline.getDataStartDate().toString() : "");
+        result.put("dataEndDate", baseline.getDataEndDate() != null ? baseline.getDataEndDate().toString() : "");
 
         // HRV SDNN (FastAPI 스펙: min, max, avg)
         Map<String, Object> hrvSdnn = new HashMap<>();
-        hrvSdnn.put("min", baseline.getHrvSdnnMin());
-        hrvSdnn.put("max", baseline.getHrvSdnnMax());
-        hrvSdnn.put("avg", baseline.getHrvSdnnMean());  // mean -> avg
+        hrvSdnn.put("min", baseline.getHrvSdnnMin() != null ? baseline.getHrvSdnnMin() : 0.0);
+        hrvSdnn.put("max", baseline.getHrvSdnnMax() != null ? baseline.getHrvSdnnMax() : 0.0);
+        hrvSdnn.put("avg", baseline.getHrvSdnnMean() != null ? baseline.getHrvSdnnMean() : 0.0);
         result.put("hrvSdnn", hrvSdnn);
 
         // HRV RMSSD (FastAPI 스펙: min, max, avg)
         Map<String, Object> hrvRmssd = new HashMap<>();
-        hrvRmssd.put("min", baseline.getHrvRmssdMin());
-        hrvRmssd.put("max", baseline.getHrvRmssdMax());
-        hrvRmssd.put("avg", baseline.getHrvRmssdMean());  // mean -> avg
+        hrvRmssd.put("min", baseline.getHrvRmssdMin() != null ? baseline.getHrvRmssdMin() : 0.0);
+        hrvRmssd.put("max", baseline.getHrvRmssdMax() != null ? baseline.getHrvRmssdMax() : 0.0);
+        hrvRmssd.put("avg", baseline.getHrvRmssdMean() != null ? baseline.getHrvRmssdMean() : 0.0);
         result.put("hrvRmssd", hrvRmssd);
 
         // 심박수 (FastAPI 스펙: min, max, avg)
         Map<String, Object> heartRate = new HashMap<>();
-        heartRate.put("min", baseline.getHeartRateMin());
-        heartRate.put("max", baseline.getHeartRateMax());
-        heartRate.put("avg", baseline.getHeartRateMean());  // mean -> avg
+        heartRate.put("min", baseline.getHeartRateMin() != null ? baseline.getHeartRateMin() : 0.0);
+        heartRate.put("max", baseline.getHeartRateMax() != null ? baseline.getHeartRateMax() : 0.0);
+        heartRate.put("avg", baseline.getHeartRateMean() != null ? baseline.getHeartRateMean() : 0.0);
         result.put("heartRate", heartRate);
 
         // 체온 (FastAPI 스펙: min, max, avg)
         Map<String, Object> objectTemp = new HashMap<>();
-        objectTemp.put("min", baseline.getObjectTempMin());
-        objectTemp.put("max", baseline.getObjectTempMax());
-        objectTemp.put("avg", baseline.getObjectTempMean());  // mean -> avg
+        objectTemp.put("min", baseline.getObjectTempMin() != null ? baseline.getObjectTempMin() : 0.0);
+        objectTemp.put("max", baseline.getObjectTempMax() != null ? baseline.getObjectTempMax() : 0.0);
+        objectTemp.put("avg", baseline.getObjectTempMean() != null ? baseline.getObjectTempMean() : 0.0);
         result.put("objectTemp", objectTemp);
 
         return result;
     }
 
     /**
+     * 기본 Baseline 값 반환 (데이터가 없을 때)
+     */
+    private Map<String, Object> getDefaultBaseline() {
+        Map<String, Object> result = new HashMap<>();
+        result.put("version", 0);
+        result.put("measurementCount", 0);
+        result.put("dataStartDate", "");
+        result.put("dataEndDate", "");
+
+        Map<String, Object> defaultStats = new HashMap<>();
+        defaultStats.put("min", 0.0);
+        defaultStats.put("max", 0.0);
+        defaultStats.put("avg", 0.0);
+
+        result.put("hrvSdnn", new HashMap<>(defaultStats));
+        result.put("hrvRmssd", new HashMap<>(defaultStats));
+        result.put("heartRate", new HashMap<>(defaultStats));
+        result.put("objectTemp", new HashMap<>(defaultStats));
+
+        return result;
+    }
+
+    /**
      * 사용자 기본 정보 조회
+     * - 데이터가 없거나 null이면 기본값으로 채워서 반환 (FastAPI 422 에러 방지)
      */
     private Map<String, Object> getUserInfo(Long userId) {
         Optional<IndividualUser> userOpt = individualUserRepository.findByUserId(userId);
 
         if (userOpt.isEmpty()) {
-            log.warn("No individual user info found for user {}", userId);
-            return new HashMap<>();
+            log.warn("No individual user info found for user {}, returning default values", userId);
+            return getDefaultUserInfo();
         }
 
         IndividualUser user = userOpt.get();
         Map<String, Object> result = new HashMap<>();
 
-        result.put("age", user.getAge());
-        result.put("gender", user.getGender().name());
-        result.put("job", user.getJob());
-        result.put("height", user.getHeight());
-        result.put("weight", user.getWeight());
-        result.put("disease", user.getDisease());
-        result.put("residenceType", user.getResidenceType());
+        result.put("age", user.getAge() != null ? user.getAge() : 0);
+        result.put("gender", user.getGender() != null ? user.getGender().name() : "");
+        result.put("job", user.getJob() != null ? user.getJob() : "");
+        result.put("height", user.getHeight() != null ? user.getHeight() : 0);
+        result.put("weight", user.getWeight() != null ? user.getWeight() : 0);
+        result.put("disease", user.getDisease() != null ? user.getDisease() : "");
+        result.put("residenceType", user.getResidenceType() != null ? user.getResidenceType() : "");
 
+        return result;
+    }
+
+    /**
+     * 기본 사용자 정보 반환 (데이터가 없을 때)
+     */
+    private Map<String, Object> getDefaultUserInfo() {
+        Map<String, Object> result = new HashMap<>();
+        result.put("age", 0);
+        result.put("gender", "");
+        result.put("job", "");
+        result.put("height", 0);
+        result.put("weight", 0);
+        result.put("disease", "");
+        result.put("residenceType", "");
         return result;
     }
 
