@@ -99,6 +99,7 @@ fun AdminMembersSection(
                     val q = searchQuery.trim()
                     q.isEmpty() || m.name.contains(q, ignoreCase = true)
                 }
+                .sortedBy { it.avgScore } // <- 여기서 낮은 점수 순으로 정렬
                 .toList()
         }
 
