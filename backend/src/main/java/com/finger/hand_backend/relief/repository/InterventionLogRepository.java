@@ -48,7 +48,7 @@ public interface InterventionLogRepository extends JpaRepository<InterventionLog
         FROM InterventionLog il
         WHERE il.userId = :userId
         AND DATE(il.startedAt) = CURRENT_DATE
-        AND il.endedAt IS NOT NULL
+        AND il.afterStress IS NOT NULL
         """)
     long countTodayCompletedSessions(Long userId);
 

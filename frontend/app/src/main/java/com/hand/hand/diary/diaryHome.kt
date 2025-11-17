@@ -181,11 +181,30 @@ fun DiaryHomeScreen(onBackClick: () -> Unit) {
                         intent.putExtra("selectedDate", selectedDateStr)
                         context.startActivity(intent)
                     } else {
-                        // 해당 날짜 일기 상세 보기
-                        val intent = Intent(context, DiaryDetailActivity::class.java)
-                        intent.putExtra("sessionId", diaryItem.sessionId.toLong())
-                        Log.i("DiaryHome", "→ 전달 sessionId = ${diaryItem.sessionId}")
-                        context.startActivity(intent)
+                        // status에 따라 분기
+                        when (diaryItem.status) {
+                            "IN_PROGRESS" -> {
+                                // 작성 중 → 작성 화면으로 이동 (이어서 작성)
+                                val intent = Intent(context, DiaryWriteActivity::class.java)
+                                intent.putExtra("selectedDate", selectedDateStr)
+                                Log.i("DiaryHome", "→ 작성 중인 다이어리, Write 화면으로 이동")
+                                context.startActivity(intent)
+                            }
+                            "COMPLETED" -> {
+                                // 완료 → 상세 보기
+                                val intent = Intent(context, DiaryDetailActivity::class.java)
+                                intent.putExtra("sessionId", diaryItem.sessionId.toLong())
+                                Log.i("DiaryHome", "→ 완료된 다이어리, 상세 화면으로 이동 (sessionId = ${diaryItem.sessionId})")
+                                context.startActivity(intent)
+                            }
+                            else -> {
+                                // 기본값 (혹시 모를 상태) → 상세 보기
+                                val intent = Intent(context, DiaryDetailActivity::class.java)
+                                intent.putExtra("sessionId", diaryItem.sessionId.toLong())
+                                Log.i("DiaryHome", "→ 알 수 없는 상태(${diaryItem.status}), 상세 화면으로 이동")
+                                context.startActivity(intent)
+                            }
+                        }
                     }
                 }
             )

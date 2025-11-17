@@ -15,9 +15,12 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import com.hand.hand.ui.admin.AdminHomeActivity
 import com.hand.hand.ui.home.dialog.HomeLoginDialog
 import com.hand.hand.ui.home.header.HomeGreetingHeader
@@ -191,6 +194,46 @@ fun HomeScreen() {
                 android.util.Log.e("HomeScreen", "❌ 세션 개수 조회 실패: ${error.message}")
             }
         )
+    }
+
+    // ✅ 화면 복귀 시 다이어리 상태와 세션 개수 재조회
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                // 다이어리 상태 재조회
+                val today = SimpleDateFormat("yyyy-MM-dd", Locale.KOREA).format(Date())
+                com.hand.hand.api.Diary.DiaryManager.getMyDiaryList(
+                    startDate = today,
+                    endDate = today,
+                    page = 0,
+                    size = 1,
+                    onSuccess = { items ->
+                        diaryStatus = when {
+                            items.isEmpty() -> "작성 전"
+                            items.first().status == "COMPLETED" -> "작성 완료"
+                            items.first().status == "IN_PROGRESS" -> "작성 중"
+                            else -> "작성 전"
+                        }
+                        android.util.Log.d("HomeScreen", "🔄 화면 복귀 - 다이어리 상태: $diaryStatus")
+                    },
+                    onFailure = { }
+                )
+
+                // 마음 완화 세션 개수 재조회
+                com.hand.hand.api.Relief.ReliefManager.getTodaySessionCount(
+                    onSuccess = { count ->
+                        todaySessionCount = count.toInt()
+                        android.util.Log.d("HomeScreen", "🔄 화면 복귀 - 세션 개수: $count")
+                    },
+                    onFailure = { }
+                )
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
     }
 
     var organizations by remember { mutableStateOf<List<Organization>>(emptyList()) }

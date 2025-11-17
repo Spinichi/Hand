@@ -132,7 +132,9 @@ fun MyRecordsSection(
                         context.startActivity(intent)
                     },
                 shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFFEF8834))
+                colors = CardDefaults.cardColors(
+                    containerColor = if (exists) Color(0xFF6B9BD1) else Color(0xFFEF8834)  // 작성 완료: 파란색, 작성 전: 주황색
+                )
             ) {
                 Column(
                     modifier = Modifier
@@ -168,13 +170,33 @@ fun MyRecordsSection(
                         Spacer(Modifier.weight(1f))
 
                         // 🔥 exists 값에 따라 표시되는 부분
-                        Text(
-                            text = if (exists) "${riskScore?.toInt()}점" else "다이어리 작성 전!",
-                            color = Color.White,
-                            fontSize = if (exists) 30.sp else 20.sp,  // 점수면 24sp, 없으면 16sp
-                            fontWeight = FontWeight.Bold,
-                            fontFamily = BrandFontFamily
-                        )
+                        if (exists) {
+                            // 작성 완료: "오늘의 점수" + 점수
+                            Text(
+                                text = "오늘의 점수",
+                                color = Color.White.copy(alpha = 0.9f),
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Medium,
+                                fontFamily = BrandFontFamily
+                            )
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                text = "${riskScore?.toInt()}점",
+                                color = Color.White,
+                                fontSize = 30.sp,
+                                fontWeight = FontWeight.Bold,
+                                fontFamily = BrandFontFamily
+                            )
+                        } else {
+                            // 작성 전
+                            Text(
+                                text = "다이어리 작성 전!",
+                                color = Color.White,
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.Bold,
+                                fontFamily = BrandFontFamily
+                            )
+                        }
 
                         Spacer(Modifier.weight(1f))
                     }
