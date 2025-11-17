@@ -48,10 +48,19 @@ def connect_weaviate_with_retry(max_retries=5, delay=2):
 client = connect_weaviate_with_retry()
 
 # 유사 상담내용 검색
-async def retrieve_similar_cases(query: str, top_k: int = 2):
+async def retrieve_similar_cases(query: str, info: dict, top_k: int = 2):
     try:
+        prompt = f"""
+        {query}
+        사용자 정보
+        나이 : {info["age"]}
+        직업 : {info["job"]}
+        질병력 : {info['disease']}
+        성별 : {info['gender']}
+        거주 형태 : {info['family']}
+        """
         # 쿼리 임베딩 생성
-        query_vector = embed(query)
+        query_vector = embed(prompt)
         
         # 뭔가 오류가 터지는데 뭔지 몰라서 찍어보는 것.
         if query_vector is None or not isinstance(query_vector, list):
@@ -59,16 +68,20 @@ async def retrieve_similar_cases(query: str, top_k: int = 2):
 
         # 단일 상담 검색
         single_col = client.collections.get("SingleCounsel")
-        single_res = single_col.query.near_vector(
-            near_vector=query_vector,
+        single_res = single_col.query.hybrid(
+            query=prompt,
+            vector=query_vector,
+            alpha=0.5,
             limit=top_k,
             return_properties=["output"],
         )
 
         # 멀티턴 상담 검색
         multi_coll = client.collections.get("MultiCounsel")
-        multi_res = multi_coll.query.near_vector(
-            near_vector=query_vector,
+        multi_res = multi_coll.query.hybrid(
+            query=prompt,
+            vector=query_vector,
+            alpha = 0.5,
             limit=top_k,
             return_properties=["counselor"],
         )
@@ -87,8 +100,8 @@ async def retrieve_similar_cases(query: str, top_k: int = 2):
         client.close()
 
 # 관리자 조언 생성 함수
-async def manager_advice(report: str, summary: str):
-    single, multi = await retrieve_similar_cases(summary)
+async def manager_advice(report: str, summary: str, info: dict):
+    single, multi = await retrieve_similar_cases(summary, info)
     
     single_text = "\n".join([f"- {s}" for s in single])
     multi_text = "\n".join([f"- {m}" for m in multi])
@@ -173,8 +186,8 @@ async def manager_advice(report: str, summary: str):
 
 
 # 개인용 조언 생성 함수
-async def private_advice(report: str, summary: str):
-    single, multi = await retrieve_similar_cases(summary)
+async def private_advice(report: str, summary: str, info: dict):
+    single, multi = await retrieve_similar_cases(summary, info=info)
     single_text = "\n".join([f"- {s}" for s in single]) if single else "유사 단일 상담 없음"
     multi_text = "\n".join([f"- {m}" for m in multi]) if multi else "유사 멀티 상담 없음"
     
