@@ -28,6 +28,11 @@ fun MyRecordsSection(
     moodChangeCount: Int,
     diaryDoneCount: Int = 31,
     diaryTotal: Int = 365,
+
+    // 🔥 추가된 부분
+    exists: Boolean,
+    riskScore: Double?,
+
     onMoodChangeClick: () -> Unit = {}
 ) {
     val context = LocalContext.current
@@ -161,13 +166,16 @@ fun MyRecordsSection(
                         verticalArrangement = Arrangement.SpaceBetween
                     ) {
                         Spacer(Modifier.weight(1f))
+
+                        // 🔥 exists 값에 따라 표시되는 부분
                         Text(
-                            text = "다이어리 \n작성하기!",
+                            text = if (exists) "${riskScore?.toInt()}점" else "다이어리 작성 전!",
                             color = Color.White,
-                            fontSize = 24.sp,
+                            fontSize = if (exists) 30.sp else 20.sp,  // 점수면 24sp, 없으면 16sp
                             fontWeight = FontWeight.Bold,
                             fontFamily = BrandFontFamily
                         )
+
                         Spacer(Modifier.weight(1f))
                     }
 
