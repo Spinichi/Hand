@@ -8,10 +8,12 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Text
@@ -36,9 +38,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import com.hand.hand.R
 import com.hand.hand.carehistory.CareHistoryActivity
 import com.hand.hand.ui.theme.*
+import java.util.Calendar
 import kotlin.math.abs
 import kotlin.math.atan2
 import kotlin.math.cos
@@ -50,15 +54,15 @@ import kotlin.math.min
 @Composable
 fun MyHealthInfoSection(
     horizontalPadding: Dp = 0.dp,
-    soothingHours: Float = 2.5f,
     stressScore: Int = 0,
     sleepMinutes: Int = 0,
     hasSleepData: Boolean = false,
+    todaySessionCount: Int = 0,   // ★ 오늘 마음 완화 실행 횟수 (API에서 전달)
     onSleepDataSaved: () -> Unit = {}
 ) {
     var showSleepDialog by remember { mutableStateOf(false) }
 
-    // 분 → 시간 + 분 파싱
+    // 수면 분을 시/분으로 변환
     val sleepHours = sleepMinutes / 60
     val sleepMins = sleepMinutes % 60
 
@@ -69,17 +73,19 @@ fun MyHealthInfoSection(
         Text(
             "내 건강 정보",
             fontWeight = FontWeight.Bold,
+            fontFamily = BrandFontFamily,
             fontSize = 16.sp,
-            color = Brown80,
-            fontFamily = BrandFontFamily
+            color = Brown80
         )
 
-        // 마음 완화 기록
+        // ────────────────────────────────
+        // ★ 마음 완화 기록 카드
+        // ────────────────────────────────
         val context = LocalContext.current
         HealthInfoCardRes(
             iconRes = R.drawable.ic_heath_calander,
             title = "마음 완화 기록",
-            value = "${format1d(soothingHours)}h / Today",
+            value = "${todaySessionCount}회 / Today",   // ★ 오늘 실행 횟수 표시
             iconBg = Green10,
             iconSize = 32.dp,
             trailing = {
@@ -92,13 +98,14 @@ fun MyHealthInfoSection(
                 )
             },
             modifier = Modifier.clickable {
-                // 클릭 시 CareHistoryActivity로 이동
                 val intent = Intent(context, CareHistoryActivity::class.java)
                 context.startActivity(intent)
             }
         )
 
-        // 오늘의 수면
+        // ────────────────────────────────
+        // ★ 오늘의 수면 카드
+        // ────────────────────────────────
         val sleepText = if (hasSleepData) {
             if (sleepMins > 0) {
                 "${sleepHours}시간 ${sleepMins}분 / Today"
@@ -108,6 +115,7 @@ fun MyHealthInfoSection(
         } else {
             "오늘의 수면 시간을 입력해주세요!"
         }
+
         HealthInfoCardRes(
             iconRes = R.drawable.ic_heath_sleep,
             title = "오늘의 수면",
@@ -128,12 +136,15 @@ fun MyHealthInfoSection(
                     )
                 }
             },
-            modifier = Modifier.clickable { showSleepDialog = true } // 클릭 시 모달
+            modifier = Modifier.clickable { showSleepDialog = true }
         )
 
-        // 스트레스 레벨
+        // ────────────────────────────────
+        // ★ 스트레스 레벨 카드
+        // ────────────────────────────────
         val level = com.hand.hand.ui.model.moodFromScore(stressScore).level
         val caption = com.hand.hand.ui.model.moodCaption(stressScore)
+
         StressInfoCard(
             iconRes = R.drawable.ic_heath_stress,
             title = "현재 스트레스 레벨",
@@ -143,9 +154,11 @@ fun MyHealthInfoSection(
         )
     }
 
-    // 수면 모달
+    // ───────────────────────────────────────
+    // ★ 수면 입력 다이얼로그
+    // ───────────────────────────────────────
     if (showSleepDialog) {
-        // 수면 시간 상태
+
         var sleepStartHour by remember { mutableStateOf(22) }
         var sleepStartMinute by remember { mutableStateOf(0) }
         var sleepStartAmPm by remember { mutableStateOf("PM") }
@@ -154,27 +167,33 @@ fun MyHealthInfoSection(
         var sleepEndMinute by remember { mutableStateOf(0) }
         var sleepEndAmPm by remember { mutableStateOf("AM") }
 
-        androidx.compose.ui.window.Dialog(
+        Dialog(
             onDismissRequest = { showSleepDialog = false }
         ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                // 모달 내용
+            Box(modifier = Modifier.fillMaxSize()) {
+
+                // 바깥 클릭 → 닫힘
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clickable(
+                            indication = null,
+                            interactionSource = remember { MutableInteractionSource() }
+                        ) { showSleepDialog = false }
+                )
+
+                // 중앙 모달 카드
                 Card(
                     shape = RoundedCornerShape(20.dp),
                     colors = CardDefaults.cardColors(containerColor = Color(0xFFF7F4F2)),
                     modifier = Modifier
+                        .align(Alignment.Center)
                         .fillMaxWidth(0.9f)
                         .wrapContentHeight()
-                        .clickable(enabled = false) {} // Card 안쪽 클릭은 닫지 않음
+                        .wrapContentSize(Alignment.Center)
                 ) {
                     Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(24.dp),
+                        modifier = Modifier.padding(24.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(32.dp)
                     ) {
@@ -191,10 +210,10 @@ fun MyHealthInfoSection(
                             initialHour = sleepStartHour,
                             initialMinute = sleepStartMinute,
                             initialAmPm = sleepStartAmPm
-                        ) { hour, minute, amPm ->
-                            sleepStartHour = hour
-                            sleepStartMinute = minute
-                            sleepStartAmPm = amPm
+                        ) { h, m, ap ->
+                            sleepStartHour = h
+                            sleepStartMinute = m
+                            sleepStartAmPm = ap
                         }
 
                         SleepWheelPicker(
@@ -202,87 +221,62 @@ fun MyHealthInfoSection(
                             initialHour = sleepEndHour,
                             initialMinute = sleepEndMinute,
                             initialAmPm = sleepEndAmPm
-                        ) { hour, minute, amPm ->
-                            sleepEndHour = hour
-                            sleepEndMinute = minute
-                            sleepEndAmPm = amPm
+                        ) { h, m, ap ->
+                            sleepEndHour = h
+                            sleepEndMinute = m
+                            sleepEndAmPm = ap
                         }
                     }
                 }
 
-                // 모달 바깥쪽 아래 저장 버튼
+                // 저장 버튼
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(bottom = 100.dp),
                     contentAlignment = Alignment.BottomCenter
                 ) {
-                    androidx.compose.material3.Button(
+                    Button(
                         onClick = {
-                            // ⭐ 12시간 형식 → 24시간 형식 변환
-                            val startHour24 = if (sleepStartAmPm == "PM" && sleepStartHour != 12) {
-                                sleepStartHour + 12
-                            } else if (sleepStartAmPm == "AM" && sleepStartHour == 12) {
-                                0
-                            } else {
-                                sleepStartHour
-                            }
+                            // 모달 먼저 닫기
+                            showSleepDialog = false
 
-                            val endHour24 = if (sleepEndAmPm == "PM" && sleepEndHour != 12) {
-                                sleepEndHour + 12
-                            } else if (sleepEndAmPm == "AM" && sleepEndHour == 12) {
-                                0
-                            } else {
-                                sleepEndHour
-                            }
+                            val start24 = convertTo24(sleepStartHour, sleepStartAmPm)
+                            val end24 = convertTo24(sleepEndHour, sleepEndAmPm)
 
-                            // ⭐ ISO-8601 형식으로 변환
-                            val now = java.util.Calendar.getInstance()
+                            val now = Calendar.getInstance()
+                            val startCal = now.clone() as Calendar
+                            val endCal = now.clone() as Calendar
 
-                            val sleepStartCal = now.clone() as java.util.Calendar
-                            val sleepEndCal = now.clone() as java.util.Calendar
+                            val startMin = start24 * 60 + sleepStartMinute
+                            val endMin = end24 * 60 + sleepEndMinute
 
-                            // 잠든 시간 > 일어난 시간이면 자정을 넘긴 것 (예: 22시 > 7시)
-                            val startTimeInMinutes = startHour24 * 60 + sleepStartMinute
-                            val endTimeInMinutes = endHour24 * 60 + sleepEndMinute
-                            val crossedMidnight = startTimeInMinutes > endTimeInMinutes
-
-                            if (crossedMidnight) {
-                                // 자정 넘김: 어제 자고 오늘 일어남
-                                sleepStartCal.add(java.util.Calendar.DATE, -1)
-                            }
-                            // else: 자정 안 넘김 (같은 날): 오늘 자고 오늘 일어남
+                            // 만약 22 → 07이면 전날로 조정
+                            if (startMin > endMin) startCal.add(Calendar.DATE, -1)
 
                             val sleepStartTime = String.format(
                                 "%04d-%02d-%02dT%02d:%02d:00",
-                                sleepStartCal.get(java.util.Calendar.YEAR),
-                                sleepStartCal.get(java.util.Calendar.MONTH) + 1,
-                                sleepStartCal.get(java.util.Calendar.DATE),
-                                startHour24,
+                                startCal.get(Calendar.YEAR),
+                                startCal.get(Calendar.MONTH) + 1,
+                                startCal.get(Calendar.DATE),
+                                start24,
                                 sleepStartMinute
                             )
 
                             val sleepEndTime = String.format(
                                 "%04d-%02d-%02dT%02d:%02d:00",
-                                sleepEndCal.get(java.util.Calendar.YEAR),
-                                sleepEndCal.get(java.util.Calendar.MONTH) + 1,
-                                sleepEndCal.get(java.util.Calendar.DATE),
-                                endHour24,
+                                endCal.get(Calendar.YEAR),
+                                endCal.get(Calendar.MONTH) + 1,
+                                endCal.get(Calendar.DATE),
+                                end24,
                                 sleepEndMinute
                             )
 
-                            // ⭐ API 호출
                             com.hand.hand.api.Sleep.SleepManager.saveSleep(
                                 sleepStartTime = sleepStartTime,
                                 sleepEndTime = sleepEndTime,
-                                onSuccess = { data ->
-                                    android.util.Log.d("MyHealthInfoSection", "✅ 수면 데이터 저장 성공: ${data.sleepDurationHours}시간")
-                                    onSleepDataSaved()
-                                    showSleepDialog = false
-                                },
-                                onFailure = { error ->
-                                    android.util.Log.e("MyHealthInfoSection", "❌ 수면 데이터 저장 실패: ${error.message}")
-                                }
+                                onSuccess = { onSleepDataSaved() },
+                                onFailure = { /* 실패 시에도 모달은 이미 닫힘 */ }
                             )
                         },
                         shape = RoundedCornerShape(50.dp),
@@ -290,16 +284,24 @@ fun MyHealthInfoSection(
                             .fillMaxWidth(0.5f)
                             .height(48.dp)
                     ) {
-                        Text(text = "저장", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                        Text("저장", fontSize = 18.sp, fontWeight = FontWeight.Bold)
                     }
+
                 }
             }
         }
     }
-
-
-
 }
+
+// 12시간 → 24시간 변환 함수
+private fun convertTo24(hour: Int, amPm: String): Int {
+    return when {
+        amPm == "PM" && hour != 12 -> hour + 12
+        amPm == "AM" && hour == 12 -> 0
+        else -> hour
+    }
+}
+
 
 /** 공통 카드 */
 @Composable
@@ -373,17 +375,18 @@ private fun StressInfoCard(
     title: String,
     level: Int,
     caption: String,
-    iconSize: Dp = 32.dp
+    iconSize: Dp = 32.dp,
+
 ) {
     // ⭐ 스트레스 레벨별 색상 (1=Great, 2=Happy, 3=Okay, 4=Down, 5=Sad)
     // 감정일기 페이지 색상 매핑과 동일하게 적용
     val (iconBgColor, barActiveColor) = when (level) {
-        1 -> Pair(Color(0xFFE8F5E0), Color(0xFF9BB167))  // Great - 초록색
+        1 -> Pair(Color(0xFFFFF7E6), Color(0xFF9BB167))  // Great - 초록색
         2 -> Pair(Color(0xFFFFF7E6), Color(0xFFFFCE5C))  // Happy - 노란색
-        3 -> Pair(Color(0xFFF5EDE8), Color(0xFFC0A091))  // Okay - 베이지색
-        4 -> Pair(Color(0xFFFEF0E6), Color(0xFFED7E1C))  // Down - 주황색
-        5 -> Pair(Color(0xFFF0EBFF), Color(0xFFC2B1FF))  // Sad - 보라색
-        else -> Pair(Color(0xFFF5EDE8), Color(0xFFC0A091))
+        3 -> Pair(Color(0xFFFFF7E6), Color(0xFFC0A091))  // Okay - 베이지색
+        4 -> Pair(Color(0xFFFFF7E6), Color(0xFFED7E1C))  // Down - 주황색
+        5 -> Pair(Color(0xFFFFF7E6), Color(0xFFC2B1FF))  // Sad - 보라색
+        else -> Pair(Color(0xFFFFF7E6), Color(0xFFC0A091))
     }
 
     Card(

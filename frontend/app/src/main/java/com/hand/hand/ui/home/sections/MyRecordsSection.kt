@@ -25,7 +25,7 @@ import com.hand.hand.ui.theme.*
 @Composable
 fun MyRecordsSection(
     horizontalPadding: Dp = 0.dp,
-    moodChangeCount: Int = 2,
+    moodChangeCount: Int,
     diaryDoneCount: Int = 31,
     diaryTotal: Int = 365,
     onMoodChangeClick: () -> Unit = {}
@@ -162,7 +162,7 @@ fun MyRecordsSection(
                     ) {
                         Spacer(Modifier.weight(1f))
                         Text(
-                            text = "${diaryDoneCount}/${diaryTotal}",
+                            text = "다이어리 \n작성하기!",
                             color = Color.White,
                             fontSize = 24.sp,
                             fontWeight = FontWeight.Bold,
