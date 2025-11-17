@@ -80,6 +80,7 @@ async def group_advice(input_data: ManageAdviceInput):
         user_id = input_data.user_id
         diaries = input_data.diaries
         biodata = input_data.biometrics
+        user_info = input_data.user_info
         total_summary = input_data.total_summary
 
         # 1) 보고서 생성
@@ -97,7 +98,7 @@ async def group_advice(input_data: ManageAdviceInput):
         best_score = 0
 
         for attempt in range(MAX_RETRY):
-            advice = await generate_manager_advice(report=report, summary=total_summary)
+            advice = await generate_manager_advice(report=report, summary=total_summary, info=user_info)
 
             # 평가
             eval_result = await evaluator.evaluate(
@@ -151,7 +152,6 @@ async def group_advice(input_data: ManageAdviceInput):
         print(f"❌ manager_advice 오류: {e}")
         raise HTTPException(status_code=500, detail=f"관리자 조언 생성 중 오류: {e}")
 
-
 # 개인에게 보고서와 조언 제공(1주일 치)
 @router.post("/individual-users/report", response_model = PersonalAdviceOutput)
 async def personal_advice(data: PersonalAdviceInput):
@@ -159,6 +159,7 @@ async def personal_advice(data: PersonalAdviceInput):
         user_id = data.user_id
         diary = data.diaries
         biodata = data.biometrics
+        user_info = data.user_info
         total_summary = data.total_summary
 
         report = await create_report(
@@ -168,14 +169,12 @@ async def personal_advice(data: PersonalAdviceInput):
         )
 
         evaluator = AdviceQualityEvaluator()
-
         MAX_RETRY = 3
         best_advice = None
         best_score = 0
-        best_eval = None
 
         for attempt in range(MAX_RETRY):
-            advice = await generate_private_advice(report=report, summary=total_summary)
+            advice = await generate_private_advice(report=report, summary=total_summary, info=user_info)
 
             eval_result = await evaluator.evaluate(
                 summary=total_summary,
@@ -189,7 +188,6 @@ async def personal_advice(data: PersonalAdviceInput):
             if final_score > best_score:
                 best_score = final_score
                 best_advice = advice
-                best_eval = eval_result
 
             if final_score >= 0.7:
                 break
@@ -201,7 +199,6 @@ async def personal_advice(data: PersonalAdviceInput):
         "input": total_summary,
         "output": advice,
         }
-
         if best_score >= 0.7:
             embedding_advice = embed(total_summary)
             client = get_client()

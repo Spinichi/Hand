@@ -45,6 +45,13 @@ class UserInfo(BaseModel):
     weight: float
     disease: str
 
+class BM25User(BaseModel):
+    age: int
+    gender: str
+    job: str
+    disease: str
+    family: str
+
 class Biometrics(BaseModel):
     baseline: BaselineItem
     anomalies: List[AnomalyItem]
@@ -64,6 +71,7 @@ class PersonalAdviceInput(BaseModel):
     user_id: int
     diaries: List[DiaryItem]
     biometrics: Biometrics
+    user_info: BM25User
     total_summary : str
 
 class PersonalAdviceOutput(BaseModel):
@@ -76,6 +84,7 @@ class ManageAdviceInput(BaseModel):
     user_id: int
     diaries: List[DiaryItem]
     biometrics: Biometrics
+    user_info: BM25User
     total_summary : str
 
 class ManageAdviceOutput(BaseModel):
