@@ -116,13 +116,13 @@ fun StressLineChart(
                     path.cubicTo(cpx1, cpy1, cpx2, cpy2, x, y)
                 }
             }
-            drawPath(path = path, color = color, style = Stroke(width = 8f))
+            drawPath(path = path, color = color, style = Stroke(width = 12f))
         }
 
         // 최저(파랑) → 평균(검정) → 최고(빨강) 순서로 그리기
         if (minScores.isNotEmpty()) drawCurve(minScores, Color(0xFF007BFF)) // 파랑
         if (avgScores.isNotEmpty()) drawCurve(avgScores, Color(0xFF000000)) // 검정
-        if (maxScores.isNotEmpty()) drawCurve(maxScores, Color(0xFFFF3B30)) // 빨강
+        if (maxScores.isNotEmpty()) drawCurve(maxScores, Color(0xFF4F3422)) // 빨강
 
         // 최고값 빨간 점(최고 곡선 기준)
         if (maxScores.isNotEmpty()) {
@@ -132,8 +132,8 @@ fun StressLineChart(
                     val x = index * widthPerPoint
                     val y = topPadding + (drawableHeight - score * heightScale)
                     drawCircle(
-                        color = Color(0xFFFF3B30),
-                        radius = 12f,
+                        color = Color(0xFFEF8834),
+                        radius = 20f,
                         center = Offset(x, y)
                     )
                 }
@@ -141,31 +141,28 @@ fun StressLineChart(
         }
 
         // ===== x축 레이블 (0h / 12h / 24h) =====
-        val labelIndices = listOf(0, 12, baseList.size - 1)
-        val labelTexts = listOf("0h", "12h", "24h")
-        labelIndices.forEachIndexed { i, index ->
-            if (index in baseList.indices) {
-                val x = index * widthPerPoint
-                val canvas = drawContext.canvas
-                val paint = android.graphics.Paint().apply {
-                    color = android.graphics.Color.parseColor("#867E7A")
-                    textAlign = android.graphics.Paint.Align.CENTER
-                    textSize = size.height * 0.09f
-                    isFakeBoldText = true
-                    typeface = android.graphics.Typeface.DEFAULT_BOLD
-                }
+        val totalPoints = baseList.size
+        val hours = listOf(0, 4, 8, 12, 16, 20, 24)
+        val labelIndices = hours.map { (it * (totalPoints - 1) / 24).coerceIn(0, totalPoints - 1) }
+        val labelTexts = hours.map { "${it}h" }
 
-                val labelY = size.height - bottomPadding / 2f
-                canvas.nativeCanvas.drawText(
-                    labelTexts[i],
-                    x,
-                    labelY,
-                    paint
-                )
+        labelIndices.forEachIndexed { i, index ->
+            val x = index * widthPerPoint
+            val canvas = drawContext.canvas
+            val paint = android.graphics.Paint().apply {
+                color = android.graphics.Color.parseColor("#867E7A")
+                textAlign = android.graphics.Paint.Align.CENTER
+                textSize = size.height * 0.09f   // 글자 크기 조금 줄임
+                isFakeBoldText = true
+                typeface = android.graphics.Typeface.DEFAULT_BOLD
             }
+
+            val labelY = size.height - bottomPadding /4
+            canvas.nativeCanvas.drawText(labelTexts[i], x, labelY, paint)
+        }
         }
     }
-}
+
 
 
 
@@ -184,16 +181,16 @@ private fun MoodChangeHistorySection(
     // 반응형 기준값들
     val smallSpacer = screenHeight * 0.0125f      // 기존 12.dp 정도
     val chartTopSpacer = screenHeight * 0.02f     // 기존 screenHeight * 0.02f 유지 (반응형)
-    val betweenChartAndCard = screenHeight * 0.04f // 기존 screenHeight * 0.04f
+    val betweenChartAndCard = screenHeight * 0.0f // 기존 screenHeight * 0.04f
     val betweenCards = screenHeight * 0.0125f     // 기존 12.dp
     val cardVerticalPadding = screenHeight * 0.015f
     val innerHorizontalPadding = horizontalPadding // 원래 주신 horizontalPadding 사용
 
     // 폰트 크기 (원래 25.sp 정도였던 값들을 반응형으로 대체)
-    val bigTitleFont = (screenHeight * 0.025f).value.sp   // 약 25.sp에 대응
+    val bigTitleFont = (screenHeight * 0.03f).value.sp   // 약 25.sp에 대응
     val cardTitleFont = (screenHeight * 0.0205f).value.sp // 섹션 타이틀(오늘의 스트레스 변화)
     val countFont = (screenHeight * 0.0205f).value.sp    // 작은 흰 카드 안의 텍스트
-    val bigCardTextFont = (screenHeight * 0.0205f).value.sp
+    val bigCardTextFont = (screenHeight * 0.03f).value.sp
 
     Column(
         modifier = Modifier
@@ -233,45 +230,45 @@ private fun MoodChangeHistorySection(
                     ) {
                         StressLineChart(
                             scores = scores,
-                            avgScores = avgScores,
+//                            avgScores = avgScores,
                             maxScores = maxScores,
-                            minScores = minScores,
+//                            minScores = minScores,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(screenHeight * 0.20f)
                         )
                     }
 
-                    // 그래프 아래 작은 레전드
-                    Spacer(modifier = Modifier.height(screenHeight * 0.008f))
-
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(end = horizontalPadding),
-                        horizontalArrangement = Arrangement.End,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        val legendFont = (screenHeight * 0.015f).value  // 화면 비율에 맞는 작은 글씨
-
-                        LineLegendItem(
-                            color = Color(0xFFFF3B30),      // 빨강: 최고
-                            text = "스트레스 최고 점수",
-                            fontSize = legendFont
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        LineLegendItem(
-                            color = Color(0xFF000000),      // 검정: 평균
-                            text = "스트레스 평균 점수",
-                            fontSize = legendFont
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        LineLegendItem(
-                            color = Color(0xFF007BFF),      // 파랑: 최저
-                            text = "스트레스 최저 점수",
-                            fontSize = legendFont
-                        )
-                    }
+//                    // 그래프 아래 작은 레전드
+//                    Spacer(modifier = Modifier.height(screenHeight * 0.008f))
+//
+//                    Row(
+//                        modifier = Modifier
+//                            .fillMaxWidth()
+//                            .padding(end = horizontalPadding),
+//                        horizontalArrangement = Arrangement.End,
+//                        verticalAlignment = Alignment.CenterVertically
+//                    ) {
+//                        val legendFont = (screenHeight * 0.015f).value  // 화면 비율에 맞는 작은 글씨
+//
+//                        LineLegendItem(
+//                            color = Color(0xFFFF3B30),      // 빨강: 최고
+//                            text = "스트레스 최고 점수",
+//                            fontSize = legendFont
+//                        )
+//                        Spacer(modifier = Modifier.width(8.dp))
+//                        LineLegendItem(
+//                            color = Color(0xFF000000),      // 검정: 평균
+//                            text = "스트레스 평균 점수",
+//                            fontSize = legendFont
+//                        )
+//                        Spacer(modifier = Modifier.width(8.dp))
+//                        LineLegendItem(
+//                            color = Color(0xFF007BFF),      // 파랑: 최저
+//                            text = "스트레스 최저 점수",
+//                            fontSize = legendFont
+//                        )
+//                    }
                 }
             }
 
@@ -299,7 +296,7 @@ private fun MoodChangeHistorySection(
                             color = Brown80,
                             fontFamily = BrandFontFamily,
                             fontWeight = FontWeight.Bold,
-                            fontSize = bigCardTextFont
+                            fontSize = 24.sp   // ← 여기서 직접 크게 지정!
                         )
 
                         Card(
@@ -321,7 +318,7 @@ private fun MoodChangeHistorySection(
                                     color = Brown80,
                                     fontFamily = BrandFontFamily,
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = countFont,
+                                    fontSize = 24.sp,
                                     textAlign = TextAlign.Center
                                 )
                             }
