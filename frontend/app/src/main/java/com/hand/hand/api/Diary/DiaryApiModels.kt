@@ -37,7 +37,7 @@ data class DiaryItemResponse(
     val questionCount: Int?,
     val createdAt: String,
     val completedAt: String?,
-    val depressionScore: Int?,
+    val depressionScore: Float?,
     val shortSummary: String?
 )
 
@@ -48,7 +48,7 @@ data class DiaryItem(
     val sessionId: Long,
     val sessionDate: String,
     val createdAt: String,
-    val depressionScore: Int?,
+    val depressionScore:Float?,
     val shortSummary: String?,
     val status: String?
 )
@@ -58,7 +58,7 @@ fun DiaryItemResponse.toDiaryItem(): DiaryItem {
         sessionId = sessionId,
         sessionDate = sessionDate,
         createdAt = createdAt,
-        depressionScore = depressionScore,
+        depressionScore = depressionScore?.toFloat(),
         shortSummary = shortSummary,
         status = status
     )

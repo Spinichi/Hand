@@ -87,9 +87,9 @@ fun DiaryHomeScreen(onBackClick: () -> Unit) {
         )
     }
 
-    val scoreMap = diaryList.associateBy(
+    val scoreMap: Map<String, Float> = diaryList.associateBy(
         { it.sessionDate },
-        { it.depressionScore ?: -1 }
+        { it.depressionScore ?: -1f }
     )
 
     Scaffold(
@@ -262,16 +262,18 @@ fun DiaryHistoryBox(item: DiaryItem) {
                 Spacer(modifier = Modifier.height(6.dp))
 
                 val score = item.depressionScore ?: -1
-                val diaryscore = 100 - score
-                val boxColor = when (score) {
-                    in 0..19 -> Color(0xFF9BB167)
-                    in 20..39 -> Color(0xFFFFCE5C)
+                val diaryscore = score
+                val intScore = score.toInt()
+                val boxColor = when (intScore) {
+                    in 0..19 -> Color(0xFFC2B1FF)
+                    in 20..39 -> Color(0xFFED7E1C)
                     in 40..59 -> Color(0xFFC0A091)
-                    in 60..79 -> Color(0xFFED7E1C)
-                    in 80..100 -> Color(0xFFC2B1FF)
-
+                    in 60..79 -> Color(0xFFFFCE5C)
+                    in 80..100 -> Color(0xFF9BB167)
                     else -> Color.Gray
                 }
+
+
 
                 Box(
                     modifier = Modifier
@@ -280,7 +282,7 @@ fun DiaryHistoryBox(item: DiaryItem) {
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = if (score >= 0) "$diaryscore 점" else "-",
+                        text = if (intScore >= 0) "$intScore 점" else "-",
                         fontFamily = BrandFontFamily,
                         fontWeight = FontWeight.Medium,
                         fontSize = (screenHeight * 0.018f).value.sp,
@@ -295,7 +297,7 @@ fun DiaryHistoryBox(item: DiaryItem) {
 @Composable
 fun DiaryCalendar2(
     calendar: Calendar,
-    scoreMap: Map<String, Int> = emptyMap(),
+    scoreMap: Map<String, Float> = emptyMap(),  // Int → Float
     onDateClick: (Int) -> Unit = {}
 ) {
     val daysOfWeek = listOf("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat")
@@ -364,12 +366,13 @@ fun DiaryCalendar2(
                         val thisDateStr = sdf.format(thisDate.time)
 
                         val score = scoreMap[thisDateStr] ?: -1
-                        val baseCircleColor = when (100 - score) {
-                            in 0..19 -> Color(0xFFC2B1FF)
-                            in 20..39 -> Color(0xFFED7E1C)
+                        val intScore = score.toInt()
+                        val baseCircleColor = when (100 - intScore) {
+                            in 0..19 -> Color(0xFF9BB167)
+                            in 20..39 -> Color(0xFFFFCE5C)
                             in 40..59 -> Color(0xFFC0A091)
-                            in 60..79 -> Color(0xFFFFCE5C)
-                            in 80..100 -> Color(0xFF9BB167)
+                            in 60..79 -> Color(0xFFED7E1C)
+                            in 80..100 -> Color(0xFFC2B1FF)
                             else -> Color.White
                         }
 
@@ -414,11 +417,11 @@ fun DiaryCalendar2(
 @Composable
 fun EmotionLegend() {
     val emotions = listOf(
-        Pair(Color(0xFF9BB167), "great"),
-        Pair(Color(0xFFFFCE5C), "happy"),
+        Pair(Color(0xFFC2B1FF), "great"),
+        Pair(Color(0xFFED7E1C), "happy"),
         Pair(Color(0xFFC0A091), "okay"),
-        Pair(Color(0xFFED7E1C), "down"),
-        Pair(Color(0xFFC2B1FF), "sad")
+        Pair(Color(0xFFFFCE5C), "down"),
+        Pair(Color(0xFF9BB167), "sad")
     )
 
     val configuration = LocalConfiguration.current
