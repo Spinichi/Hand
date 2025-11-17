@@ -380,11 +380,11 @@ fun DepressionIcon(
     val diaryScore = 100 - score
 
     val imageRes = when (diaryScore.coerceIn(0, 100)) {
-        in 0..19 -> R.drawable.diary_sad_icon
-        in 20..39 -> R.drawable.diary_down_icon
+        in 0..19 -> R.drawable.diary_great_icon
+        in 20..39 -> R.drawable.diary_happy_icon
         in 40..59 -> R.drawable.diary_okay_icon
-        in 60..79 -> R.drawable.diary_happy_icon
-        else -> R.drawable.diary_great_icon
+        in 60..79 -> R.drawable.diary_down_icon
+        else -> R.drawable.diary_sad_icon
     }
 
     Image(
