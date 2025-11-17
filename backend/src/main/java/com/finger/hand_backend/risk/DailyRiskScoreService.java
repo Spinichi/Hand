@@ -53,9 +53,11 @@ public class DailyRiskScoreService {
                 .findByUserIdAndIsAnomalyTrueAndMeasuredAtBetweenOrderByMeasuredAtAsc(userId, startOfDay, endOfDay);
         Integer anomalyCount = anomalies.size();
 
-        // 5. 최종 risk_score 계산 (가중 평균)
-        // diary 50% + measurement 50%
-        Double riskScore = (diaryComponent * 0.5) + (measurementComponent * 0.5);
+        // 5. 최종 risk_score 계산 (wellness score - 높을수록 좋음)
+        // diary: 높을수록 좋음 (AI 우울점수지만 기획 변경으로 wellness 의미)
+        // measurement: 높을수록 안좋음 (스트레스/이상치) → 반전 필요
+        Double wellnessMeasurement = 100.0 - measurementComponent;  // 반전: 높을수록 좋음
+        Double riskScore = (diaryComponent * 0.5) + (wellnessMeasurement * 0.5);  // 높을수록 건강함
 
         // 6. 저장 또는 업데이트
         DailyRiskScore riskScoreEntity = riskScoreRepository
@@ -72,6 +74,61 @@ public class DailyRiskScoreService {
 
         log.info("일일 위험 점수 저장 완료 - riskScore: {}, diary: {}, measurement: {}",
                 riskScore, diaryComponent, measurementComponent);
+
+        return saved;
+    }
+
+    /**
+     * 다이어리 없이 하루 점수 계산 (측정 데이터만 사용)
+     * - 스케줄러에서 호출
+     * - diary_component = null
+     * - risk_score = 100 - measurement_component (wellness 개념)
+     *
+     * @param userId 사용자 ID
+     * @param date   날짜
+     * @return 저장된 DailyRiskScore
+     */
+    @Transactional
+    public DailyRiskScore calculateWithoutDiary(Long userId, LocalDate date) {
+        log.info("다이어리 없이 일일 위험 점수 계산 - userId: {}, date: {}", userId, date);
+
+        LocalDateTime startOfDay = date.atStartOfDay();
+        LocalDateTime endOfDay = date.plusDays(1).atStartOfDay();
+
+        // 1. diary_component = null (다이어리 없음)
+        Double diaryComponent = null;
+
+        // 2. measurement_component 계산
+        Double measurementComponent = calculateMeasurementComponent(userId, startOfDay, endOfDay);
+
+        // 3. 하루 총 측정 횟수
+        Integer measurementCount = (int) measurementRepository
+                .countByUserIdAndMeasuredAtBetween(userId, startOfDay, endOfDay);
+
+        // 4. 하루 이상치 감지 횟수
+        List<Measurement> anomalies = measurementRepository
+                .findByUserIdAndIsAnomalyTrueAndMeasuredAtBetweenOrderByMeasuredAtAsc(userId, startOfDay, endOfDay);
+        Integer anomalyCount = anomalies.size();
+
+        // 5. risk_score = wellness score (측정 데이터만 사용)
+        // measurement는 높을수록 안좋음 → 반전시켜 wellness로
+        Double riskScore = 100.0 - measurementComponent;  // 높을수록 건강함
+
+        // 6. 저장 또는 업데이트
+        DailyRiskScore riskScoreEntity = riskScoreRepository
+                .findByUserIdAndScoreDate(userId, date)
+                .orElse(DailyRiskScore.builder()
+                        .userId(userId)
+                        .scoreDate(date)
+                        .build());
+
+        riskScoreEntity.updateScores(diaryComponent, measurementComponent, null, riskScore);
+        riskScoreEntity.updateStats(measurementCount, anomalyCount);
+
+        DailyRiskScore saved = riskScoreRepository.save(riskScoreEntity);
+
+        log.info("다이어리 없이 점수 저장 완료 - riskScore: {}, measurementComponent: {}",
+                riskScore, measurementComponent);
 
         return saved;
     }
@@ -98,9 +155,9 @@ public class DailyRiskScoreService {
                 .orElse(0.0);
 
         // 3. measurement_component 계산
-        // 예: (anomalyCount * 10) + (avgStressIndex * 0.5)
-        // 이상치 1개당 10점, 평균 스트레스 지수의 절반
-        Double measurementComponent = (anomalyCount * 10.0) + (avgStressIndex * 0.5);
+        // 이상치 1개당 2점, 평균 스트레스 지수의 0.4배
+        // 정상인 기준: 이상치 10개 + 스트레스 80 = 20 + 32 = 52점 (보통)
+        Double measurementComponent = (anomalyCount * 2.0) + (avgStressIndex * 0.4);
 
         // 4. 최대 100으로 제한
         measurementComponent = Math.min(measurementComponent, 100.0);

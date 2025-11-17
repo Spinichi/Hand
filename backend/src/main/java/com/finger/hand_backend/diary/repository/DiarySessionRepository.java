@@ -7,6 +7,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -47,4 +48,9 @@ public interface DiarySessionRepository extends JpaRepository<DiarySession, Long
             LocalDate endDate,
             Pageable pageable
     );
+
+    /**
+     * 특정 날짜의 모든 다이어리 세션 조회
+     */
+    List<DiarySession> findBySessionDate(LocalDate sessionDate);
 }
