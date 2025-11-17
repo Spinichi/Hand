@@ -115,7 +115,7 @@ fun SplashScreen(onSplashFinished: () -> Unit) {
 
                 // 아이콘
                 Image(
-                    painter = painterResource(R.drawable.ic_splash_hand2),
+                    painter = painterResource(R.drawable.ic_splash_hand),
                     contentDescription = "Logo",
                     modifier = Modifier.size(160.dp)
                 )
