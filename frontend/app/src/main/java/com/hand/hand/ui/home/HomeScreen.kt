@@ -42,6 +42,7 @@ import com.hand.hand.api.SignUp.IndividualUserManager
 import com.hand.hand.api.Anomaly.AnomalyManager
 import com.hand.hand.api.Group.GroupManager // ✅ 추가된 Import
 import com.hand.hand.api.Group.GroupData // ✅ 추가된 Import
+import com.hand.hand.api.riskToday.RiskTodayManager
 import com.hand.hand.ui.common.LoadingDialog
 
 
@@ -228,6 +229,29 @@ fun HomeScreen() {
     fun sdp(v: Dp): Dp = (v.value * scale).dp
     fun ssp(v: Float) = (v * scale).sp
     val horizontalGutterRatio = 16f / 360f
+    var todayRiskExists by remember { mutableStateOf(false) }
+    var todayRiskScore by remember { mutableStateOf<Double?>(null) }
+
+    LaunchedEffect(Unit) {
+        RiskTodayManager.checkRiskTodayExists(
+            onSuccess = { exists ->
+                todayRiskExists = exists
+                if (exists) {
+                    RiskTodayManager.getRiskToday(
+                        onSuccess = { data ->
+                            todayRiskScore = data.riskScore
+                        },
+                        onError = { todayRiskScore = null }
+                    )
+                }
+            },
+            onError = {
+                todayRiskExists = false
+                todayRiskScore = null
+            }
+        )
+    }
+
     fun resolvedGutterDp(
         ratio: Float = horizontalGutterRatio,
         min: Dp = 12.dp,
@@ -349,6 +373,11 @@ fun HomeScreen() {
                     MyRecordsSection(
                         horizontalPadding = gutter,
                         moodChangeCount = todayAnomalyCount,
+
+                        // 🔥 추가
+                        exists = todayRiskExists,
+                        riskScore = todayRiskScore,
+
                         onMoodChangeClick = {
                             context.startActivity(MoodChangeActivity.intent(context, todayAnomalyCount))
                         }
