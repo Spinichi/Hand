@@ -55,14 +55,15 @@ import kotlin.math.min
 fun MyHealthInfoSection(
     horizontalPadding: Dp = 0.dp,
     stressScore: Int = 0,
-    sleepMinutes: Int = 0,
-    hasSleepData: Boolean = false,
+    sleepData: com.hand.hand.api.Sleep.SleepData? = null,
     todaySessionCount: Int = 0,   // ★ 오늘 마음 완화 실행 횟수 (API에서 전달)
     onSleepDataSaved: () -> Unit = {}
 ) {
     var showSleepDialog by remember { mutableStateOf(false) }
 
     // 수면 분을 시/분으로 변환
+    val sleepMinutes = sleepData?.sleepDurationMinutes ?: 0
+    val hasSleepData = sleepData != null
     val sleepHours = sleepMinutes / 60
     val sleepMins = sleepMinutes % 60
 
@@ -159,13 +160,22 @@ fun MyHealthInfoSection(
     // ───────────────────────────────────────
     if (showSleepDialog) {
 
-        var sleepStartHour by remember { mutableStateOf(22) }
-        var sleepStartMinute by remember { mutableStateOf(0) }
-        var sleepStartAmPm by remember { mutableStateOf("PM") }
+        // 기존 수면 데이터가 있으면 파싱, 없으면 기본값
+        val (defaultStartHour, defaultStartMin, defaultStartAmPm) = sleepData?.let {
+            parseIsoTimeToAmPm(it.sleepStartTime)
+        } ?: Triple(10, 0, "PM")
 
-        var sleepEndHour by remember { mutableStateOf(7) }
-        var sleepEndMinute by remember { mutableStateOf(0) }
-        var sleepEndAmPm by remember { mutableStateOf("AM") }
+        val (defaultEndHour, defaultEndMin, defaultEndAmPm) = sleepData?.let {
+            parseIsoTimeToAmPm(it.sleepEndTime)
+        } ?: Triple(7, 0, "AM")
+
+        var sleepStartHour by remember { mutableStateOf(defaultStartHour) }
+        var sleepStartMinute by remember { mutableStateOf(defaultStartMin) }
+        var sleepStartAmPm by remember { mutableStateOf(defaultStartAmPm) }
+
+        var sleepEndHour by remember { mutableStateOf(defaultEndHour) }
+        var sleepEndMinute by remember { mutableStateOf(defaultEndMin) }
+        var sleepEndAmPm by remember { mutableStateOf(defaultEndAmPm) }
 
         Dialog(
             onDismissRequest = { showSleepDialog = false }
@@ -248,29 +258,43 @@ fun MyHealthInfoSection(
                             val startCal = now.clone() as Calendar
                             val endCal = now.clone() as Calendar
 
-                            val startMin = start24 * 60 + sleepStartMinute
-                            val endMin = end24 * 60 + sleepEndMinute
+                            // 시간/분 설정
+                            startCal.set(Calendar.HOUR_OF_DAY, start24)
+                            startCal.set(Calendar.MINUTE, sleepStartMinute)
+                            startCal.set(Calendar.SECOND, 0)
+                            startCal.set(Calendar.MILLISECOND, 0)
 
-                            // 만약 22 → 07이면 전날로 조정
-                            if (startMin > endMin) startCal.add(Calendar.DATE, -1)
+                            endCal.set(Calendar.HOUR_OF_DAY, end24)
+                            endCal.set(Calendar.MINUTE, sleepEndMinute)
+                            endCal.set(Calendar.SECOND, 0)
+                            endCal.set(Calendar.MILLISECOND, 0)
+
+                            // 날짜 조정: 일어난 시간(종료)은 항상 오늘
+                            // 잠든 시간(시작)이 PM이면 어제, AM이면 오늘
+                            if (sleepStartAmPm == "PM") {
+                                startCal.add(Calendar.DATE, -1)  // 어제 저녁
+                            }
+                            // endCal은 오늘 그대로
 
                             val sleepStartTime = String.format(
                                 "%04d-%02d-%02dT%02d:%02d:00",
                                 startCal.get(Calendar.YEAR),
                                 startCal.get(Calendar.MONTH) + 1,
-                                startCal.get(Calendar.DATE),
-                                start24,
-                                sleepStartMinute
+                                startCal.get(Calendar.DAY_OF_MONTH),
+                                startCal.get(Calendar.HOUR_OF_DAY),
+                                startCal.get(Calendar.MINUTE)
                             )
 
                             val sleepEndTime = String.format(
                                 "%04d-%02d-%02dT%02d:%02d:00",
                                 endCal.get(Calendar.YEAR),
                                 endCal.get(Calendar.MONTH) + 1,
-                                endCal.get(Calendar.DATE),
-                                end24,
-                                sleepEndMinute
+                                endCal.get(Calendar.DAY_OF_MONTH),
+                                endCal.get(Calendar.HOUR_OF_DAY),
+                                endCal.get(Calendar.MINUTE)
                             )
+
+                            android.util.Log.d("SleepDialog", "📤 저장: start=$sleepStartTime, end=$sleepEndTime")
 
                             com.hand.hand.api.Sleep.SleepManager.saveSleep(
                                 sleepStartTime = sleepStartTime,
@@ -670,5 +694,30 @@ fun WheelPicker(
                 Spacer(modifier = Modifier.height(itemHeight))
             }
         }
+    }
+}
+
+/**
+ * ISO-8601 시간 문자열을 12시간 형식으로 파싱
+ * 예: "2025-11-17T22:30:00" -> Triple(10, 30, "PM")
+ */
+private fun parseIsoTimeToAmPm(isoTime: String): Triple<Int, Int, String> {
+    return try {
+        // "2025-11-17T22:30:00" 형식에서 시간 부분 추출
+        val timePart = isoTime.split("T").getOrNull(1)?.split(":")
+        val hour24 = timePart?.getOrNull(0)?.toIntOrNull() ?: 22
+        val minute = timePart?.getOrNull(1)?.toIntOrNull() ?: 0
+
+        // 24시간 -> 12시간 변환
+        val (hour12, amPm) = when {
+            hour24 == 0 -> Pair(12, "AM")
+            hour24 < 12 -> Pair(hour24, "AM")
+            hour24 == 12 -> Pair(12, "PM")
+            else -> Pair(hour24 - 12, "PM")
+        }
+
+        Triple(hour12, minute, amPm)
+    } catch (e: Exception) {
+        Triple(10, 0, "PM") // 파싱 실패 시 기본값
     }
 }

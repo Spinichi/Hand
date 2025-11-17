@@ -42,7 +42,8 @@ public class SleepService {
             throw new IllegalArgumentException("수면 시간은 현재 또는 과거여야 합니다");
         }
 
-        LocalDate sleepDate = Sleep.extractSleepDate(request.getSleepStartTime());
+        // 수면 날짜는 일어난 시간(종료 시간) 기준으로 계산
+        LocalDate sleepDate = Sleep.extractSleepDate(request.getSleepEndTime());
 
         // 같은 날짜의 기존 데이터 확인 (있으면 업데이트, 없으면 새로 생성)
         Optional<Sleep> existingSleep = sleepRepository.findByUserIdAndSleepDate(userId, sleepDate);

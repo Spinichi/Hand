@@ -156,25 +156,22 @@ fun HomeScreen() {
     }
 
     // ⭐ 오늘의 수면 데이터 조회
-    var todaySleepMinutes by remember { mutableStateOf(0) }
-    var hasSleepData by remember { mutableStateOf(false) }
+    var todaySleepData by remember { mutableStateOf<com.hand.hand.api.Sleep.SleepData?>(null) }
 
     LaunchedEffect(Unit) {
         com.hand.hand.api.Sleep.SleepManager.getTodaySleep(
             onSuccess = { data ->
                 sleepLoaded = true
+                todaySleepData = data
                 if (data != null) {
-                    todaySleepMinutes = data.sleepDurationMinutes
-                    hasSleepData = true
                     android.util.Log.d("HomeScreen", "✅ 오늘의 수면 데이터: ${data.sleepDurationMinutes}분")
                 } else {
-                    hasSleepData = false
                     android.util.Log.d("HomeScreen", "ℹ️ 오늘의 수면 데이터 없음")
                 }
             },
             onFailure = { error ->
                 sleepLoaded = true
-                hasSleepData = false
+                todaySleepData = null
                 android.util.Log.e("HomeScreen", "❌ 수면 데이터 조회 실패: ${error.message}")
             }
         )
@@ -300,12 +297,7 @@ fun HomeScreen() {
 
                 com.hand.hand.api.Sleep.SleepManager.getTodaySleep(
                     onSuccess = { data ->
-                        if (data != null) {
-                            todaySleepMinutes = data.sleepDurationMinutes
-                            hasSleepData = true
-                        } else {
-                            hasSleepData = false
-                        }
+                        todaySleepData = data
                     },
                     onFailure = { }
                 )
@@ -351,16 +343,12 @@ fun HomeScreen() {
                     MyHealthInfoSection(
                         horizontalPadding = gutter,
                         stressScore = personalMoodScore,
-                        sleepMinutes = todaySleepMinutes,
-                        hasSleepData = hasSleepData,
+                        sleepData = todaySleepData,
                         onSleepDataSaved = {
                             // 수면 데이터 저장 후 다시 조회
                             com.hand.hand.api.Sleep.SleepManager.getTodaySleep(
                                 onSuccess = { data ->
-                                    if (data != null) {
-                                        todaySleepMinutes = data.sleepDurationMinutes
-                                        hasSleepData = true
-                                    }
+                                    todaySleepData = data
                                 },
                                 onFailure = { }
                             )
