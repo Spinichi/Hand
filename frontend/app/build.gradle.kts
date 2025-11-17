@@ -13,6 +13,7 @@ android {
     compileSdk = 36
     buildFeatures {
         compose = true  //ㅉ Compose 사용
+        buildConfig = true  // BuildConfig 활성화
     }
     composeOptions {
         kotlinCompilerExtensionVersion = "1.5.8"  // 최신 Compose Compiler
@@ -25,6 +26,10 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // GMS API 설정 (환경변수 또는 local.properties에서 읽기)
+        buildConfigField("String", "GMS_BASE_URL", "\"${System.getenv("GMS_BASE_URL") ?: "https://gms.ssafy.io/gmsapi/api.openai.com/"}\"")
+        buildConfigField("String", "GMS_API_KEY", "\"${System.getenv("GMS_API_KEY") ?: "S13P32A106-1bd9c436-0876-44c9-bdf2-bb77386d352c"}\"")
     }
 
     buildTypes {

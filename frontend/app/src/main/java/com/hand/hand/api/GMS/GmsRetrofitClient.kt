@@ -3,6 +3,7 @@
 package com.hand.hand.api.GMS
 
 
+import com.hand.hand.BuildConfig
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
@@ -10,9 +11,9 @@ import retrofit2.converter.gson.GsonConverterFactory
 
 object GmsRetrofitClient {
 
-    private const val BASE_URL = "https://gms.ssafy.io/gmsapi/api.openai.com/"
-
-    private const val GMS_API_KEY = "S13P32A106-1bd9c436-0876-44c9-bdf2-bb77386d352c"
+    // BuildConfig에서 읽어옴 (환경변수 또는 기본값)
+    private val BASE_URL = BuildConfig.GMS_BASE_URL
+    private val GMS_API_KEY = BuildConfig.GMS_API_KEY
 
     private val client: OkHttpClient by lazy {
         val logging = HttpLoggingInterceptor().apply {

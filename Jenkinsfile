@@ -214,7 +214,9 @@ pipeline {
                             steps {
                                 dir('frontend') {
                                     withCredentials([
-                                        string(credentialsId: 'firebase_app_id_text', variable: 'FIREBASE_APP_ID_VALUE')
+                                        string(credentialsId: 'firebase_app_id_text', variable: 'FIREBASE_APP_ID_VALUE'),
+                                        string(credentialsId: 'gms-base-url', variable: 'GMS_BASE_URL_VALUE'),
+                                        string(credentialsId: 'gms-api-key', variable: 'GMS_API_KEY_VALUE')
                                     ]) {
                                         script {
                                             def gitCommit = sh(returnStdout: true, script: 'git log -1 --oneline').trim()
@@ -229,6 +231,10 @@ pipeline {
                                             sh """
                                                 chmod +x gradlew
                                                 ./gradlew --version
+
+                                                # GMS API 환경변수 설정
+                                                export GMS_BASE_URL='${GMS_BASE_URL_VALUE}'
+                                                export GMS_API_KEY='${GMS_API_KEY_VALUE}'
 
                                                 echo "🔨 Building app module APK..."
                                                 ./gradlew :app:assembleDebug
