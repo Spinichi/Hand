@@ -45,17 +45,19 @@ public class ReportAnalysisClient {
      * @param diaries       일별 다이어리 리스트 (date, longSummary, shortSummary, depressionScore)
      * @param biometrics    생체 데이터 (baseline, anomalies, userInfo)
      * @param totalSummary  개인은 "" 값
+     * @param userInfo      사용자 정보 (age, gender, job, disease, family) - AI 분석용
      * @return 분석 결과 (report, advice)
      */
     public ReportAnalysisResult analyzeIndividualReport(
             Long userId,
             List<Map<String, Object>> diaries,
             Map<String, Object> biometrics,
-            String totalSummary) {
+            String totalSummary,
+            Map<String, Object> userInfo) {
 
         log.info("Analyzing individual report for user {} (diaries: {})", userId, diaries.size());
 
-        return callAnalysisApi(individualReportApiUrl, userId, diaries, biometrics, totalSummary, "individual");
+        return callAnalysisApi(individualReportApiUrl, userId, diaries, biometrics, totalSummary, userInfo, "individual");
     }
 
     /**
@@ -67,24 +69,26 @@ public class ReportAnalysisClient {
      * @param diaries       팀원의 일별 다이어리 리스트 (date, longSummary, shortSummary, depressionScore)
      * @param biometrics    팀원의 생체 데이터 (baseline, anomalies, userInfo)
      * @param totalSummary  팀 전체 요약
+     * @param userInfo      사용자 정보 (age, gender, job, disease, family) - AI 분석용
      * @return 분석 결과 (report, advice)
      */
     public ReportAnalysisResult analyzeManagerAdvice(
             Long userId,
             List<Map<String, Object>> diaries,
             Map<String, Object> biometrics,
-            String totalSummary) {
+            String totalSummary,
+            Map<String, Object> userInfo) {
 
         log.info("Analyzing manager advice for user {} (diaries: {})", userId, diaries.size());
 
-        return callAnalysisApi(managerAdviceApiUrl, userId, diaries, biometrics, totalSummary, "manager");
+        return callAnalysisApi(managerAdviceApiUrl, userId, diaries, biometrics, totalSummary, userInfo, "manager");
     }
 
     /**
      * FastAPI 호출 공통 메서드
      *
      * API 스펙:
-     * - Request: { "user_id": int, "diaries": [...], "biometrics": {...}, "total_summary": string }
+     * - Request: { "user_id": int, "diaries": [...], "biometrics": {...}, "total_summary": string, "user_info": {...} }
      * - Response: { "user_id": int, "report": string, "advice": string }
      */
     private ReportAnalysisResult callAnalysisApi(
@@ -93,6 +97,7 @@ public class ReportAnalysisClient {
             List<Map<String, Object>> diaries,
             Map<String, Object> biometrics,
             String totalSummary,
+            Map<String, Object> userInfo,
             String reportType) {
 
         try {
@@ -102,6 +107,7 @@ public class ReportAnalysisClient {
             requestBody.put("diaries", diaries);          // 그대로 전달
             requestBody.put("biometrics", biometrics);    // 그대로 전달
             requestBody.put("total_summary", totalSummary); // 추가됨
+            requestBody.put("user_info", userInfo);       // AI 분석용 사용자 정보 (age, gender, job, disease, family)
 
             // FastAPI 호출
             HttpHeaders headers = new HttpHeaders();

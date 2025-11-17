@@ -106,7 +106,16 @@ public class WeeklyReportService {
         Map<String, Object> biometricsForApi = new HashMap<>();
         biometricsForApi.put("baseline", biometricData.getUserBaseline());
         biometricsForApi.put("anomalies", biometricData.getAnomalies());
-        biometricsForApi.put("userInfo", biometricData.getUserInfo());
+        biometricsForApi.put("userInfo", biometricData.getUserInfo());  // height, weight, residenceType 포함
+
+        // 9. AI 분석용 user_info 생성 (height, weight 제외, family로 변경)
+        Map<String, Object> userInfoForAi = new HashMap<>();
+        Map<String, Object> baseUserInfo = biometricData.getUserInfo();
+        userInfoForAi.put("age", baseUserInfo.get("age"));
+        userInfoForAi.put("gender", baseUserInfo.get("gender"));
+        userInfoForAi.put("job", baseUserInfo.get("job"));
+        userInfoForAi.put("disease", baseUserInfo.get("disease"));
+        userInfoForAi.put("family", baseUserInfo.get("residenceType"));  // residenceType → family
 
         // 개인용 보고서는 totalSummary를 빈 문자열로 전달 (관리자용만 RAG 사용)
         ReportAnalysisClient.ReportAnalysisResult analysisResult =
@@ -114,15 +123,16 @@ public class WeeklyReportService {
                         userId,
                         dailyDiaries,
                         biometricsForApi,
-                        ""  // 개인용은 빈 문자열
+                        "",  // 개인용은 빈 문자열
+                        userInfoForAi  // AI 분석용 사용자 정보
                 );
 
-        // 9. 통계 계산
+        // 10. 통계 계산
         DoubleSummaryStatistics scoreStats = diaries.stream()
                 .mapToDouble(d -> d.getEmotionAnalysis().getDepressionScore())
                 .summaryStatistics();
 
-        // 10. WeeklyReportDetail (MongoDB) 저장
+        // 11. WeeklyReportDetail (MongoDB) 저장
         WeeklyReportDetail detail = WeeklyReportDetail.builder()
                 .userId(userId)
                 .year(year)
@@ -146,7 +156,7 @@ public class WeeklyReportService {
         detail = weeklyReportDetailRepository.save(detail);
         log.debug("WeeklyReportDetail saved with ID: {}", detail.getId());
 
-        // 11. WeeklyReport (MySQL) 메타데이터 저장
+        // 12. WeeklyReport (MySQL) 메타데이터 저장
         WeeklyReport report = WeeklyReport.builder()
                 .userId(userId)
                 .year(year)

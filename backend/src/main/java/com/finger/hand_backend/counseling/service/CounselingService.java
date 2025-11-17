@@ -137,22 +137,32 @@ public class CounselingService {
         Map<String, Object> biometrics = new HashMap<>();
         biometrics.put("baseline", biometricData.getUserBaseline());
         biometrics.put("anomalies", biometricData.getAnomalies());
-        biometrics.put("userInfo", biometricData.getUserInfo());
+        biometrics.put("userInfo", biometricData.getUserInfo());  // height, weight, residenceType 포함
+
+        // 8. AI 분석용 user_info 생성 (height, weight 제외, family로 변경)
+        Map<String, Object> userInfoForAi = new HashMap<>();
+        Map<String, Object> baseUserInfo = biometricData.getUserInfo();
+        userInfoForAi.put("age", baseUserInfo.get("age"));
+        userInfoForAi.put("gender", baseUserInfo.get("gender"));
+        userInfoForAi.put("job", baseUserInfo.get("job"));
+        userInfoForAi.put("disease", baseUserInfo.get("disease"));
+        userInfoForAi.put("family", baseUserInfo.get("residenceType"));  // residenceType → family
 
         ReportAnalysisClient.ReportAnalysisResult analysisResult =
                 reportAnalysisClient.analyzeManagerAdvice(
                         userId,
                         dailyDiaries,
                         biometrics,
-                        totalSummary
+                        totalSummary,
+                        userInfoForAi  // AI 분석용 사용자 정보
                 );
 
-        // 8. 통계 계산
+        // 9. 통계 계산
         DoubleSummaryStatistics scoreStats = diaries.stream()
                 .mapToDouble(d -> d.getEmotionAnalysis().getDepressionScore())
                 .summaryStatistics();
 
-        // 9. CounselingReportDetail (MongoDB) 저장
+        // 10. CounselingReportDetail (MongoDB) 저장
         CounselingReportDetail detail = CounselingReportDetail.builder()
                 .userId(userId)
                 .startDate(startDate)
@@ -174,7 +184,7 @@ public class CounselingService {
         detail = counselingReportDetailRepository.save(detail);
         log.debug("CounselingReportDetail saved with ID: {}", detail.getId());
 
-        // 10. CounselingReport (MySQL) 메타데이터 저장
+        // 11. CounselingReport (MySQL) 메타데이터 저장
         CounselingReport savedReport = counselingReportRepository.save(
                 CounselingReport.builder()
                         .userId(userId)
