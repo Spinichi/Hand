@@ -96,7 +96,7 @@ fun AdminGreetingHeader(
     val resolvedHorizontalGutter = horizontalGutter ?: (screenW * horizontalGutterRatio)
 
     // 점수 우선, 없으면 기존 라벨 사용
-    val resolvedMoodLabel = (avgScore100?.let { scoreToLabel(it) } ?: moodLabel).lowercase()
+    val resolvedMoodLabel = scoreToLabel(avgScore100 ?: 0f).lowercase()
 
     // 외곽
     Box(

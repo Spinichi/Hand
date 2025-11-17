@@ -36,6 +36,7 @@ import com.hand.hand.ui.theme.Brown80
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import com.hand.hand.ui.model.toOrgMoodUi
 
 private fun scoreToMood(score: Int): Mood {
     val s = score.toFloat().coerceIn(0f, 100f)
@@ -53,12 +54,12 @@ private fun GroupData.toOrganization(): Organization? {
 
     val rawCount = this.memberCount ?: 0
     val memberOnlyCount = maxOf(0, rawCount - 1)
-
+    val avgScoreSafe: Float = this.avgMemberRiskScore?.toFloat()?.coerceIn(0f, 100f) ?: 0f
     return Organization(
         id = this.id.toString(),
         name = this.name,
         memberCount = memberOnlyCount,
-        averageScore = this.avgMemberRiskScore?.toFloat()?.coerceIn(0f, 100f) ?: 0f
+        averageScore = avgScoreSafe
     )
 }
 
@@ -215,6 +216,8 @@ private fun AdminHomeScreen(
         return
     }
 
+    val ui = org.toOrgMoodUi() // Organization.toOrgMoodUi() 사용 (이미 네 코드에 있음)
+
     Scaffold(
         containerColor = Brown10,
         contentWindowInsets = WindowInsets(0),
@@ -225,7 +228,10 @@ private fun AdminHomeScreen(
                 userName = org.name,
                 registeredCount = registeredCount,
                 sadCount = sadCount,
-                moodLabel = moodFromScore(avgScore100.toInt()).label,
+                moodLabel = ui.moodLabel,           // fallback(호환용)
+                avgScore100 = org.averageScore,     // 여전히 전달 가능
+//                moodIconRes = ui.moodIconRes,       // 핵심: 다이얼로그와 동일한 소스
+//                moodText = ui.moodLabel,            // 핵심: 라벨도 동일하게
                 recommendation = "",
                 searchQuery = query,
                 onSearchQueryChange = { query = it },
