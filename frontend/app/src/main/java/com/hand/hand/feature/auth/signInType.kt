@@ -82,7 +82,9 @@ fun SignInTypeScreen(
             onSuccess = { list: List<GroupData>? ->
                 Handler(Looper.getMainLooper()).post {
                     val apiList: List<GroupData> = list ?: emptyList()
-                    organizations = apiList.map { api: GroupData ->
+                    organizations = apiList
+                        .sortedByDescending { it.createdAt ?: "" }
+                        .map { api: GroupData ->
                         Organization(
                             id = api.id?.toString() ?: "",          // null이면 빈 문자열
                             name = api.name ?: "알 수 없음",
