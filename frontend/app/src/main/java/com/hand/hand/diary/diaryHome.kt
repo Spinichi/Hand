@@ -34,6 +34,7 @@ import com.hand.hand.care.CareActivity
 import com.hand.hand.ui.home.BottomTab
 import com.hand.hand.ui.home.CurvedBottomNavBar
 import com.hand.hand.ui.home.HomeActivity
+import com.hand.hand.ui.mypage.MyPageActivity
 import com.hand.hand.ui.theme.BrandFontFamily
 import com.hand.hand.ui.common.LoadingDialog
 import java.text.SimpleDateFormat
@@ -144,7 +145,9 @@ fun DiaryHomeScreen(onBackClick: () -> Unit) {
                         )
                     )
                 },
-                onClickProfile = { /* TODO */ },
+                onClickProfile = {
+                    context.startActivity(Intent(context, MyPageActivity::class.java))
+                },
                 onClickCenter = { context.startActivity(Intent(context, CareActivity::class.java)) }
             )
         }

@@ -39,7 +39,7 @@ import com.hand.hand.care.CareActivity
 import com.hand.hand.ui.home.HomeActivity          // ✅ 홈 이동용
 import com.hand.hand.diary.DiaryHomeActivity       // ✅ 글쓰기 이동용
 import com.hand.hand.AiDocument.PrivateAiDocumentHomeActivity  // ✅ 다이어리 이동용
-import com.hand.hand.ui.test.WearTestActivity      // ✅ 워치 테스트용
+import com.hand.hand.ui.mypage.MyPageActivity      // ✅ 마이페이지 이동용
 
 import com.hand.hand.api.SignUp.IndividualUserManager
 import com.hand.hand.api.Anomaly.AnomalyManager
@@ -383,7 +383,7 @@ fun HomeScreen() {
                     )
                 },
                 onClickProfile = {
-                    context.startActivity(Intent(context, WearTestActivity::class.java))
+                    context.startActivity(Intent(context, MyPageActivity::class.java))
                 },
                 onClickCenter = {
                     context.startActivity(Intent(context, CareActivity::class.java))

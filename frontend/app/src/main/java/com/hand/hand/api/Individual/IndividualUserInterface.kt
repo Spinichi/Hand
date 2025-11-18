@@ -5,6 +5,7 @@ import retrofit2.Call
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
+import retrofit2.http.PUT
 
 interface IndividualUserInterface {
 
@@ -19,5 +20,12 @@ interface IndividualUserInterface {
     // GET /individual-users/me
     @GET("v1/individual-users/me")
     fun getMyIndividualUser(
+    ): Call<ApiResponse<IndividualUserData>>
+
+    // 개인정보 수정
+    // PUT /individual-users/me
+    @PUT("v1/individual-users/me")
+    fun updateMyIndividualUser(
+        @Body request: IndividualUserRequest
     ): Call<ApiResponse<IndividualUserData>>
 }

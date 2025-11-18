@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.sp
 import com.hand.hand.care.CareActivity
 import com.hand.hand.diary.DiaryHomeActivity
 import com.hand.hand.ui.home.*
+import com.hand.hand.ui.mypage.MyPageActivity
 import com.hand.hand.ui.theme.BrandFontFamily
 import java.util.*
 
@@ -127,7 +128,7 @@ fun PrivateAiDocumentHomeScreen() {
                     context.startActivity(Intent(context, PrivateAiDocumentHomeActivity::class.java))
                 },
                 onClickProfile = {
-                    // 추후 프로필 페이지
+                    context.startActivity(Intent(context, MyPageActivity::class.java))
                 },
                 onClickCenter = {
                     context.startActivity(Intent(context, CareActivity::class.java))

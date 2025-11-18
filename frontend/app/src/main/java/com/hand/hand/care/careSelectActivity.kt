@@ -22,6 +22,7 @@ import com.hand.hand.ui.home.CurvedBottomNavBar
 import com.hand.hand.ui.home.HomeActivity  // ✅ 홈 이동용
 import com.hand.hand.diary.DiaryHomeActivity // ✅ 글쓰기(다이어리 홈) 이동용
 import com.hand.hand.AiDocument.PrivateAiDocumentHomeActivity // ✅ 다이어리 버튼 이동용
+import com.hand.hand.ui.mypage.MyPageActivity
 
 class CareActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -142,7 +143,9 @@ fun CareScreen() {
                     val intent = Intent(context, PrivateAiDocumentHomeActivity::class.java)
                     context.startActivity(intent)
                 },
-                onClickProfile = { /* TODO: 프로필 페이지 */ },
+                onClickProfile = {
+                    context.startActivity(Intent(context, MyPageActivity::class.java))
+                },
                 onClickCenter = {
                     // ✅ 중앙 버튼 클릭 → CareActivity로 이동
                     val intent = Intent(context, CareActivity::class.java)

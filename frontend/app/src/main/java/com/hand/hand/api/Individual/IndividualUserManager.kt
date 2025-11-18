@@ -126,5 +126,69 @@ class IndividualUserManager {
                 }
             })
         }
+
+        /**
+         * 3) 개인정보 수정 (PUT /individual-users/me)
+         */
+        fun updateIndividualUser(
+            name: String,
+            age: Int,
+            gender: String,
+            job: String,
+            height: Int,
+            weight: Int,
+            disease: String,
+            residenceType: String,
+            diaryReminderEnabled: Boolean,
+            hour: Int,
+            onSuccess: (IndividualUserData) -> Unit,
+            onFailure: (Throwable) -> Unit
+        ) {
+            val notificationHourValue = if (hour in 0..23) hour else 20
+
+            val req = IndividualUserRequest(
+                name = name,
+                age = age,
+                gender = gender,
+                job = job,
+                height = height,
+                weight = weight,
+                disease = disease,
+                residenceType = residenceType,
+                diaryReminderEnabled = diaryReminderEnabled,
+                notificationHour = notificationHourValue
+            )
+
+            Log.d("IndividualUserManager", "개인정보 수정 요청: $req")
+
+            httpCall.updateMyIndividualUser(req).enqueue(object :
+                Callback<ApiResponse<IndividualUserData>> {
+                override fun onResponse(
+                    call: Call<ApiResponse<IndividualUserData>>,
+                    response: Response<ApiResponse<IndividualUserData>>
+                ) {
+                    val body = response.body()
+                    Log.d("IndividualUserManager", "수정 응답: response=$response, body=$body")
+
+                    if (response.isSuccessful && body?.data != null) {
+                        onSuccess(body.data)
+                    } else {
+                        onFailure(
+                            RuntimeException(
+                                "개인정보 수정 실패 code=${response.code()} msg=${body?.message}"
+                            )
+                        )
+                    }
+                }
+
+                override fun onFailure(
+                    call: Call<ApiResponse<IndividualUserData>>,
+                    t: Throwable
+                ) {
+                    Log.e("IndividualUserManager", "개인정보 수정 실패", t)
+                    onFailure(t)
+                }
+            })
+        }
     }
 }
