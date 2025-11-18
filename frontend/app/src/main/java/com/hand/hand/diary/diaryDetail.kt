@@ -1,5 +1,6 @@
 package com.hand.hand.diary
 
+import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
@@ -12,6 +13,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -19,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -26,8 +29,13 @@ import androidx.compose.ui.unit.sp
 import com.hand.hand.R
 import com.hand.hand.api.Diary.DiaryDetailResponse
 import com.hand.hand.api.Diary.DiaryManager
-import com.hand.hand.nav.NavBar
+import com.hand.hand.ui.home.CurvedBottomNavBar
 import com.hand.hand.ui.theme.BrandFontFamily
+import com.hand.hand.ui.home.BottomTab
+import com.hand.hand.ui.home.HomeActivity
+import com.hand.hand.AiDocument.PrivateAiDocumentHomeActivity
+import com.hand.hand.care.CareActivity
+
 
 class DiaryDetailActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -98,275 +106,301 @@ fun DiaryDetailScreen(diaryDetail: DiaryDetailResponse, onBackClick: () -> Unit)
     val backButtonPaddingTop = screenHeight * 0.05f
     val navBarHeight = screenHeight * 0.12f
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color(0xFFF7F4F2))
-    ) {
-        // 헤더 배경 이미지
+    val context = LocalContext.current
+
+    Scaffold(
+        bottomBar = {
+            CurvedBottomNavBar(
+                selectedTab = BottomTab.Write,
+                onClickHome = {
+                    val intent = Intent(context, HomeActivity::class.java).apply {
+                        flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                    }
+                    context.startActivity(intent)
+                },
+                onClickWrite = { /* 현재 페이지 */ },
+                onClickDiary = {
+                    context.startActivity(
+                        Intent(
+                            context,
+                            PrivateAiDocumentHomeActivity::class.java
+                        )
+                    )
+                },
+                onClickProfile = { /* TODO */ },
+                onClickCenter = {
+                    context.startActivity(Intent(context, CareActivity::class.java))
+                }
+            )
+        }
+    ) { innerPadding ->
+        // innerPadding에는 bottomBar 높이에 따른 padding이 포함됩니다.
         Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .height(screenHeight * 0.6f)
-                .offset(y = (-screenHeight * 0.25f))
+                .fillMaxSize()
+                .background(Color(0xFFF7F4F2))
+                .padding(innerPadding)
         ) {
-            Image(
-                painter = painterResource(id = R.drawable.back_circle_orange),
-                contentDescription = "Background Circle",
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop
-            )
-        }
-
-        // 뒤로가기 버튼
-        Image(
-            painter = painterResource(id = R.drawable.back_white_btn),
-            contentDescription = "Back Button",
-            modifier = Modifier
-                .padding(start = backButtonPaddingStart, top = backButtonPaddingTop)
-                .size(backButtonSize)
-                .align(Alignment.TopStart)
-                .clickable { onBackClick() }
-        )
-
-        // 날짜 텍스트
-        Text(
-            text = diaryDetail.sessionDate ?: "",
-            fontFamily = BrandFontFamily,
-            fontWeight = FontWeight.Bold,
-            fontSize = (screenHeight.value * 0.03f).sp,
-            color = Color.White,
-            modifier = Modifier
-                .align(Alignment.TopStart)
-                .padding(
-                    start = backButtonPaddingStart + backButtonSize + 18.dp,
-                    top = backButtonPaddingTop + (backButtonSize / 4)
-                )
-        )
-
-        // 중앙 제목 + 감정 태그
-        Column(
-            modifier = Modifier
-                .align(Alignment.TopCenter)
-                .padding(top = screenHeight * 0.14f),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(
-                text = diaryDetail.shortSummary ?: "",
-                fontFamily = BrandFontFamily,
-                fontWeight = FontWeight.Bold,
-                fontSize = (screenHeight.value * 0.035f).sp,
-                color = Color.White,
-                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                lineHeight = (screenHeight.value * 0.04f).sp
-            )
-            Spacer(modifier = Modifier.height(screenHeight * 0.015f))
-
-            val mainEmotion = diaryDetail.emotions?.let { emotions ->
-                val map = mapOf(
-                    "기쁨" to (emotions.joy ?: 0.0),
-                    "당황" to (emotions.embarrassment ?: 0.0),
-                    "분노" to (emotions.anger ?: 0.0),
-                    "불안" to (emotions.anxiety ?: 0.0),
-                    "상처" to (emotions.hurt ?: 0.0),
-                    "슬픔" to (emotions.sadness ?: 0.0)
-                )
-                map.maxByOrNull { it.value }?.key ?: "감정 없음"
-            } ?: "감정 없음"
-
+            // 헤더 배경 이미지
             Box(
                 modifier = Modifier
-                    .background(
-                        color = Color.White,
-                        shape = RoundedCornerShape(100.dp)
-                    )
-                    .padding(horizontal = 24.dp, vertical = 8.dp)
+                    .fillMaxWidth()
+                    .height(screenHeight * 0.6f)
+                    .offset(y = (-screenHeight * 0.25f))
             ) {
-                Text(
-                    text = mainEmotion,
-                    fontFamily = BrandFontFamily,
-                    fontWeight = FontWeight.Medium,
-                    fontSize = (screenHeight.value * 0.025f).sp,
-                    color = Color.Black
+                Image(
+                    painter = painterResource(id = R.drawable.back_circle_orange),
+                    contentDescription = "Background Circle",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
                 )
             }
-        }
 
-        // 본문 영역 (스크롤)
-        val scrollState = rememberScrollState()
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(
-                    top = screenHeight * 0.41f,
-                    bottom = navBarHeight + 40.dp
-                )
-                .verticalScroll(scrollState)
-                .padding(horizontal = 20.dp)
-        ) {
-            // 감정 분석
+            // 뒤로가기 버튼
+            Image(
+                painter = painterResource(id = R.drawable.back_white_btn),
+                contentDescription = "Back Button",
+                modifier = Modifier
+                    .padding(start = backButtonPaddingStart, top = backButtonPaddingTop)
+                    .size(backButtonSize)
+                    .align(Alignment.TopStart)
+                    .clickable { onBackClick() }
+            )
+
+            // 날짜 텍스트
             Text(
-                text = "감정 분석",
+                text = diaryDetail.sessionDate ?: "",
                 fontFamily = BrandFontFamily,
                 fontWeight = FontWeight.Bold,
-                fontSize = (screenHeight.value * 0.02f).sp,
-                color = Color(0xFF4F3422),
+                fontSize = (screenHeight.value * 0.03f).sp,
+                color = Color.White,
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 8.dp)
+                    .align(Alignment.TopStart)
+                    .padding(
+                        start = backButtonPaddingStart + backButtonSize + 18.dp,
+                        top = backButtonPaddingTop + (backButtonSize / 4)
+                    )
             )
 
-            val emotionValues = diaryDetail.emotions?.let { emotions ->
-                listOf(
-                    emotions.joy,
-                    emotions.embarrassment,
-                    emotions.anger,
-                    emotions.anxiety,
-                    emotions.hurt,
-                    emotions.sadness
-                )
-            } ?: List(6) { 0.0 }
-
-            val emotionColors = listOf(
-                Color(0xFF9BB167),
-                Color(0xFFFFCE5C),
-                Color(0xFFED7E1C),
-                Color(0xFFC0A091),
-                Color(0xFF815EFF),
-                Color(0xFF797876)
-            )
-
-            val safeValues = emotionValues.map { it ?: 0.0 }
-            val maxValue = (safeValues.maxOrNull() ?: 1.0).toFloat()
-
-            Row(
+            // 중앙 제목 + 감정 태그
+            Column(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(screenHeight * 0.15f),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Bottom
+                    .align(Alignment.TopCenter)
+                    .padding(top = screenHeight * 0.14f),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                safeValues.forEachIndexed { index, value ->
-                    Box(
-                        modifier = Modifier
-                            .width(screenWidth * 0.1f)
-                            .height(screenHeight * 0.15f * (value.toFloat() / maxValue))
-                            .background(
-                                color = emotionColors[index],
-                                shape = RoundedCornerShape(100.dp)
-                            )
+                Text(
+                    text = diaryDetail.shortSummary ?: "",
+                    fontFamily = BrandFontFamily,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = (screenHeight.value * 0.035f).sp,
+                    color = Color.White,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    lineHeight = (screenHeight.value * 0.04f).sp
+                )
+                Spacer(modifier = Modifier.height(screenHeight * 0.015f))
+
+                val mainEmotion = diaryDetail.emotions?.let { emotions ->
+                    val map = mapOf(
+                        "기쁨" to (emotions.joy ?: 0.0),
+                        "당황" to (emotions.embarrassment ?: 0.0),
+                        "분노" to (emotions.anger ?: 0.0),
+                        "불안" to (emotions.anxiety ?: 0.0),
+                        "상처" to (emotions.hurt ?: 0.0),
+                        "슬픔" to (emotions.sadness ?: 0.0)
+                    )
+                    map.maxByOrNull { it.value }?.key ?: "감정 없음"
+                } ?: "감정 없음"
+
+                Box(
+                    modifier = Modifier
+                        .background(
+                            color = Color.White,
+                            shape = RoundedCornerShape(100.dp)
+                        )
+                        .padding(horizontal = 24.dp, vertical = 8.dp)
+                ) {
+                    Text(
+                        text = mainEmotion,
+                        fontFamily = BrandFontFamily,
+                        fontWeight = FontWeight.Medium,
+                        fontSize = (screenHeight.value * 0.025f).sp,
+                        color = Color.Black
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // 감정 범례
-            EmotionLegend2()
-
-            Spacer(modifier = Modifier.height(screenHeight * 0.03f))
-
-            // 감정 다이어리
-            Text(
-                text = "감정 다이어리",
-                fontFamily = BrandFontFamily,
-                fontWeight = FontWeight.Bold,
-                fontSize = (screenHeight.value * 0.02f).sp,
-                color = Color(0xFF4F3422),
+            // 본문 영역 (스크롤)
+            val scrollState = rememberScrollState()
+            Column(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 8.dp)
-            )
-
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(color = Color.White, shape = RoundedCornerShape(30.dp))
-                    .padding(16.dp)
+                    .fillMaxSize()
+                    .padding(
+                        top = screenHeight * 0.41f,
+//                        bottom = innerPadding.calculateBottomPadding() + 40.dp
+                    )
+                    .verticalScroll(scrollState)
+                    .padding(horizontal = 20.dp)
             ) {
+                // 감정 분석
                 Text(
-                    text = diaryDetail.longSummary ?: "",
+                    text = "감정 분석",
                     fontFamily = BrandFontFamily,
-                    fontSize = (screenHeight.value * 0.018f).sp,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = (screenHeight.value * 0.02f).sp,
                     color = Color(0xFF4F3422),
-                    lineHeight = (screenHeight.value * 0.025f).sp
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 8.dp)
+                )
+
+                val emotionValues = diaryDetail.emotions?.let { emotions ->
+                    listOf(
+                        emotions.joy,
+                        emotions.embarrassment,
+                        emotions.anger,
+                        emotions.anxiety,
+                        emotions.hurt,
+                        emotions.sadness
+                    )
+                } ?: List(6) { 0.0 }
+
+                val emotionColors = listOf(
+                    Color(0xFF9BB167),
+                    Color(0xFFFFCE5C),
+                    Color(0xFFED7E1C),
+                    Color(0xFFC0A091),
+                    Color(0xFF815EFF),
+                    Color(0xFF797876)
+                )
+
+                val safeValues = emotionValues.map { it ?: 0.0 }
+                val maxValue = (safeValues.maxOrNull() ?: 1.0).toFloat()
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(screenHeight * 0.15f),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.Bottom
+                ) {
+                    safeValues.forEachIndexed { index, value ->
+                        Box(
+                            modifier = Modifier
+                                .width(screenWidth * 0.1f)
+                                .height(screenHeight * 0.15f * (value.toFloat() / maxValue))
+                                .background(
+                                    color = emotionColors[index],
+                                    shape = RoundedCornerShape(100.dp)
+                                )
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // 감정 범례
+                EmotionLegend2()
+
+                Spacer(modifier = Modifier.height(screenHeight * 0.03f))
+
+                // 감정 다이어리
+                Text(
+                    text = "감정 다이어리",
+                    fontFamily = BrandFontFamily,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = (screenHeight.value * 0.02f).sp,
+                    color = Color(0xFF4F3422),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 8.dp)
+                )
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(color = Color.White, shape = RoundedCornerShape(30.dp))
+                        .padding(16.dp)
+                ) {
+                    Text(
+                        text = diaryDetail.longSummary ?: "",
+                        fontFamily = BrandFontFamily,
+                        fontSize = (screenHeight.value * 0.018f).sp,
+                        color = Color(0xFF4F3422),
+                        lineHeight = (screenHeight.value * 0.025f).sp
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                // 감정 조언
+                Text(
+                    text = "감정 조언",
+                    fontFamily = BrandFontFamily,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = (screenHeight.value * 0.02f).sp,
+                    color = Color(0xFF4F3422),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 8.dp)
+                )
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(color = Color.White, shape = RoundedCornerShape(30.dp))
+                        .padding(16.dp)
+                ) {
+                    Text(
+                        text = diaryDetail.emotionalAdvice ?: "",
+                        fontFamily = BrandFontFamily,
+                        fontSize = (screenHeight.value * 0.018f).sp,
+                        color = Color(0xFF4F3422),
+                        lineHeight = (screenHeight.value * 0.025f).sp
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(20.dp))
+            }
+
+            // 수정/삭제 버튼 (독립 배치, 반응형)
+            val buttonWidth = 130.dp
+            val buttonHeight = 70.dp
+            val buttonOffsetY = screenHeight * 0.31f
+
+            Row(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .offset(y = buttonOffsetY),
+                horizontalArrangement = Arrangement.spacedBy(100.dp)
+            ) {
+                Image(
+                    painter = painterResource(id = R.drawable.diary_rewrite_btn),
+                    contentDescription = "Diary Rewrite",
+                    modifier = Modifier
+                        .size(width = buttonWidth, height = buttonHeight)
+                        .clickable { Log.i("DiaryDetailScreen", "수정 버튼 클릭") }
+                )
+
+                Image(
+                    painter = painterResource(id = R.drawable.diary_delete_btn),
+                    contentDescription = "Diary Delete",
+                    modifier = Modifier
+                        .size(width = buttonWidth, height = buttonHeight)
+                        .clickable { Log.i("DiaryDetailScreen", "삭제 버튼 클릭") }
                 )
             }
 
-            Spacer(modifier = Modifier.height(20.dp))
-
-            // 감정 조언
-            Text(
-                text = "감정 조언",
-                fontFamily = BrandFontFamily,
-                fontWeight = FontWeight.Bold,
-                fontSize = (screenHeight.value * 0.02f).sp,
-                color = Color(0xFF4F3422),
+            // 우울 점수 아이콘 (상단 중앙)
+            DepressionIcon(
+                depressionScore = diaryDetail.depressionScore?.toInt(),
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 8.dp)
+                    .size(screenHeight * 0.12f)
+                    .align(Alignment.TopCenter)
+                    .offset(y = screenHeight * 0.3f)
             )
 
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(color = Color.White, shape = RoundedCornerShape(30.dp))
-                    .padding(16.dp)
-            ) {
-                Text(
-                    text = diaryDetail.emotionalAdvice ?: "",
-                    fontFamily = BrandFontFamily,
-                    fontSize = (screenHeight.value * 0.018f).sp,
-                    color = Color(0xFF4F3422),
-                    lineHeight = (screenHeight.value * 0.025f).sp
-                )
-            }
-
-            Spacer(modifier = Modifier.height(20.dp))
-        }
-
-        // 수정/삭제 버튼 (독립 배치, 반응형)
-        val buttonWidth = 130.dp
-        val buttonHeight = 70.dp
-        val buttonOffsetY = screenHeight * 0.31f
-
-        Row(
-            modifier = Modifier
-                .align(Alignment.TopCenter)
-                .offset(y = buttonOffsetY),
-            horizontalArrangement = Arrangement.spacedBy(100.dp)
-        ) {
-            Image(
-                painter = painterResource(id = R.drawable.diary_rewrite_btn),
-                contentDescription = "Diary Rewrite",
-                modifier = Modifier
-                    .size(width = buttonWidth, height = buttonHeight)
-                    .clickable { Log.i("DiaryDetailScreen", "수정 버튼 클릭") }
-            )
-
-            Image(
-                painter = painterResource(id = R.drawable.diary_delete_btn),
-                contentDescription = "Diary Delete",
-                modifier = Modifier
-                    .size(width = buttonWidth, height = buttonHeight)
-                    .clickable { Log.i("DiaryDetailScreen", "삭제 버튼 클릭") }
-            )
-        }
-
-        // 우울 점수 아이콘 (상단 중앙)
-        DepressionIcon(
-            depressionScore = diaryDetail.depressionScore?.toInt(),
-            modifier = Modifier
-                .size(screenHeight * 0.12f)
-                .align(Alignment.TopCenter)
-                .offset(y = screenHeight * 0.3f)
-        )
-
-        // NavBar
-        Box(
-            modifier = Modifier.align(Alignment.BottomCenter)
-        ) {
-            NavBar()
+            // 기존에 Box로 넣었던 NavBar 관련 코드는 제거했습니다.
         }
     }
 }
