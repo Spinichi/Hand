@@ -43,11 +43,10 @@ import com.hand.hand.ui.test.WearTestActivity      // ✅ 워치 테스트용
 
 import com.hand.hand.api.SignUp.IndividualUserManager
 import com.hand.hand.api.Anomaly.AnomalyManager
-import com.hand.hand.api.Group.GroupManager // ✅ 추가된 Import
-import com.hand.hand.api.Group.GroupData // ✅ 추가된 Import
+import com.hand.hand.api.Group.GroupManager         // ✅ 추가된 Import
+import com.hand.hand.api.Group.GroupData           // ✅ 추가된 Import
 import com.hand.hand.api.riskToday.RiskTodayManager
 import com.hand.hand.ui.common.LoadingDialog
-
 
 @Composable
 fun HomeScreen() {
@@ -81,10 +80,11 @@ fun HomeScreen() {
         )
     }
 
-    // ⭐ 오늘의 다이어리 작성 상태 조회
+    // ⭐ 오늘의 다이어리 작성 상태
     var diaryStatus by remember { mutableStateOf("작성 전") }
 
-    LaunchedEffect(Unit) {
+    // 🔹 다이어리 상태 재조회 공통 함수
+    fun refreshDiaryStatus(onComplete: (() -> Unit)? = null) {
         val today = SimpleDateFormat("yyyy-MM-dd", Locale.KOREA).format(Date())
         com.hand.hand.api.Diary.DiaryManager.getMyDiaryList(
             startDate = today,
@@ -99,13 +99,26 @@ fun HomeScreen() {
                     else -> "작성 전"
                 }
                 diaryLoaded = true
-                android.util.Log.d("HomeScreen", "✅ 오늘의 다이어리 상태: $diaryStatus (status=${items.firstOrNull()?.status})")
+                android.util.Log.d(
+                    "HomeScreen",
+                    "📓 refreshDiaryStatus 결과: $diaryStatus (status=${items.firstOrNull()?.status})"
+                )
+                onComplete?.invoke()
             },
             onFailure = { error ->
                 diaryLoaded = true
-                android.util.Log.e("HomeScreen", "❌ 다이어리 작성 여부 조회 실패: ${error.message}")
+                android.util.Log.e(
+                    "HomeScreen",
+                    "❌ 다이어리 작성 여부 조회 실패: ${error.message}"
+                )
+                onComplete?.invoke()
             }
         )
+    }
+
+    // 처음 진입 시 다이어리 상태 조회
+    LaunchedEffect(Unit) {
+        refreshDiaryStatus()
     }
 
     val isWritten = diaryStatus == "작성 완료"
@@ -122,16 +135,14 @@ fun HomeScreen() {
         com.hand.hand.api.Measurements.MeasurementsManager.getLatestMeasurement(
             onSuccess = { data ->
                 data?.let {
-                    // BPM 업데이트
                     heartRateBpm = it.heartRate?.toInt() ?: 75
-
-                    // 스트레스 지수 업데이트 (0-100 → mood 계산용)
                     personalMoodScore = it.stressIndex?.toInt() ?: 79
-
-                    // 스트레스 레벨 업데이트 (1-5)
                     stressLevel = it.stressLevel ?: 2
 
-                    android.util.Log.d("HomeScreen", "✅ 최근 측정 데이터: BPM=$heartRateBpm, Score=$personalMoodScore, Level=$stressLevel")
+                    android.util.Log.d(
+                        "HomeScreen",
+                        "✅ 최근 측정 데이터: BPM=$heartRateBpm, Score=$personalMoodScore, Level=$stressLevel"
+                    )
                 }
                 measurementLoaded = true
             },
@@ -160,7 +171,9 @@ fun HomeScreen() {
     }
 
     // ⭐ 오늘의 수면 데이터 조회
-    var todaySleepData by remember { mutableStateOf<com.hand.hand.api.Sleep.SleepData?>(null) }
+    var todaySleepData by remember {
+        mutableStateOf<com.hand.hand.api.Sleep.SleepData?>(null)
+    }
 
     LaunchedEffect(Unit) {
         com.hand.hand.api.Sleep.SleepManager.getTodaySleep(
@@ -168,7 +181,10 @@ fun HomeScreen() {
                 sleepLoaded = true
                 todaySleepData = data
                 if (data != null) {
-                    android.util.Log.d("HomeScreen", "✅ 오늘의 수면 데이터: ${data.sleepDurationMinutes}분")
+                    android.util.Log.d(
+                        "HomeScreen",
+                        "✅ 오늘의 수면 데이터: ${data.sleepDurationMinutes}분"
+                    )
                 } else {
                     android.util.Log.d("HomeScreen", "ℹ️ 오늘의 수면 데이터 없음")
                 }
@@ -196,35 +212,83 @@ fun HomeScreen() {
         )
     }
 
-    // ✅ 화면 복귀 시 다이어리 상태와 세션 개수 재조회
+    // ⭐ 오늘의 리스크 점수 상태
+    var todayRiskExists by remember { mutableStateOf(false) }
+    var todayRiskScore by remember { mutableStateOf<Double?>(null) }
+
+    // 처음 진입 시 오늘의 점수 조회
+    LaunchedEffect(Unit) {
+        RiskTodayManager.checkRiskTodayExists(
+            onSuccess = { exists ->
+                todayRiskExists = exists
+                if (exists) {
+                    RiskTodayManager.getRiskToday(
+                        onSuccess = { data ->
+                            android.util.Log.d(
+                                "HomeScreen",
+                                "✅ getRiskToday 성공: riskScore=${data.riskScore}"
+                            )
+                            todayRiskScore = data.riskScore
+                        },
+                        onError = { msg ->
+                            android.util.Log.e("HomeScreen", "❌ getRiskToday 실패: $msg")
+                            todayRiskScore = null
+                        }
+                    )
+                } else {
+                    todayRiskScore = null
+                }
+            },
+            onError = {
+                todayRiskExists = false
+                todayRiskScore = null
+            }
+        )
+    }
+
+    // ✅ 화면 복귀 시 다이어리 상태, 세션, 오늘의 점수 재조회
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
                 // 다이어리 상태 재조회
-                val today = SimpleDateFormat("yyyy-MM-dd", Locale.KOREA).format(Date())
-                com.hand.hand.api.Diary.DiaryManager.getMyDiaryList(
-                    startDate = today,
-                    endDate = today,
-                    page = 0,
-                    size = 1,
-                    onSuccess = { items ->
-                        diaryStatus = when {
-                            items.isEmpty() -> "작성 전"
-                            items.first().status == "COMPLETED" -> "작성 완료"
-                            items.first().status == "IN_PROGRESS" -> "작성 중"
-                            else -> "작성 전"
+                refreshDiaryStatus()
+
+                // 오늘의 점수 재조회
+                RiskTodayManager.checkRiskTodayExists(
+                    onSuccess = { exists ->
+                        todayRiskExists = exists
+                        if (exists) {
+                            RiskTodayManager.getRiskToday(
+                                onSuccess = { data ->
+                                    todayRiskScore = data.riskScore
+                                    android.util.Log.d(
+                                        "HomeScreen",
+                                        "🔄 ON_RESUME - 오늘의 점수 재조회 성공: ${data.riskScore}"
+                                    )
+                                },
+                                onError = {
+                                    todayRiskScore = null
+                                }
+                            )
+                        } else {
+                            todayRiskScore = null
                         }
-                        android.util.Log.d("HomeScreen", "🔄 화면 복귀 - 다이어리 상태: $diaryStatus")
                     },
-                    onFailure = { }
+                    onError = {
+                        todayRiskExists = false
+                        todayRiskScore = null
+                    }
                 )
 
                 // 마음 완화 세션 개수 재조회
                 com.hand.hand.api.Relief.ReliefManager.getTodaySessionCount(
                     onSuccess = { count ->
                         todaySessionCount = count.toInt()
-                        android.util.Log.d("HomeScreen", "🔄 화면 복귀 - 세션 개수: $count")
+                        android.util.Log.d(
+                            "HomeScreen",
+                            "🔄 화면 복귀 - 세션 개수: $count"
+                        )
                     },
                     onFailure = { }
                 )
@@ -241,11 +305,9 @@ fun HomeScreen() {
     LaunchedEffect(Unit) {
         com.hand.hand.api.Group.GroupManager.getGroups(
             onSuccess = { list: List<GroupData>? ->
-                // Compose 상태 업데이트를 위해 메인 스레드로 전달
                 Handler(Looper.getMainLooper()).post {
                     val apiList: List<GroupData> = list ?: emptyList()
                     organizations = apiList.mapNotNull { api: GroupData ->
-                        // 현재 Organization 모델(memberCount 존재)을 사용하여 객체 생성
                         if (api.id == null || api.name == null) return@mapNotNull null
                         val rawCount = api.memberCount ?: 0
                         val memberOnlyCount = maxOf(0, rawCount - 1)
@@ -259,7 +321,7 @@ fun HomeScreen() {
                     groupLoaded = true
                 }
             },
-            onError = { err ->
+            onError = { _ ->
                 groupLoaded = true
             }
         )
@@ -272,28 +334,6 @@ fun HomeScreen() {
     fun sdp(v: Dp): Dp = (v.value * scale).dp
     fun ssp(v: Float) = (v * scale).sp
     val horizontalGutterRatio = 16f / 360f
-    var todayRiskExists by remember { mutableStateOf(false) }
-    var todayRiskScore by remember { mutableStateOf<Double?>(null) }
-
-    LaunchedEffect(Unit) {
-        RiskTodayManager.checkRiskTodayExists(
-            onSuccess = { exists ->
-                todayRiskExists = exists
-                if (exists) {
-                    RiskTodayManager.getRiskToday(
-                        onSuccess = { data ->
-                            todayRiskScore = data.riskScore
-                        },
-                        onError = { todayRiskScore = null }
-                    )
-                }
-            },
-            onError = {
-                todayRiskExists = false
-                todayRiskScore = null
-            }
-        )
-    }
 
     fun resolvedGutterDp(
         ratio: Float = horizontalGutterRatio,
@@ -303,6 +343,7 @@ fun HomeScreen() {
         val wDp = cfg.screenWidthDp.dp
         return (wDp * ratio).coerceIn(min, max)
     }
+
     val gutter: Dp = resolvedGutterDp()
 
     val todayText = remember {
@@ -326,27 +367,25 @@ fun HomeScreen() {
                 diaryStatus = diaryStatus
             )
         },
-        // ✅ 커브드 네비게이션 바
         bottomBar = {
             CurvedBottomNavBar(
                 selectedTab = BottomTab.Home,
-                onClickHome = {
-                    // ✅ 이미 홈 화면이므로 아무것도 안 함
-                },
+                onClickHome = { /* 이미 홈 */ },
                 onClickWrite = {
-                    // ✅ 글쓰기 (DiaryHomeActivity)
                     context.startActivity(Intent(context, DiaryHomeActivity::class.java))
                 },
                 onClickDiary = {
-                    // ✅ 다이어리 (PrivateAiDocumentHomeActivity)
-                    context.startActivity(Intent(context, PrivateAiDocumentHomeActivity::class.java))
+                    context.startActivity(
+                        Intent(
+                            context,
+                            PrivateAiDocumentHomeActivity::class.java
+                        )
+                    )
                 },
                 onClickProfile = {
-                    // ⭐ 워치 데이터 테스트 화면
                     context.startActivity(Intent(context, WearTestActivity::class.java))
                 },
                 onClickCenter = {
-                    // ✅ 중앙 버튼 → CareActivity
                     context.startActivity(Intent(context, CareActivity::class.java))
                 }
             )
@@ -357,7 +396,7 @@ fun HomeScreen() {
             onRefresh = {
                 isRefreshing = true
 
-                // 모든 데이터 재조회
+                // 측정 데이터 재조회
                 com.hand.hand.api.Measurements.MeasurementsManager.getLatestMeasurement(
                     onSuccess = { data ->
                         data?.let {
@@ -384,26 +423,12 @@ fun HomeScreen() {
                     onFailure = { }
                 )
 
-                // 다이어리 작성 여부 재조회
-                val today = SimpleDateFormat("yyyy-MM-dd", Locale.KOREA).format(Date())
-                com.hand.hand.api.Diary.DiaryManager.getMyDiaryList(
-                    startDate = today,
-                    endDate = today,
-                    page = 0,
-                    size = 1,
-                    onSuccess = { items ->
-                        diaryStatus = when {
-                            items.isEmpty() -> "작성 전"
-                            items.first().status == "COMPLETED" -> "작성 완료"
-                            items.first().status == "IN_PROGRESS" -> "작성 중"
-                            else -> "작성 전"
-                        }
-                        isRefreshing = false
-                    },
-                    onFailure = {
-                        isRefreshing = false
-                    }
-                )
+                // 다이어리 상태 재조회
+                refreshDiaryStatus {
+                    isRefreshing = false
+                }
+
+                // (원하면 여기서도 RiskToday 재조회 추가 가능)
             },
             modifier = Modifier.padding(paddingValues)
         ) {
@@ -412,17 +437,19 @@ fun HomeScreen() {
                 verticalArrangement = Arrangement.spacedBy(sdp(24.dp)),
                 contentPadding = PaddingValues(top = sdp(16.dp), bottom = 0.dp)
             ) {
-                item {
+                item(key = todayRiskScore) {
                     MyRecordsSection(
                         horizontalPadding = gutter,
                         moodChangeCount = todayAnomalyCount,
-
-                        // 🔥 추가
-                        exists = todayRiskExists,
+                        exists = diaryStatus == "작성 완료",
                         riskScore = todayRiskScore,
-
                         onMoodChangeClick = {
-                            context.startActivity(MoodChangeActivity.intent(context, todayAnomalyCount))
+                            context.startActivity(
+                                MoodChangeActivity.intent(
+                                    context,
+                                    todayAnomalyCount
+                                )
+                            )
                         }
                     )
                 }
@@ -433,7 +460,6 @@ fun HomeScreen() {
                         sleepData = todaySleepData,
                         todaySessionCount = todaySessionCount,
                         onSleepDataSaved = {
-                            // 수면 데이터 저장 후 다시 조회
                             com.hand.hand.api.Sleep.SleepManager.getTodaySleep(
                                 onSuccess = { data ->
                                     todaySleepData = data
