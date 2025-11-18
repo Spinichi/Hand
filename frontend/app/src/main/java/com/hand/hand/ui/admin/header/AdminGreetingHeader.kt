@@ -173,7 +173,7 @@ fun AdminGreetingHeader(
             // 아바타 + 인사 + 상태필
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Image(
-                    painter = painterResource(R.drawable.ic_user_round),
+                    painter = painterResource(R.drawable.ic_group_round),
                     contentDescription = "사용자",
                     modifier = Modifier.size(80.dp),
                     contentScale = ContentScale.Fit
