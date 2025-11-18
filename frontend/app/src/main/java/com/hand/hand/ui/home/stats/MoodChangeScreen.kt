@@ -40,7 +40,10 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import kotlin.math.roundToInt
-
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.layout.offset
 
 // ----- 공통 색(디자인 유지) -----
 private val Brown80 = Color(0xFF4B2E1E)
@@ -54,19 +57,23 @@ private val CurveColor = Color(0xFF9AB067)
 // ===== 3개 라인(최저/평균/최고) 그래프 =====
 @Composable
 fun StressLineChart(
-    scores: List<Int>,                // 기준 리스트 (없어도 됨)
+    scores: List<Int>,                // 기준 리스트 (없어도됨)
     avgScores: List<Int> = emptyList(),  // 평균값(검정)
     maxScores: List<Int> = emptyList(),  // 최고값(빨강)
     minScores: List<Int> = emptyList(),  // 최저값(파랑)
+    frequencyScores: List<Int> = emptyList(), // ✅ 1. 스트레스 빈도 데이터 파라미터 추가
     modifier: Modifier = Modifier,
     lineColor: Color = Color(0xFF4F3422),
     pointColor: Color = Color(0xFF815EFF),
     gridColor: Color = Color(0xFFE1D4CD),
 ) {
+
+
     Canvas(modifier = modifier) {
         // 기준 리스트(길이 계산용)
         val baseList = when {
             scores.isNotEmpty() -> scores
+            frequencyScores.isNotEmpty() -> frequencyScores // ✅ 빈도 데이터도 길이 계산의 기준으로 추가
             avgScores.isNotEmpty() -> avgScores
             maxScores.isNotEmpty() -> maxScores
             minScores.isNotEmpty() -> minScores
@@ -80,10 +87,30 @@ fun StressLineChart(
         val bottomPadding = size.height * 0.16f      // 아래 16%는 x축/범례용
         val drawableHeight = size.height - topPadding - bottomPadding
 
-        val heightScale = size.height / 100f
+        // Y축 계산을 위한 스케일 (0-100점 기준)
+        val maxScoreValue = listOf(scores, avgScores, maxScores, minScores)
+            .flatMap { it }
+            .maxOrNull() ?: 0
+
+        val maxFrequencyAsScore = (frequencyScores.maxOrNull() ?: 0) * 4
+
+        // 기본 100과 실제 데이터의 최댓값 중 더 큰 값을 선택
+        val dynamicMaxY = 100.coerceAtLeast(maxScoreValue).coerceAtLeast(maxFrequencyAsScore)
+
+        // 20 단위로 그리드 최댓값 올림 (e.g., 135 -> 140)
+        val gridTopValue = if (dynamicMaxY % 20 == 0) {
+            dynamicMaxY // 🎯 20으로 나누어 나머지가 0이면, 원래 값 그대로 사용 (e.g., 100 -> 100)
+        } else {
+            (dynamicMaxY / 20 + 1) * 20 // 🎯 나머지가 있으면, 기존 방식대로 올림 처리 (e.g., 135 -> 140)
+        }
 
         // ===== 가로 그리드 =====
-        val gridValues = listOf(0, 20, 40, 60, 80, 100)
+        // ✅ 2. Y축 계산을 위한 '동적' 스케일 계산
+        val heightScale = drawableHeight / gridTopValue.toFloat()
+
+        // ✅ 3. ===== 동적 가로 그리드 생성 및 그리기 =====
+        val gridValues = List((gridTopValue / 20) + 1) { it * 20 } // e.g., [0, 20, ..., 120, 140]
+
         gridValues.forEach { value ->
             val y = topPadding + (drawableHeight - value * heightScale)
             drawLine(
@@ -96,24 +123,43 @@ fun StressLineChart(
             )
         }
 
-        // ===== 공통 곡선 함수 =====
-        fun drawCurve(values: List<Int>, color: Color) {
 
+        // ===== 스트레스 빈도 점(Dot) 그리기 (Y축 계산 로직은 동일) =====
+        if (frequencyScores.isNotEmpty()) {
+            val maxFrequencyValue = frequencyScores.maxOrNull()?.toFloat() ?: 1f
+            val startColor = Color(0xFFC2B1FF)
+            val endColor = Color(0xFFA187FF)
+
+            frequencyScores.forEachIndexed { index, frequency ->
+                if (frequency > 0) {
+                    val x = index * widthPerPoint
+                    // 빈도(0~25)를 점수(0~100)로 변환한 값을 사용. heightScale은 이미 동적으로 계산됨.
+                    val y = topPadding + (drawableHeight - (frequency * 4f) * heightScale)
+
+                    val fraction = (frequency / maxFrequencyValue).coerceIn(0f, 1f)
+                    val currentColor = lerp(startColor, endColor, fraction)
+                    val radius = 6f + (fraction * 14f)
+
+                    drawCircle(color = currentColor, radius = radius, center = Offset(x, y))
+                }
+            }
+        }
+
+
+        // ===== 공통 곡선 함수 (Y축 계산 로직은 동일) =====
+        fun drawCurve(values: List<Int>, color: Color) {
             if (values.size < 2) return
             val path = Path()
             values.forEachIndexed { index, score ->
                 val x = index * widthPerPoint
+                // score 값 사용. heightScale은 이미 동적으로 계산됨.
                 val y = topPadding + (drawableHeight - score * heightScale)
-                if (index == 0) {
-                    path.moveTo(x, y)
-                } else {
+
+                if (index == 0) path.moveTo(x, y)
+                else {
                     val prevX = (index - 1) * widthPerPoint
                     val prevY = topPadding + (drawableHeight - values[index - 1] * heightScale)
-                    val cpx1 = prevX + widthPerPoint / 2
-                    val cpy1 = prevY
-                    val cpx2 = prevX + widthPerPoint / 2
-                    val cpy2 = y
-                    path.cubicTo(cpx1, cpy1, cpx2, cpy2, x, y)
+                    path.cubicTo(prevX + widthPerPoint / 2, prevY, prevX + widthPerPoint / 2, y, x, y)
                 }
             }
             drawPath(path = path, color = color, style = Stroke(width = 12f))
@@ -142,7 +188,7 @@ fun StressLineChart(
             }
         }
 
-        // ===== x축 레이블 (0h / 12h / 24h) =====
+        // (X축 레이블 그리는 부분은 기존 코드와 동일)
         val totalPoints = baseList.size
         val hours = listOf(0, 4, 8, 12, 16, 20, 24)
         val labelIndices = hours.map { (it * (totalPoints - 1) / 24).coerceIn(0, totalPoints - 1) }
@@ -154,16 +200,16 @@ fun StressLineChart(
             val paint = android.graphics.Paint().apply {
                 color = android.graphics.Color.parseColor("#867E7A")
                 textAlign = android.graphics.Paint.Align.CENTER
-                textSize = size.height * 0.09f   // 글자 크기 조금 줄임
+                textSize = size.height * 0.09f
                 isFakeBoldText = true
                 typeface = android.graphics.Typeface.DEFAULT_BOLD
             }
-
-            val labelY = size.height - bottomPadding /4
+            val labelY = size.height - bottomPadding / 4
             canvas.nativeCanvas.drawText(labelTexts[i], x, labelY, paint)
         }
-        }
     }
+}
+
 
 
 
@@ -177,6 +223,7 @@ private fun MoodChangeHistorySection(
     avgScores: List<Int>,   // 평균
     maxScores: List<Int>,   // 최고
     minScores: List<Int>,   // 최저
+    frequencyStress: List<Int>, // ✅ 빈도 데이터
     screenHeight: Dp,
     moodChangeCount: Int,
     moodChangeTime : Int, // 최다 스트레스 시점
@@ -235,9 +282,8 @@ private fun MoodChangeHistorySection(
                     ) {
                         StressLineChart(
                             scores = scores,
-//                            avgScores = avgScores,
                             maxScores = maxScores,
-//                            minScores = minScores,
+                            frequencyScores = frequencyStress, // ✅ 실제 빈도 데이터를 여기에 전달
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(screenHeight * 0.20f)
@@ -527,6 +573,9 @@ private fun todayIsoDate(): String {
     val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
     return sdf.format(Date())
 }
+
+private val mockFrequencyStress = listOf(0, 0, 3, 5, 0, 8, 12, 15, 0, 0, 30, 22, 0, 0, 25, 18, 0, 0, 10, 0, 0, 0, 0, 0)
+
 @Composable
 fun MoodChangeScreen(
     onBack: () -> Unit = {},
@@ -558,6 +607,7 @@ fun MoodChangeScreen(
 
     // ==== 상태: API로 채울 값들 ====
     var maxScoresState by remember { mutableStateOf(List(24) { 0 }) }
+    var frequencyStressState by remember { mutableStateOf(List(24) { 0 }) }
     var minScoresState by remember { mutableStateOf(List(24) { 0 }) }
     var avgScoresState by remember { mutableStateOf(List(24) { 0 }) }
     var moodChangeCountState by remember { mutableStateOf(moodChangeCount) }
@@ -596,6 +646,9 @@ fun MoodChangeScreen(
                     maxScoresState = maxList
                     minScoresState = minList
                     avgScoresState = avgList
+
+//                    frequencyStressState = data.frequencyStress ?: List(24) { 0 }
+                    frequencyStressState = mockFrequencyStress
 
                     // 감정 변화 횟수: 일단 anomalyCount 사용 (원하면 measurementCount 기준으로 바꿔도 됨)
                     moodChangeCountState = data.anomalyCount
@@ -746,7 +799,8 @@ fun MoodChangeScreen(
                     screenHeight = screenHeight,
                     moodChangeCount = moodChangeCountState,
                     moodChangeTime = moodChangeTimeState,
-                    maxStress = maxStressState
+                    maxStress = maxStressState,
+                    frequencyStress = frequencyStressState
                 )
             }
         }
