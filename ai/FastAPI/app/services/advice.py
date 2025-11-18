@@ -96,9 +96,6 @@ async def retrieve_similar_cases(query: str, info, top_k: int = 2):
         print(f"❌ 상담 검색 중 오류: {e}")
         return [], []
 
-    finally:
-        client.close()
-
 # 관리자 조언 생성 함수
 async def manager_advice(report: str, summary: str, info: dict):
     single, multi = await retrieve_similar_cases(summary, info)
@@ -256,7 +253,6 @@ async def private_advice(report: str, summary: str, info: dict):
             result = response.json()
             
         advice = result["choices"][0]["message"]["content"].strip()
-        client.close()
         return advice
 
     except Exception as e:
@@ -320,7 +316,6 @@ async def daily_advice(text: str):
             result = response.json()
 
         advice = result["choices"][0]["message"]["content"].strip()
-        client.close()
         return advice
 
     except Exception as e:
