@@ -186,7 +186,7 @@ fun PrivateAiDocumentHomeScreen() {
                     // 에러 상태
                     monthlyError != null -> {
                         Text(
-                            text = "월간보고서를 불러오지 못했다",
+                            text = "월간보고서를 불러오지 못했습니다",
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(horizontal = screenWidth * 0.05f),
@@ -239,7 +239,7 @@ fun PrivateAiDocumentHomeScreen() {
 
                 weeklyError != null -> {
                     Text(
-                        text = "주간보고서를 불러오지 못했다",
+                        text = "주간 보고서를 불러오지 못했습니다",
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = screenWidth * 0.05f),
@@ -333,7 +333,7 @@ fun MonthlyReportCard(
             Spacer(modifier = Modifier.width(screenWidth * 0.03f))
 
             Text(
-                text = report?.let { "AI 분석 감정 보고서" } ?: "데이터 없음 헤에엑",
+                text = report?.let { "AI 분석 감정 보고서" } ?: "보고서 데이터가 없습니다",
                 fontFamily = BrandFontFamily,
                 fontWeight = FontWeight.Bold,
                 fontSize = (screenHeight * 0.025f).value.sp,
@@ -382,7 +382,7 @@ fun WeeklyReportCards(
 
     if (reportsForMonth.isEmpty()) {
         Text(
-            text = "데이터 없음 엌",
+            text = "리포트 데이터 없음",
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = screenWidth * 0.05f),
@@ -444,7 +444,7 @@ fun WeeklyReportCards(
                 Spacer(modifier = Modifier.width(screenWidth * 0.03f))
 
                 Text(
-                    text = if (hasData) "AI 분석 감정 보고서" else "데이터 없~다",
+                    text = if (hasData) "AI 분석 감정 보고서" else "감정 보고서가 발행되지 않았습니다",
                     fontFamily = BrandFontFamily,
                     fontWeight = FontWeight.Bold,
                     fontSize = (screenHeight * 0.022f).value.sp,

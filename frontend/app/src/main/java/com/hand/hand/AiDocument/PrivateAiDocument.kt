@@ -189,15 +189,15 @@ fun PrivateAiDocumentScreen(
                     xLabels = listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
                 }
 
-                summaryText = d.report ?: "주간 요약이 없지롱."
-                adviceText = d.emotionalAdvice ?: "감정 개선 조언이 없지롱."
+                summaryText = d.report ?: "주간 요약이 없습니다."
+                adviceText = d.emotionalAdvice ?: "감정 개선 조언이 없습니다."
                 avgScore = d.averageDepressionScore.toInt()
             }
 
             isWeeklyDetailLoading -> {
                 xLabels = emptyList()
                 scores = emptyList()
-                summaryText = "주간 리포트 못불러옴~"
+                summaryText = "주간 리포트 데이터가 없습니다"
                 adviceText = ""
                 avgScore = 0
             }
@@ -205,7 +205,7 @@ fun PrivateAiDocumentScreen(
             weeklyDetailError != null -> {
                 xLabels = emptyList()
                 scores = emptyList()
-                summaryText = "주간 리포트 못불러옴~"
+                summaryText = "주간 리포트 데이터가 없습니다"
                 adviceText = weeklyDetailError ?: ""
                 avgScore = 0
             }
@@ -213,8 +213,8 @@ fun PrivateAiDocumentScreen(
             else -> {
                 xLabels = emptyList()
                 scores = emptyList()
-                summaryText = "데이터 없다고!!"
-                adviceText = "데이터 없다고!!"
+                summaryText = "요약 데이터가 없습니다"
+                adviceText = "조언 데이터가 없습니다"
                 avgScore = 0
             }
         }
@@ -224,7 +224,7 @@ fun PrivateAiDocumentScreen(
             isMonthlyDetailLoading -> {
                 xLabels = emptyList()
                 scores = emptyList()
-                summaryText = "월간 리포트를 불러오는 중이다.....기달 ㅠ"
+                summaryText = "월간 리포트를 불러오는 중입니다. 잠시만 기다려 주세요"
                 adviceText = ""
                 avgScore = 0
             }
@@ -232,7 +232,7 @@ fun PrivateAiDocumentScreen(
             monthlyDetailError != null -> {
                 xLabels = emptyList()
                 scores = emptyList()
-                summaryText = "월간 리포트를 불러오지 못했다닼."
+                summaryText = "월간 리포트를 불러오지 못했습니다"
                 adviceText = monthlyDetailError ?: ""
                 avgScore = 0
             }
@@ -268,8 +268,8 @@ fun PrivateAiDocumentScreen(
                     avgScore = 0
                 }
 
-                summaryText = d.report ?: "월간 요약 없다 엌ㅋ."
-                adviceText = d.emotionalAdvice ?: "감정 개선 조언 없다 엌ㅋ.."
+                summaryText = d.report ?: "월간 요약 데이터가 없습니다"
+                adviceText = d.emotionalAdvice ?: "감정 개선 조언이 발행되지 않았습니다 "
             }
 
             monthlyReport != null -> {
@@ -285,8 +285,8 @@ fun PrivateAiDocumentScreen(
             else -> {
                 xLabels = emptyList()
                 scores = emptyList()
-                summaryText = "데이터가 없다고..."
-                adviceText = "데이터가 없다고..."
+                summaryText = "데이터가 없습니다"
+                adviceText = "데이터가 없습니다"
                 avgScore = 0
             }
         }
