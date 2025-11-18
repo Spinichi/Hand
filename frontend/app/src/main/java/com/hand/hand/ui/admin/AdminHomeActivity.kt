@@ -25,6 +25,7 @@ import com.hand.hand.api.Group.GroupData
 import com.hand.hand.api.Group.GroupManager
 import com.hand.hand.api.Group.GroupMemberData
 import com.hand.hand.ui.admin.dialog.AdminLoginDialog
+import com.hand.hand.ui.admin.dialog.SendNotificationDialog
 import com.hand.hand.ui.admin.header.AdminGreetingHeader
 import com.hand.hand.ui.admin.sections.*
 import com.hand.hand.ui.home.HomeScreen
@@ -37,6 +38,8 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import com.hand.hand.ui.model.toOrgMoodUi
+import com.hand.hand.api.Notification.ManagerNotificationManager
+import android.widget.Toast
 
 private fun scoreToMood(score: Int): Mood {
     val s = score.toFloat().coerceIn(0f, 100f)
@@ -139,6 +142,10 @@ private fun AdminHomeScreen(
     var selectedMood by rememberSaveable { mutableStateOf<Mood?>(null) }
     var query by rememberSaveable { mutableStateOf("") }
     var groupCode by rememberSaveable { mutableStateOf("######") }
+
+    // 알림 다이얼로그 관련 state
+    var showNotificationDialog by rememberSaveable { mutableStateOf(false) }
+    var selectedMemberForNotification by remember { mutableStateOf<GroupMember?>(null) }
 
     // anomalies 관련 state
     val avgChangeCountState = remember { mutableStateOf(0) }
@@ -288,7 +295,14 @@ private fun AdminHomeScreen(
             if (searchResults.isNotEmpty()) {
                 items(searchResults, key = { it.id }) { member ->
                     Box(modifier = Modifier.padding(horizontal = gutter)) {
-                        MemberCard(member = member, onClick = { onMemberClick(member) })
+                        MemberCard(
+                            member = member,
+                            onClick = { onMemberClick(member) },
+                            onNotificationClick = {
+                                selectedMemberForNotification = member
+                                showNotificationDialog = true
+                            }
+                        )
                     }
                     Spacer(Modifier.height(8.dp))
                 }
@@ -328,6 +342,10 @@ private fun AdminHomeScreen(
                     selectedMood = selectedMood,
                     onSelectMood = { mood -> selectedMood = if (selectedMood == mood) null else mood },
                     onMemberClick = onMemberClick,
+                    onNotificationClick = { member ->
+                        selectedMemberForNotification = member
+                        showNotificationDialog = true
+                    },
                     org = org
                 )
             }
@@ -353,6 +371,37 @@ private fun AdminHomeScreen(
             organizations = organizations,
             registeredCount = registeredCount,
             sadCount = sadCount
+        )
+    }
+
+    // 알림 전송 다이얼로그
+    if (showNotificationDialog && selectedMemberForNotification != null) {
+        SendNotificationDialog(
+            memberName = selectedMemberForNotification!!.name,
+            onDismiss = {
+                showNotificationDialog = false
+                selectedMemberForNotification = null
+            },
+            onSend = { title, body ->
+                val userId = selectedMemberForNotification?.id?.toLongOrNull()
+                if (userId != null) {
+                    ManagerNotificationManager.sendToUser(
+                        userId = userId,
+                        title = title,
+                        body = body,
+                        onSuccess = {
+                            Toast.makeText(context, "알림이 전송되었습니다", Toast.LENGTH_SHORT).show()
+                            showNotificationDialog = false
+                            selectedMemberForNotification = null
+                        },
+                        onFailure = { errorMsg ->
+                            Toast.makeText(context, "전송 실패: $errorMsg", Toast.LENGTH_LONG).show()
+                        }
+                    )
+                } else {
+                    Toast.makeText(context, "잘못된 사용자 ID입니다", Toast.LENGTH_SHORT).show()
+                }
+            }
         )
     }
 }

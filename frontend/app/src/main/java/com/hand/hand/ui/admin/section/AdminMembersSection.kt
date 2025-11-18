@@ -59,6 +59,7 @@ fun AdminMembersSection(
     selectedMood: Mood?,
     onSelectMood: (Mood?) -> Unit,
     onMemberClick: (GroupMember) -> Unit, // ★ 부모에게 받은 클릭 이벤트를 사용할 것입니다.
+    onNotificationClick: (GroupMember) -> Unit, // ★ 알림 전송 클릭 이벤트 추가
     org: Organization
 ) {
     val context = LocalContext.current
@@ -106,7 +107,11 @@ fun AdminMembersSection(
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             filtered.forEach { member ->
                 // ★ FIX: 하드코딩된 startActivity 대신, 부모에게 받은 onMemberClick을 호출합니다.
-                MemberCard(member = member, onClick = { onMemberClick(member) })
+                MemberCard(
+                    member = member,
+                    onClick = { onMemberClick(member) },
+                    onNotificationClick = { onNotificationClick(member) }
+                )
             }
 
             if (filtered.isEmpty()) {
@@ -225,7 +230,8 @@ private object MemberEmojiDimens {
 @Composable
 fun MemberCard(
     member: GroupMember,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onNotificationClick: () -> Unit  // ★ 알림 클릭 이벤트 추가
 ) {
     val Brown80 = Color(0xFF4B2E1E)
 
@@ -304,6 +310,17 @@ fun MemberCard(
                         overflow = TextOverflow.Ellipsis
                     )
                 }
+            }
+
+            Spacer(Modifier.width(8.dp))
+
+            IconButton(onClick = onNotificationClick) {
+                Icon(
+                    painter = painterResource(R.drawable.group_notification),
+                    contentDescription = "알림 보내기",
+                    tint = Brown80,
+                    modifier = Modifier.size(24.dp)
+                )
             }
 
             Icon(
