@@ -86,7 +86,12 @@ public class WeeklyReportService {
                     String.format("주간 보고서 생성을 위해서는 최소 2개의 다이어리가 필요합니다. (현재: %d개)", diaries.size()));
         }
 
-        // 6. 일별 다이어리 데이터 구성
+        // 6. totalSummary 생성 (모든 longSummary 이어붙이기)
+        String totalSummary = diaries.stream()
+                .map(diary -> diary.getEmotionAnalysis().getLongSummary())
+                .collect(Collectors.joining(" "));
+
+        // 7. 일별 다이어리 데이터 구성
         List<Map<String, Object>> dailyDiaries = new ArrayList<>();
 
         for (DiaryConversation diary : diaries) {
@@ -98,7 +103,7 @@ public class WeeklyReportService {
             dailyDiaries.add(dailyDiary);
         }
 
-        // 7. 생체 데이터 수집
+        // 8. 생체 데이터 수집
         BiometricDataCollector.BiometricDataResult biometricData =
                 biometricDataCollector.collectBiometricData(userId, weekStart, weekEnd);
 
@@ -117,13 +122,13 @@ public class WeeklyReportService {
         userInfoForAi.put("disease", baseUserInfo.get("disease"));
         userInfoForAi.put("family", baseUserInfo.get("residenceType"));  // residenceType → family
 
-        // 개인용 보고서는 totalSummary를 빈 문자열로 전달 (관리자용만 RAG 사용)
+        // FastAPI로 분석 요청 (개인용)
         ReportAnalysisClient.ReportAnalysisResult analysisResult =
                 reportAnalysisClient.analyzeIndividualReport(
                         userId,
                         dailyDiaries,
                         biometricsForApi,
-                        "",  // 개인용은 빈 문자열
+                        totalSummary,  // longSummary 이어붙인 요약 전달
                         userInfoForAi  // AI 분석용 사용자 정보
                 );
 
