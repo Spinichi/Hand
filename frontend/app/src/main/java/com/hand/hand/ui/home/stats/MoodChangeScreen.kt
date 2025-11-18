@@ -34,16 +34,15 @@ import com.hand.hand.api.Measurements.StressTodayManager
 import com.hand.hand.api.Measurements.StressTodayData
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import java.time.LocalDate
-import java.time.format.DateTimeFormatter
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import kotlin.math.roundToInt
 import androidx.compose.ui.graphics.lerp
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.layout.offset
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.input.pointer.PointerEventType
 
 // ----- 공통 색(디자인 유지) -----
 private val Brown80 = Color(0xFF4B2E1E)
@@ -57,155 +56,301 @@ private val CurveColor = Color(0xFF9AB067)
 // ===== 3개 라인(최저/평균/최고) 그래프 =====
 @Composable
 fun StressLineChart(
-    scores: List<Int>,                // 기준 리스트 (없어도됨)
-    avgScores: List<Int> = emptyList(),  // 평균값(검정)
-    maxScores: List<Int> = emptyList(),  // 최고값(빨강)
-    minScores: List<Int> = emptyList(),  // 최저값(파랑)
-    frequencyScores: List<Int> = emptyList(), // ✅ 1. 스트레스 빈도 데이터 파라미터 추가
+    scores: List<Int>,
+    avgScores: List<Int> = emptyList(),
+    maxScores: List<Int> = emptyList(),
+    minScores: List<Int> = emptyList(),
+    frequencyScores: List<Int> = emptyList(),
     modifier: Modifier = Modifier,
     lineColor: Color = Color(0xFF4F3422),
     pointColor: Color = Color(0xFF815EFF),
     gridColor: Color = Color(0xFFE1D4CD),
 ) {
+    // 포인터/툴팁 상태
+    var hoveredIndex by remember { mutableStateOf(-1) }           // -1: 없음
+    var hoveredKind by remember { mutableStateOf("frequency") }   // "frequency" / "max" / "avg" / "min" / "score"
+    var canvasSize by remember { mutableStateOf(androidx.compose.ui.unit.IntSize(0, 0)) }
 
+    // density 필요 (dp <-> px)
+    val density = LocalDensity.current
 
-    Canvas(modifier = modifier) {
-        // 기준 리스트(길이 계산용)
-        val baseList = when {
-            scores.isNotEmpty() -> scores
-            frequencyScores.isNotEmpty() -> frequencyScores // ✅ 빈도 데이터도 길이 계산의 기준으로 추가
-            avgScores.isNotEmpty() -> avgScores
-            maxScores.isNotEmpty() -> maxScores
-            minScores.isNotEmpty() -> minScores
-            else -> emptyList()
-        }
-        if (baseList.isEmpty()) return@Canvas
+    // 캔버스 사이즈를 얻기 위해 onSizeChanged + pointerInput을 함께 사용
+    Box(
+        modifier = modifier
+            .onSizeChanged { canvasSize = it }
+            .pointerInput(scores, avgScores, maxScores, minScores, frequencyScores, canvasSize) {
+                // 포인터 이벤트 루프
+                if (canvasSize.width == 0 || canvasSize.height == 0) return@pointerInput
+                awaitPointerEventScope {
+                    while (true) {
+                        val event = awaitPointerEvent()
+                        val pos = event.changes.first().position // Offset(px)
+                        if (event.type == PointerEventType.Move || event.type == PointerEventType.Press) {
+                            // 여기서 우리는 캔버스에서 사용한 동일한 스케일링 수식을 써서 각 점 좌표를 재계산하고,
+                            // 포인터와 가장 가까운 점을 찾아 threshold 안이면 hoveredIndex로 설정.
+                            val sizeWidth = canvasSize.width.toFloat()
+                            val sizeHeight = canvasSize.height.toFloat()
 
-        val widthPerPoint = size.width / (baseList.size - 1).coerceAtLeast(1)
-        // 위/아래 여백 조금 두고 그릴 영역 높이 계산
-        val topPadding = size.height * 0.08f         // 위쪽 8% 여백
-        val bottomPadding = size.height * 0.16f      // 아래 16%는 x축/범례용
-        val drawableHeight = size.height - topPadding - bottomPadding
+                            // 동일한 레이아웃 수식 (여백/패딩 값들을 여기서 px 단위로 계산)
+                            val topPaddingPx = sizeHeight * 0.08f
+                            val bottomPaddingPx = sizeHeight * 0.16f
+                            val drawableHeight = sizeHeight - topPaddingPx - bottomPaddingPx
 
-        // Y축 계산을 위한 스케일 (0-100점 기준)
-        val maxScoreValue = listOf(scores, avgScores, maxScores, minScores)
-            .flatMap { it }
-            .maxOrNull() ?: 0
+                            // dynamicMaxY 계산 (캔버스 내부와 동일하게)
+                            val maxScoreValue = listOf(scores, avgScores, maxScores, minScores).flatMap { it }.maxOrNull() ?: 0
+                            val maxFrequencyAsScore = (frequencyScores.maxOrNull() ?: 0) * 4
+                            val dynamicMaxY = 100.coerceAtLeast(maxScoreValue).coerceAtLeast(maxFrequencyAsScore)
+                            val gridTopValue = if (dynamicMaxY % 20 == 0) dynamicMaxY else (dynamicMaxY / 20 + 1) * 20
+                            val heightScale = drawableHeight / gridTopValue.toFloat()
 
-        val maxFrequencyAsScore = (frequencyScores.maxOrNull() ?: 0) * 4
+                            // baseList 결정 (길이)
+                            val baseList = when {
+                                scores.isNotEmpty() -> scores
+                                frequencyScores.isNotEmpty() -> frequencyScores
+                                avgScores.isNotEmpty() -> avgScores
+                                maxScores.isNotEmpty() -> maxScores
+                                minScores.isNotEmpty() -> minScores
+                                else -> emptyList()
+                            }
+                            if (baseList.isEmpty()) {
+                                hoveredIndex = -1
+                                continue
+                            }
 
-        // 기본 100과 실제 데이터의 최댓값 중 더 큰 값을 선택
-        val dynamicMaxY = 100.coerceAtLeast(maxScoreValue).coerceAtLeast(maxFrequencyAsScore)
+                            val widthPerPoint = sizeWidth / (baseList.size - 1).coerceAtLeast(1)
 
-        // 20 단위로 그리드 최댓값 올림 (e.g., 135 -> 140)
-        val gridTopValue = if (dynamicMaxY % 20 == 0) {
-            dynamicMaxY // 🎯 20으로 나누어 나머지가 0이면, 원래 값 그대로 사용 (e.g., 100 -> 100)
-        } else {
-            (dynamicMaxY / 20 + 1) * 20 // 🎯 나머지가 있으면, 기존 방식대로 올림 처리 (e.g., 135 -> 140)
-        }
+                            // 포인터와 비교할 포인트 집합을 만들자 (frequency 우선, 없으면 max/avg/min/score 등)
+                            var bestIndex = -1
+                            var bestKind = "frequency"
+                            var bestDist = Float.MAX_VALUE
 
-        // ===== 가로 그리드 =====
-        // ✅ 2. Y축 계산을 위한 '동적' 스케일 계산
-        val heightScale = drawableHeight / gridTopValue.toFloat()
+                            // 1) frequency dots (우선 탐색)
+                            if (frequencyScores.isNotEmpty()) {
+                                val maxFreq = (frequencyScores.maxOrNull() ?: 1).toFloat()
+                                frequencyScores.forEachIndexed { i, freq ->
+                                    if (freq > 0) {
+                                        val x = i * widthPerPoint
+                                        val y = topPaddingPx + (drawableHeight - (freq * 4f) * heightScale)
+                                        val dx = pos.x - x
+                                        val dy = pos.y - y
+                                        val dist = dx * dx + dy * dy
+                                        if (dist < bestDist) {
+                                            bestDist = dist
+                                            bestIndex = i
+                                            bestKind = "frequency"
+                                        }
+                                    }
+                                }
+                            }
 
-        // ✅ 3. ===== 동적 가로 그리드 생성 및 그리기 =====
-        val gridValues = List((gridTopValue / 20) + 1) { it * 20 } // e.g., [0, 20, ..., 120, 140]
+                            // 2) maxScores / avgScores / minScores (필요하면)
+                            fun checkList(list: List<Int>, kind: String) {
+                                if (list.isEmpty()) return
+                                list.forEachIndexed { i, value ->
+                                    // 음수(초기값 -1) 체크
+                                    if (value < 0) return@forEachIndexed
+                                    val x = i * widthPerPoint
+                                    val y = topPaddingPx + (drawableHeight - (value * heightScale))
+                                    val dx = pos.x - x
+                                    val dy = pos.y - y
+                                    val dist = dx * dx + dy * dy
+                                    if (dist < bestDist) {
+                                        bestDist = dist
+                                        bestIndex = i
+                                        bestKind = kind
+                                    }
+                                }
+                            }
+                            checkList(maxScores, "max")
+                            checkList(avgScores, "avg")
+                            checkList(minScores, "min")
 
-        gridValues.forEach { value ->
-            val y = topPadding + (drawableHeight - value * heightScale)
-            drawLine(
-                color = gridColor,
-                start = Offset(0f, y),
-                end = Offset(size.width, y),
-                strokeWidth = 4f,
-                pathEffect = androidx.compose.ui.graphics.PathEffect
-                    .dashPathEffect(floatArrayOf(10f, 10f), 0f)
-            )
-        }
-
-
-        // ===== 스트레스 빈도 점(Dot) 그리기 (Y축 계산 로직은 동일) =====
-        if (frequencyScores.isNotEmpty()) {
-            val maxFrequencyValue = frequencyScores.maxOrNull()?.toFloat() ?: 1f
-            val startColor = Color(0xFFC2B1FF)
-            val endColor = Color(0xFFA187FF)
-
-            frequencyScores.forEachIndexed { index, frequency ->
-                if (frequency > 0) {
-                    val x = index * widthPerPoint
-                    // 빈도(0~25)를 점수(0~100)로 변환한 값을 사용. heightScale은 이미 동적으로 계산됨.
-                    val y = topPadding + (drawableHeight - (frequency * 4f) * heightScale)
-
-                    val fraction = (frequency / maxFrequencyValue).coerceIn(0f, 1f)
-                    val currentColor = lerp(startColor, endColor, fraction)
-                    val radius = 6f + (fraction * 14f)
-
-                    drawCircle(color = currentColor, radius = radius, center = Offset(x, y))
-                }
-            }
-        }
-
-
-        // ===== 공통 곡선 함수 (Y축 계산 로직은 동일) =====
-        fun drawCurve(values: List<Int>, color: Color) {
-            if (values.size < 2) return
-            val path = Path()
-            values.forEachIndexed { index, score ->
-                val x = index * widthPerPoint
-                // score 값 사용. heightScale은 이미 동적으로 계산됨.
-                val y = topPadding + (drawableHeight - score * heightScale)
-
-                if (index == 0) path.moveTo(x, y)
-                else {
-                    val prevX = (index - 1) * widthPerPoint
-                    val prevY = topPadding + (drawableHeight - values[index - 1] * heightScale)
-                    path.cubicTo(prevX + widthPerPoint / 2, prevY, prevX + widthPerPoint / 2, y, x, y)
-                }
-            }
-            drawPath(path = path, color = color, style = Stroke(width = 12f))
-        }
-
-        // 최저(파랑) → 평균(검정) → 최고(빨강) 순서로 그리기
-        if (minScores.isNotEmpty()) drawCurve(minScores, Color(0xFF007BFF)) // 파랑
-        if (avgScores.isNotEmpty()) drawCurve(avgScores, Color(0xFF000000)) // 검정
-        if (maxScores.isNotEmpty()) drawCurve(maxScores, Color(0xFF4F3422)) // 빨강
-
-        // 최고값 빨간 점(최고 곡선 기준)
-        if (maxScores.isNotEmpty()) {
-            val maxScore = maxScores.maxOrNull() ?: 0
-            if (maxScore > 0){
-                maxScores.forEachIndexed { index, score ->
-                    if (score == maxScore) {
-                        val x = index * widthPerPoint
-                        val y = topPadding + (drawableHeight - score * heightScale)
-                        drawCircle(
-                            color = Color(0xFFEF8834),
-                            radius = 20f,
-                            center = Offset(x, y)
-                        )
+                            // 임계값: 화면 밀도에 따라 24.dp 정도 (px로 변환)
+                            val thresholdPx = with(density) { 24.dp.toPx() }
+                            if (bestIndex >= 0 && bestDist <= thresholdPx * thresholdPx) {
+                                hoveredIndex = bestIndex
+                                hoveredKind = bestKind
+                            } else {
+                                hoveredIndex = -1
+                            }
+                        } else {
+                            // 포인터가 화면 밖으로 나가거나 끝나면 툴팁 제거
+                            hoveredIndex = -1
+                        }
                     }
                 }
             }
-        }
+    ) {
+        // Canvas 내부에서는 hoveredIndex 값을 사용해 툴팁을 그림
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val sizeWidth = size.width
+            val sizeHeight = size.height
+            val topPadding = size.height * 0.08f
+            val bottomPadding = size.height * 0.16f
+            val drawableHeight = size.height - topPadding - bottomPadding
 
-        // (X축 레이블 그리는 부분은 기존 코드와 동일)
-        val totalPoints = baseList.size
-        val hours = listOf(0, 4, 8, 12, 16, 20, 24)
-        val labelIndices = hours.map { (it * (totalPoints - 1) / 24).coerceIn(0, totalPoints - 1) }
-        val labelTexts = hours.map { "${it}h" }
-
-        labelIndices.forEachIndexed { i, index ->
-            val x = index * widthPerPoint
-            val canvas = drawContext.canvas
-            val paint = android.graphics.Paint().apply {
-                color = android.graphics.Color.parseColor("#867E7A")
-                textAlign = android.graphics.Paint.Align.CENTER
-                textSize = size.height * 0.09f
-                isFakeBoldText = true
-                typeface = android.graphics.Typeface.DEFAULT_BOLD
+            val maxScoreValue = listOf(scores, avgScores, maxScores, minScores)
+                .flatMap { it }
+                .maxOrNull() ?: 0
+            val maxFrequencyAsScore = (frequencyScores.maxOrNull() ?: 0) * 4
+            val dynamicMaxY = 100.coerceAtLeast(maxScoreValue).coerceAtLeast(maxFrequencyAsScore)
+            val gridTopValue = if (dynamicMaxY % 20 == 0) dynamicMaxY else (dynamicMaxY / 20 + 1) * 20
+            val heightScale = drawableHeight / gridTopValue.toFloat()
+            val baseList = when {
+                scores.isNotEmpty() -> scores
+                frequencyScores.isNotEmpty() -> frequencyScores
+                avgScores.isNotEmpty() -> avgScores
+                maxScores.isNotEmpty() -> maxScores
+                minScores.isNotEmpty() -> minScores
+                else -> emptyList()
             }
-            val labelY = size.height - bottomPadding / 4
-            canvas.nativeCanvas.drawText(labelTexts[i], x, labelY, paint)
+            if (baseList.isEmpty()) return@Canvas
+            val widthPerPoint = size.width / (baseList.size - 1).coerceAtLeast(1)
+
+            // 그리드
+            val gridValues = List((gridTopValue / 20) + 1) { it * 20 }
+            gridValues.forEach { value ->
+                val y = topPadding + (drawableHeight - value * heightScale)
+                drawLine(
+                    color = gridColor,
+                    start = Offset(0f, y),
+                    end = Offset(size.width, y),
+                    strokeWidth = 4f,
+                    pathEffect = androidx.compose.ui.graphics.PathEffect
+                        .dashPathEffect(floatArrayOf(10f, 10f), 0f)
+                )
+            }
+
+            // frequency 점 그리기 (좌표는 동일하게 계산하므로 툴팁 위치와 일치)
+            if (frequencyScores.isNotEmpty()) {
+                val maxFreq = frequencyScores.maxOrNull()?.toFloat() ?: 1f
+                val startColor = Color(0xFFC2B1FF)
+                val endColor = Color(0xFFA187FF)
+                frequencyScores.forEachIndexed { index, frequency ->
+                    if (frequency > 0) {
+                        val x = index * widthPerPoint
+                        val y = topPadding + (drawableHeight - (frequency * 4f) * heightScale)
+                        val fraction = (frequency / maxFreq).coerceIn(0f, 1f)
+                        val currentColor = lerp(startColor, endColor, fraction)
+                        val radius = 6f + (fraction * 14f)
+                        drawCircle(color = currentColor, radius = radius, center = Offset(x, y))
+                    }
+                }
+            }
+
+            // 곡선 그리기 (최저/평균/최고)
+            fun drawCurve(values: List<Int>, color: Color) {
+                if (values.size < 2) return
+                val path = Path()
+                values.forEachIndexed { index, score ->
+                    val x = index * widthPerPoint
+                    val y = topPadding + (drawableHeight - score * heightScale)
+                    if (index == 0) path.moveTo(x, y)
+                    else {
+                        val prevX = (index - 1) * widthPerPoint
+                        val prevY = topPadding + (drawableHeight - values[index - 1] * heightScale)
+                        path.cubicTo(prevX + widthPerPoint / 2, prevY, prevX + widthPerPoint / 2, y, x, y)
+                    }
+                }
+                drawPath(path = path, color = color, style = Stroke(width = 12f))
+            }
+            if (minScores.isNotEmpty()) drawCurve(minScores, Color(0xFF007BFF))
+            if (avgScores.isNotEmpty()) drawCurve(avgScores, Color(0xFF000000))
+            if (maxScores.isNotEmpty()) drawCurve(maxScores, Color(0xFF4F3422))
+
+            // 최고값 점 강조
+            if (maxScores.isNotEmpty()) {
+                val maxScore = maxScores.maxOrNull() ?: 0
+                if (maxScore > 0) {
+                    maxScores.forEachIndexed { index, score ->
+                        if (score == maxScore) {
+                            val x = index * widthPerPoint
+                            val y = topPadding + (drawableHeight - score * heightScale)
+                            drawCircle(color = Color(0xFFEF8834), radius = 20f, center = Offset(x, y))
+                        }
+                    }
+                }
+            }
+
+            // 툴팁 그리기 (hoveredIndex가 있으면)
+            if (hoveredIndex >= 0) {
+                // 툴팁에 표시할 텍스트/값 결정
+                val tooltipText = when (hoveredKind) {
+                    "frequency" -> {
+                        val v = frequencyScores.getOrNull(hoveredIndex) ?: 0
+                        "${hoveredIndex}시\n빈도: ${v}회"
+                    }
+                    "max" -> {
+                        val v = maxScores.getOrNull(hoveredIndex) ?: 0
+                        "${hoveredIndex}시\n최대: ${v}점"
+                    }
+                    "avg" -> {
+                        val v = avgScores.getOrNull(hoveredIndex) ?: 0
+                        "${hoveredIndex}시\n평균: ${v}점"
+                    }
+                    "min" -> {
+                        val v = minScores.getOrNull(hoveredIndex) ?: 0
+                        "${hoveredIndex}시\n최저: ${v}점"
+                    }
+                    else -> "${hoveredIndex}시"
+                }
+
+                // 툴팁 위치 (해당 포인트 좌표)
+                val pointX = hoveredIndex * widthPerPoint
+                val pointY = when (hoveredKind) {
+                    "frequency" -> topPadding + (drawableHeight - ( (frequencyScores.getOrNull(hoveredIndex) ?: 0) * 4f ) * heightScale)
+                    else -> topPadding + (drawableHeight - (( (when (hoveredKind) {
+                        "max" -> maxScores.getOrNull(hoveredIndex) ?: 0
+                        "avg" -> avgScores.getOrNull(hoveredIndex) ?: 0
+                        "min" -> minScores.getOrNull(hoveredIndex) ?: 0
+                        else -> 0
+                    }) ) * heightScale))
+                }
+
+                // 툴팁 박스 스타일
+                val padding = 12f
+                val textPaint = android.graphics.Paint().apply {
+                    color = android.graphics.Color.WHITE
+                    textSize = 36f
+                    isAntiAlias = true
+                }
+                // 멀티라인 텍스트 측정 (간단하게)
+                val lines = tooltipText.split("\n")
+                var textWidth = 0f
+                val fm = textPaint.fontMetrics
+                lines.forEach { line ->
+                    val w = textPaint.measureText(line)
+                    if (w > textWidth) textWidth = w
+                }
+                val textHeight = (lines.size * (textPaint.textSize + 6f))
+
+                val boxWidth = textWidth + padding * 2
+                val boxHeight = textHeight + padding
+
+                // 박스 좌표 (포인트 위로 띄우기, 화면 밖이면 위치 보정)
+                var boxLeft = pointX - boxWidth / 2
+                var boxTop = pointY - 24f - boxHeight // 포인트에서 위로 띄움
+
+                if (boxLeft < 8f) boxLeft = 8f
+                if (boxLeft + boxWidth > size.width - 8f) boxLeft = size.width - boxWidth - 8f
+                if (boxTop < 8f) boxTop = pointY + 16f // 위로 못띄우면 아래에 붙임
+
+                // 라운드 박스
+                drawRoundRect(
+                    color = Color(0x99000000),
+                    topLeft = Offset(boxLeft, boxTop),
+                    size = androidx.compose.ui.geometry.Size(boxWidth, boxHeight),
+                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(12f, 12f)
+                )
+
+                // 텍스트 그리기 (nativeCanvas 사용)
+                val nativeCanvas = drawContext.canvas.nativeCanvas
+                var textY = boxTop + padding + (textPaint.textSize * 0.8f)
+                lines.forEach { line ->
+                    nativeCanvas.drawText(line, boxLeft + padding, textY, textPaint)
+                    textY += textPaint.textSize + 6f
+                }
+            }
         }
     }
 }
