@@ -178,7 +178,9 @@ private fun MoodChangeHistorySection(
     maxScores: List<Int>,   // 최고
     minScores: List<Int>,   // 최저
     screenHeight: Dp,
-    moodChangeCount: Int
+    moodChangeCount: Int,
+    moodChangeTime : Int, // 최다 스트레스 시점
+    maxStress: Int
 ) {
     // 반응형 기준값들
     val smallSpacer = screenHeight * 0.0125f      // 기존 12.dp 정도
@@ -187,6 +189,7 @@ private fun MoodChangeHistorySection(
     val betweenCards = screenHeight * 0.0125f     // 기존 12.dp
     val cardVerticalPadding = screenHeight * 0.015f
     val innerHorizontalPadding = horizontalPadding // 원래 주신 horizontalPadding 사용
+    val padincard = screenHeight * 0.015f
 
     // 폰트 크기 (원래 25.sp 정도였던 값들을 반응형으로 대체)
     val bigTitleFont = (screenHeight * 0.03f).value.sp   // 약 25.sp에 대응
@@ -240,89 +243,156 @@ private fun MoodChangeHistorySection(
                                 .height(screenHeight * 0.20f)
                         )
                     }
-
-//                    // 그래프 아래 작은 레전드
-//                    Spacer(modifier = Modifier.height(screenHeight * 0.008f))
-//
-//                    Row(
-//                        modifier = Modifier
-//                            .fillMaxWidth()
-//                            .padding(end = horizontalPadding),
-//                        horizontalArrangement = Arrangement.End,
-//                        verticalAlignment = Alignment.CenterVertically
-//                    ) {
-//                        val legendFont = (screenHeight * 0.015f).value  // 화면 비율에 맞는 작은 글씨
-//
-//                        LineLegendItem(
-//                            color = Color(0xFFFF3B30),      // 빨강: 최고
-//                            text = "스트레스 최고 점수",
-//                            fontSize = legendFont
-//                        )
-//                        Spacer(modifier = Modifier.width(8.dp))
-//                        LineLegendItem(
-//                            color = Color(0xFF000000),      // 검정: 평균
-//                            text = "스트레스 평균 점수",
-//                            fontSize = legendFont
-//                        )
-//                        Spacer(modifier = Modifier.width(8.dp))
-//                        LineLegendItem(
-//                            color = Color(0xFF007BFF),      // 파랑: 최저
-//                            text = "스트레스 최저 점수",
-//                            fontSize = legendFont
-//                        )
-//                    }
                 }
             }
 
-            item { Spacer(modifier = Modifier.height(betweenChartAndCard)) }
+            item {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = padincard),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(screenHeight * 0.03f, Alignment.CenterHorizontally)
+                    // 각 아이템 사이 3% screenHeight 패딩, 전체 Row 가운데 정렬
+                ) {
+                    // 첫 번째 원 + 텍스트
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(screenHeight * 0.01f)
+                                .background(color = Color(0xFFC2B1FF), shape = CircleShape)
+                        )
+                        Spacer(modifier = Modifier.width(screenHeight * 0.01f))
+                        Text(
+                            text = "스트레스 빈도",
+                            color = Brown80,
+                            fontFamily = BrandFontFamily,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = (screenHeight * 0.016f).value.sp,
+                            maxLines = 1
+                        )
+                    }
 
+                    // 두 번째 원 + 텍스트
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(screenHeight * 0.01f)
+                                .background(color = Color(0xFFEF8834), shape = CircleShape)
+                        )
+                        Spacer(modifier = Modifier.width(screenHeight * 0.01f))
+                        Text(
+                            text = "스트레스 최고점",
+                            color = Brown80,
+                            fontFamily = BrandFontFamily,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = (screenHeight * 0.016f).value.sp,
+                            maxLines = 1
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(screenHeight * 0.0125f)) // 원과 카드 사이 간격
+            }
             // 감정 변화 큰 카드
             item {
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(screenHeight * 0.075f), // 기존 56.dp에 대응하는 반응형 높이
+                        .height(screenHeight * 0.14f), // 두 줄 배치 가능하도록 높이 확장, 비율 유지
                     colors = CardDefaults.cardColors(containerColor = Color(0xFFF7F4F2)),
-                    shape = RoundedCornerShape(screenHeight * 0.025f), // 기존 20.dp-ish
+                    shape = RoundedCornerShape(screenHeight * 0.025f),
                     elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
                 ) {
-                    Row(
+                    Column(
                         modifier = Modifier
                             .fillMaxSize()
-                            .padding(horizontal = innerHorizontalPadding),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                            .padding(horizontal = padincard),
+                        verticalArrangement = Arrangement.SpaceEvenly // 두 세트 간 공간 균등
                     ) {
-                        Text(
-                            text = "감정 변화",
-                            color = Brown80,
-                            fontFamily = BrandFontFamily,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 24.sp   // ← 여기서 직접 크게 지정!
-                        )
-
-                        Card(
-                            modifier = Modifier
-                                .size(
-                                    width = screenHeight * 0.095f,
-                                    height = screenHeight * 0.055f
-                                ), // 76x41 대응
-                            colors = CardDefaults.cardColors(containerColor = Color.White),
-                            shape = RoundedCornerShape(screenHeight * 0.02f),
-                            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+                        // 첫 번째 텍스트 + 카드
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Box(
-                                modifier = Modifier.fillMaxSize(),
-                                contentAlignment = Alignment.Center
+                            Text(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .padding(end = screenHeight * 0.015f),
+                                text = "최다 스트레스 시점",
+                                color = Brown80,
+                                fontFamily = BrandFontFamily,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 23.sp
+                            )
+
+                            Card(
+                                modifier = Modifier
+                                    .height(screenHeight * 0.055f)
+                                    .width(screenHeight * 0.155f),
+                                colors = CardDefaults.cardColors(containerColor = Color.White),
+                                shape = RoundedCornerShape(screenHeight * 0.02f),
+                                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
                             ) {
-                                Text(
-                                    text = "${moodChangeCount}회",
-                                    color = Brown80,
-                                    fontFamily = BrandFontFamily,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 24.sp,
-                                    textAlign = TextAlign.Center
-                                )
+                                Box(
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = "${moodChangeTime}시 - ${moodChangeTime + 1}시",
+                                        color = Brown80,
+                                        fontFamily = BrandFontFamily,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 23.sp,
+                                        textAlign = TextAlign.Center,
+                                        maxLines = 1
+                                    )
+                                }
+                            }
+                        }
+
+                        // 두 번째 텍스트 + 카드 (디자인 동일)
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .padding(end = screenHeight * 0.015f),
+                                text = "최다",
+                                color = Brown80,
+                                fontFamily = BrandFontFamily,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 23.sp
+                            )
+
+                            Card(
+                                modifier = Modifier
+                                    .height(screenHeight * 0.055f)
+                                    .width(screenHeight * 0.155f),
+                                colors = CardDefaults.cardColors(containerColor = Color.White),
+                                shape = RoundedCornerShape(screenHeight * 0.02f),
+                                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = "${maxStress} 회",
+                                        color = Brown80,
+                                        fontFamily = BrandFontFamily,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 23.sp,
+                                        textAlign = TextAlign.Center,
+                                        maxLines = 1
+                                    )
+                                }
                             }
                         }
                     }
@@ -350,7 +420,7 @@ private fun MoodChangeHistorySection(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(
-                                horizontal = innerHorizontalPadding,
+                                horizontal = padincard,
                                 vertical = cardVerticalPadding
                             ),
                         verticalArrangement = Arrangement.Top
@@ -491,6 +561,8 @@ fun MoodChangeScreen(
     var minScoresState by remember { mutableStateOf(List(24) { 0 }) }
     var avgScoresState by remember { mutableStateOf(List(24) { 0 }) }
     var moodChangeCountState by remember { mutableStateOf(moodChangeCount) }
+    var moodChangeTimeState by remember { mutableStateOf(0) }
+    var maxStressState by remember { mutableStateOf(0) }
     var isLoading by remember { mutableStateOf(true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
@@ -561,7 +633,7 @@ fun MoodChangeScreen(
             )
 
             Text(
-                text = "오늘 감정 변화",
+                text = "오늘 스트레스 변화",
                 color = TitleWhite,
                 fontFamily = BrandFontFamily,
                 fontWeight = FontWeight.Bold,
@@ -672,7 +744,9 @@ fun MoodChangeScreen(
                     maxScores = maxScoresState,
                     minScores = minScoresState,
                     screenHeight = screenHeight,
-                    moodChangeCount = moodChangeCountState
+                    moodChangeCount = moodChangeCountState,
+                    moodChangeTime = moodChangeTimeState,
+                    maxStress = maxStressState
                 )
             }
         }
