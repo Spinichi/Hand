@@ -946,8 +946,8 @@ fun MoodChangeScreen(
             )
         }
 //        추후 화면 로직에 따라 반영 예정
-//        val extraGap = (configuration.screenHeightDp.dp * 0.3f).coerceIn(40.dp, 60.dp)
-        val extraGap = 30.dp;
+        val extraGap = (configuration.screenHeightDp.dp * 0.3f).coerceIn(40.dp, 60.dp)
+//        val extraGap = 30.dp;
         Column(
             modifier = Modifier
                 .align(Alignment.TopCenter)
