@@ -196,14 +196,21 @@ async def rerank(summary: str, single_retrieval: list, multi_retrieval:list):
 # 유사 상담내용 검색
 async def retrieve_similar_cases(query: str, info, top_k: int = 5):
     try:
+        # 변수를 먼저 추출하여 f-string 포맷 에러 방지
+        user_age = info.age
+        user_job = str(info.job) if info.job else "정보 없음"
+        user_disease = str(info.disease) if info.disease else "정보 없음"
+        user_gender = str(info.gender) if info.gender else "정보 없음"
+        user_family = str(info.family) if info.family else "정보 없음"
+
         prompt = f"""
         {query}
         사용자 정보
-        나이 : {info.age}
-        직업 : {info.job}
-        질병력 : {info.disease}
-        성별 : {info.gender}
-        거주 형태 : {info.family}
+        나이 : {user_age}
+        직업 : {user_job}
+        질병력 : {user_disease}
+        성별 : {user_gender}
+        거주 형태 : {user_family}
         """
         # 쿼리 임베딩 생성
         query_vector = embed(prompt)
