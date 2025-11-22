@@ -194,16 +194,16 @@ async def rerank(summary: str, single_retrieval: list, multi_retrieval:list):
         raise HTTPException(status_code=500, detail=f"GMS 요청 중 오류 발생: {e}")
 
 # 유사 상담내용 검색
-async def retrieve_similar_cases(query: str, info: dict, top_k: int = 5):
+async def retrieve_similar_cases(query: str, info, top_k: int = 5):
     try:
         prompt = f"""
         {query}
         사용자 정보
-        나이 : {info["age"]}
-        직업 : {info["job"]}
-        질병력 : {info['disease']}
-        성별 : {info['gender']}
-        거주 형태 : {info['family']}
+        나이 : {info.age}
+        직업 : {info.job}
+        질병력 : {info.disease}
+        성별 : {info.gender}
+        거주 형태 : {info.family}
         """
         # 쿼리 임베딩 생성
         query_vector = embed(prompt)
