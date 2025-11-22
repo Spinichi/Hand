@@ -18,8 +18,11 @@ RUN apt-get update && apt-get install -y \
 
 # 1단계: 가장 무거운 패키지 먼저 설치 (캐시 최적화)
 # CPU 전용 PyTorch + ONNX Runtime (CPU 추론용)
+# --index-url로 CPU 전용 빌드 사용 (CUDA 의존성 제외, 디스크 공간 절약)
 RUN pip install --no-cache-dir \
-    torch==2.5.1 \
+    torch==2.5.1+cpu \
+    --index-url https://download.pytorch.org/whl/cpu && \
+    pip install --no-cache-dir \
     transformers==4.57.1 \
     onnx==1.19.1 \
     onnxruntime==1.23.2 \
