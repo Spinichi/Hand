@@ -1,30 +1,26 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.api import route
-from model_loader import model, tokenizer
+from model_loader import session, tokenizer
 from contextlib import asynccontextmanager
-import torch
 import os
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     try:
-        print("🚀 서버 시작 중… 모델 Warm-up 중입니다.")
-        
-        # 토크나이저 입력 준비
-        inputs = tokenizer("오늘 해가 나와서 기분 좋아.", return_tensors="pt")
-        
-        # 디바이스 설정 및 이동
-        device = "cuda" if torch.cuda.is_available() else "cpu"
-        model.to(device)
-        inputs = {k: v.to(device) for k, v in inputs.items()}
-        
-        # gradient 비활성화 후 모델 실행
-        model.eval()
-        with torch.no_grad():
-            _ = model(**inputs)
-        
-        print("✅ 모델 로드 및 Warm-up 완료")
+        print("🚀 서버 시작 중… ONNX 모델 Warm-up 중입니다.")
+
+        # 토크나이저 입력 준비 (ONNX는 numpy 입력 사용)
+        inputs = tokenizer("오늘 해가 나와서 기분 좋아.", return_tensors="np")
+
+        # ONNX Runtime으로 warm-up 실행
+        ort_inputs = {
+            "input_ids": inputs["input_ids"],
+            "attention_mask": inputs["attention_mask"]
+        }
+        _ = session.run(["logits"], ort_inputs)
+
+        print("✅ ONNX 모델 로드 및 Warm-up 완료")
 
     except Exception as e:
         print(f"❌ Warm-up 실패: {e}")
@@ -33,11 +29,7 @@ async def lifespan(app: FastAPI):
     yield
 
     # 서버 종료 시 리소스 정리
-    try:
-        torch.cuda.empty_cache()
-        print("🛑 서버 종료 중… GPU 캐시 정리 완료.")
-    except Exception as e:
-        print(f"⚠️ 종료 중 문제 발생: {e}")
+    print("🛑 서버 종료 중…")
 
 
 app = FastAPI(lifespan=lifespan, title="AI Server")
