@@ -47,8 +47,8 @@ fun PersonalCareScreen(
     val currentMonth = currentCal.get(Calendar.MONTH) + 1
 
     // 월별 원본 데이터 (없으면 null)
-    val reportRaw: MonthlyReport? by remember(currentCal.timeInMillis) {
-        mutableStateOf(PersonalReportSource.reportOrNull(currentYear, currentMonth))
+    val reportRaw: MonthlyReport? = remember(currentCal.timeInMillis) {
+        PersonalReportSource.reportOrNull(currentYear, currentMonth)
     }
 
     // 주간 중 실제 데이터 있는 주만 필터

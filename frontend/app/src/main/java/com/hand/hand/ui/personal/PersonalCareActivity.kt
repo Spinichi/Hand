@@ -24,7 +24,7 @@ class PersonalCareActivity : ComponentActivity() {
         setContent {
             PersonalCareScreen(
                 onHomeClick = { navigateHome() },
-                onDocumentClick = { /* 현재 화면이 Document(개인 심리 분석)이면 noop */ },
+                onDocumentClick = { /* 이미 보고서 페이지 */ },
                 onDiaryClick = { /* TODO: 필요 시 연결 */ },
                 onProfileClick = { /* TODO: 필요 시 연결 */ },
                 onCareClick = { /* TODO: 중앙 버튼 */ }

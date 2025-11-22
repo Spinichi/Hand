@@ -125,7 +125,7 @@ fun PrivateAiDocumentHomeScreen() {
                     context.startActivity(Intent(context, DiaryHomeActivity::class.java))
                 },
                 onClickDiary = {
-                    context.startActivity(Intent(context, PrivateAiDocumentHomeActivity::class.java))
+                    /* 이미 보고서 페이지 */
                 },
                 onClickProfile = {
                     context.startActivity(Intent(context, MyPageActivity::class.java))
