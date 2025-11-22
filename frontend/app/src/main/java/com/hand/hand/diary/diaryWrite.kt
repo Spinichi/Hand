@@ -1,6 +1,7 @@
 package com.hand.hand.diary
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.util.Log
@@ -44,6 +45,7 @@ class DiaryWriteActivity : ComponentActivity(), TextToSpeech.OnInitListener {
 
     private var tts: TextToSpeech? = null
     private var isTtsReady: Boolean = false
+    private var pendingTextToSpeak: String? = null  // 🔸 TTS 준비 전에 말할 텍스트 저장
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -78,19 +80,31 @@ class DiaryWriteActivity : ComponentActivity(), TextToSpeech.OnInitListener {
             val result = tts?.setLanguage(Locale.KOREAN)
             isTtsReady = result != TextToSpeech.LANG_MISSING_DATA &&
                     result != TextToSpeech.LANG_NOT_SUPPORTED
+
+            Log.d("DiaryTTS", "TTS 초기화 완료: ready=$isTtsReady")
+
+            // 🔸 TTS 준비 완료 후 대기 중이던 텍스트가 있으면 읽어주기
+            pendingTextToSpeak?.let { text ->
+                speak(text)
+                pendingTextToSpeak = null
+            }
         } else {
             isTtsReady = false
+            Log.e("DiaryTTS", "TTS 초기화 실패")
         }
     }
 
     // 🔸 실제로 읽어주는 함수
     private fun speak(text: String) {
-        if (!isTtsReady) {   // ❗ 여기 ! 붙는게 맞음
-            Log.d("DiaryTTS", "TTS 아직 준비 안됨")
-            return
-        }
         if (text.isBlank()) return
 
+        if (!isTtsReady) {
+            Log.d("DiaryTTS", "TTS 아직 준비 안됨, 대기열에 추가: $text")
+            pendingTextToSpeak = text  // 🔸 준비되면 읽을 수 있도록 저장
+            return
+        }
+
+        Log.d("DiaryTTS", "TTS 읽기 시작: $text")
         tts?.speak(
             text,
             TextToSpeech.QUEUE_FLUSH,
@@ -204,11 +218,14 @@ fun DiaryWriteScreen(
                                 questions = conversations.map { it.questionText }
                                 questionNumber = conversations.size
 
-                                // 마지막 질문 읽어주기
-                                val lastQuestion = conversations.last().questionText
-                                onSpeak(lastQuestion)
+                                // 🔸 답변 안 한 질문 찾기 (answerText가 null인 질문)
+                                val unansweredQuestion = conversations.find { it.answerText == null }
+                                val questionToSpeak = unansweredQuestion?.questionText
+                                    ?: conversations.last().questionText
 
-                                Log.d("DiaryWrite", "✅ 작성 중인 다이어리 복원: ${conversations.size}개 질문")
+                                onSpeak(questionToSpeak)
+
+                                Log.d("DiaryWrite", "✅ 작성 중인 다이어리 복원: ${conversations.size}개 질문, 읽어줄 질문: $questionToSpeak")
                             }
                         }
                         else -> {
@@ -554,6 +571,10 @@ fun DiaryWriteScreen(
                                                         Toast.LENGTH_SHORT
                                                     ).show()
 
+                                                    // 다이어리 홈(캘린더)으로 이동
+                                                    val intent = Intent(context, DiaryHomeActivity::class.java)
+                                                    intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                                                    context.startActivity(intent)
                                                     onBackClick()
                                                 } else {
                                                     Toast.makeText(

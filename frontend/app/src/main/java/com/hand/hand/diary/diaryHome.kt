@@ -3,6 +3,7 @@ package com.hand.hand.diary
 import android.content.Intent
 import android.os.Bundle
 import android.util.Log
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
@@ -246,7 +247,21 @@ fun DiaryHomeScreen(onBackClick: () -> Unit) {
                     color = Color.Gray
                 )
 
-                else -> diaryList.forEach { item -> DiaryHistoryBox(item) }
+                else -> diaryList.forEach { item ->
+                    DiaryHistoryBox(
+                        item = item,
+                        onClick = {
+                            // 완료된 다이어리만 상세 보기 가능
+                            if (item.status == "COMPLETED") {
+                                val intent = Intent(context, DiaryDetailActivity::class.java)
+                                intent.putExtra("sessionId", item.sessionId.toLong())
+                                context.startActivity(intent)
+                            } else {
+                                Toast.makeText(context, "작성이 완료된 다이어리만 조회할 수 있어요.", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(80.dp))
@@ -262,7 +277,7 @@ fun DiaryHomeScreen(onBackClick: () -> Unit) {
 // ===================== 히스토리 카드 =====================
 
 @Composable
-fun DiaryHistoryBox(item: DiaryItem) {
+fun DiaryHistoryBox(item: DiaryItem, onClick: () -> Unit = {}) {
     val configuration = LocalConfiguration.current
     val screenHeight = configuration.screenHeightDp.dp
 
@@ -282,6 +297,7 @@ fun DiaryHistoryBox(item: DiaryItem) {
             .height(screenHeight * 0.1f)
             .padding(horizontal = 16.dp, vertical = 6.dp)
             .background(Color.White, shape = androidx.compose.foundation.shape.RoundedCornerShape(30.dp))
+            .clickable { onClick() }
             .padding(horizontal = 20.dp, vertical = 12.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
