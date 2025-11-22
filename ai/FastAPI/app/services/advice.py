@@ -196,12 +196,20 @@ async def rerank(summary: str, single_retrieval: list, multi_retrieval:list):
 # 유사 상담내용 검색
 async def retrieve_similar_cases(query: str, info, top_k: int = 5):
     try:
-        # 변수를 먼저 추출하여 f-string 포맷 에러 방지
-        user_age = info.age
-        user_job = str(info.job) if info.job else "정보 없음"
-        user_disease = str(info.disease) if info.disease else "정보 없음"
-        user_gender = str(info.gender) if info.gender else "정보 없음"
-        user_family = str(info.family) if info.family else "정보 없음"
+        # info가 dict인지 Pydantic 모델인지 확인하고 처리
+        if isinstance(info, dict):
+            user_age = info.get('age', '정보 없음')
+            user_job = str(info.get('job', '정보 없음'))
+            user_disease = str(info.get('disease', '정보 없음'))
+            user_gender = str(info.get('gender', '정보 없음'))
+            user_family = str(info.get('family', '정보 없음'))
+        else:
+            # Pydantic 모델인 경우
+            user_age = info.age if hasattr(info, 'age') else '정보 없음'
+            user_job = str(info.job) if hasattr(info, 'job') and info.job else "정보 없음"
+            user_disease = str(info.disease) if hasattr(info, 'disease') and info.disease else "정보 없음"
+            user_gender = str(info.gender) if hasattr(info, 'gender') and info.gender else "정보 없음"
+            user_family = str(info.family) if hasattr(info, 'family') and info.family else "정보 없음"
 
         prompt = f"""
         {query}
