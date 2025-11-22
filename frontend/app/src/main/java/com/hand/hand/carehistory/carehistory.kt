@@ -125,7 +125,7 @@ fun CareHistoryScreen(onBackClick: () -> Unit) {
                 .padding(
                     top = screenHeight * 0.4f,
                     start = screenWidth * 0.05f,
-                    end = screenWidth * 0.07f
+                    end = screenWidth * 0.05f
                 )
         ) {
             Text(
@@ -166,9 +166,7 @@ fun CareHistoryScreen(onBackClick: () -> Unit) {
                                 day = day,
                                 method = session.interventionName ?: "알 수 없음",
                                 score = safeScore,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(start = 20.dp)
+                                modifier = Modifier.fillMaxWidth()
                             )
                         }
                     }
@@ -178,13 +176,14 @@ fun CareHistoryScreen(onBackClick: () -> Unit) {
 
         // 📌 FloatingCard
         FloatingRowCalmCards(
-            card1Title = "효과가 좋은 완화법",
+            card1Title = "효과적인 방법",
             card1Tag = mostEffectiveName,
-            card2Title = "자주 사용한 완화법",
+            card2Title = "자주 사용",
             card2Tag = mostUsedName,
             x = screenWidth * 0.05f,
             y = screenHeight * 0.15f,
-            spacing = 16.dp
+            maxWidth = screenWidth * 0.9f,
+            spacing = 12.dp
         )
 
         // 📌 FloatingIcon
@@ -247,31 +246,33 @@ fun BrandWaveHeader2(
 fun CalmItemCard(title: String, tagText: String, modifier: Modifier = Modifier) {
     Box(
         modifier = modifier
-            .background(Color.White, shape = RoundedCornerShape(20.dp))
-            .padding(vertical = 15.dp, horizontal = 16.dp),
+            .background(Color.White, shape = RoundedCornerShape(16.dp))
+            .padding(vertical = 10.dp, horizontal = 10.dp),
         contentAlignment = Alignment.Center
     ) {
         Column(
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.wrapContentWidth()
+            modifier = Modifier.fillMaxWidth()
         ) {
             Text(
                 text = title,
                 fontFamily = BrandFontFamily,
-                fontSize = 20.sp,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Medium,
                 color = Color(0xFF4F3422)
             )
             Box(
                 modifier = Modifier
                     .background(Color(0xFF9BB168), shape = RoundedCornerShape(100.dp))
-                    .padding(horizontal = 20.dp, vertical = 8.dp),
+                    .padding(horizontal = 14.dp, vertical = 6.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = tagText,
-                    fontSize = 20.sp,
+                    fontSize = 16.sp,
                     fontFamily = BrandFontFamily,
+                    fontWeight = FontWeight.Bold,
                     color = Color.White
                 )
             }
@@ -287,15 +288,26 @@ fun FloatingRowCalmCards(
     card2Tag: String,
     x: Dp,
     y: Dp,
+    maxWidth: Dp,
     spacing: Dp = 16.dp
 ) {
     Box(modifier = Modifier.fillMaxSize()) {
         Row(
-            modifier = Modifier.absoluteOffset(x = x, y = y),
+            modifier = Modifier
+                .absoluteOffset(x = x, y = y)
+                .width(maxWidth),
             horizontalArrangement = Arrangement.spacedBy(spacing)
         ) {
-            CalmItemCard(title = card1Title, tagText = card1Tag)
-            CalmItemCard(title = card2Title, tagText = card2Tag)
+            CalmItemCard(
+                title = card1Title,
+                tagText = card1Tag,
+                modifier = Modifier.weight(1f)
+            )
+            CalmItemCard(
+                title = card2Title,
+                tagText = card2Tag,
+                modifier = Modifier.weight(1f)
+            )
         }
     }
 }
