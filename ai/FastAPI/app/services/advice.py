@@ -133,17 +133,17 @@ async def rerank(summary: str, single_retrieval: list, multi_retrieval:list):
         ## 출력 형식 (JSON)
         아래 형식을 반드시 지켜주세요:
 
-        {
+        {{
         "ranked_items": [
-            {
+            {{
             "type": "single" | "multi",
             "content": "원문 상담 내용"
-            }
+            }}
         ],
         "top_k_final": [
             "상위 3개의 상담 내용만 원문 그대로"
         ]
-        }
+        }}
 
         주의:
         - score는 0~1 실수
