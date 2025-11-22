@@ -194,7 +194,7 @@ async def rerank(summary: str, single_retrieval: list, multi_retrieval:list):
         raise HTTPException(status_code=500, detail=f"GMS 요청 중 오류 발생: {e}")
 
 # 유사 상담내용 검색
-async def retrieve_similar_cases(query: str, info: dict, top_k: int = 5):
+async def retrieve_similar_cases(query: str, info, top_k: int = 5):
     try:
         prompt = f"""
         {query}
