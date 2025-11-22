@@ -179,7 +179,7 @@ public class DiaryService {
                 .sessionId(sessionId)
                 .questionNumber(nextQuestionNumber)
                 .questionText(nextQuestionText)
-                .canFinish(session.getQuestionCount() >= 3) // 최소 3개 이상
+                .canFinish(session.getQuestionCount() >= 2) // 최소 2개 이상
                 .build();
     }
 
@@ -200,8 +200,8 @@ public class DiaryService {
             throw new IllegalStateException("이미 완료된 다이어리입니다");
         }
 
-        if (session.getQuestionCount() < 3) {
-            throw new IllegalStateException("최소 3개 이상의 질문에 답변해야 합니다");
+        if (session.getQuestionCount() < 2) {
+            throw new IllegalStateException("최소 2개 이상의 질문에 답변해야 합니다");
         }
 
         // 2. MongoDB에서 대화 조회
