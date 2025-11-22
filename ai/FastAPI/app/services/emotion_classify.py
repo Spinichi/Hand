@@ -1,4 +1,3 @@
-from model_loader import model, tokenizer
 from transformers import pipeline
 import torch
 import re
