@@ -9,5 +9,7 @@ public record TodayStressResponse(
         int anomalyCount,
         List<HourlyStatsDto> hourlyStats,
         List<StressPointDto> peakStress,
-        List<StressPointDto> lowestStress
+        List<StressPointDto> lowestStress,
+        Integer peakFrequencyHour,      // 측정 빈도가 가장 높은 시간대 (0~23)
+        Integer peakFrequencyCount      // 해당 시간대의 측정 횟수
 ) {}

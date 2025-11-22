@@ -262,12 +262,29 @@ public class MeasurementService {
         // 6. 최저점 찾기 (여러 개 가능)
         List<StressPointDto> lowestStress = findLowestStress(measurements);
 
+        // 7. 측정 빈도가 가장 높은 시간대 찾기
+        Integer peakFrequencyHour = null;
+        Integer peakFrequencyCount = null;
+
+        if (!hourlyStats.isEmpty()) {
+            HourlyStatsDto maxFrequencyHour = hourlyStats.stream()
+                    .max(Comparator.comparingInt(HourlyStatsDto::measurementCount))
+                    .orElse(null);
+
+            if (maxFrequencyHour != null && maxFrequencyHour.measurementCount() > 0) {
+                peakFrequencyHour = maxFrequencyHour.hour();
+                peakFrequencyCount = maxFrequencyHour.measurementCount();
+            }
+        }
+
         return new TodayStressResponse(
                 date,
                 (int) anomalyCount,
                 hourlyStats,
                 peakStress,
-                lowestStress
+                lowestStress,
+                peakFrequencyHour,
+                peakFrequencyCount
         );
     }
 

@@ -820,8 +820,6 @@ private fun todayIsoDate(): String {
     return sdf.format(Date())
 }
 
-private val mockFrequencyStress = listOf(0, 0, 3, 5, 0, 8, 12, 15, 0, 0, 30, 22, 0, 0, 25, 18, 0, 0, 10, 0, 0, 0, 0, 0)
-
 @Composable
 fun MoodChangeScreen(
     onBack: () -> Unit = {},
@@ -874,6 +872,7 @@ fun MoodChangeScreen(
                     val maxList = MutableList(24) { -1 }
                     val minList = MutableList(24) { -1 }
                     val avgList = MutableList(24) { -1 }
+                    val frequencyList = MutableList(24) { 0 }
 
                     data.hourlyStats.forEach { stat ->
                         val h = stat.hour
@@ -885,6 +884,7 @@ fun MoodChangeScreen(
                             maxList[h] = max
                             minList[h] = min
                             avgList[h] = avg
+                            frequencyList[h] = stat.measurementCount
 
                         }
                     }
@@ -892,9 +892,11 @@ fun MoodChangeScreen(
                     maxScoresState = maxList
                     minScoresState = minList
                     avgScoresState = avgList
+                    frequencyStressState = frequencyList
 
-//                    frequencyStressState = data.frequencyStress ?: List(24) { 0 }
-                    frequencyStressState = mockFrequencyStress
+                    // 최다 스트레스 시점 및 횟수
+                    moodChangeTimeState = data.peakFrequencyHour ?: 0
+                    maxStressState = data.peakFrequencyCount ?: 0
 
                     // 감정 변화 횟수: 일단 anomalyCount 사용 (원하면 measurementCount 기준으로 바꿔도 됨)
                     moodChangeCountState = data.anomalyCount

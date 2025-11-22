@@ -132,7 +132,9 @@ data class StressTodayData(
     val anomalyCount: Int,
     val hourlyStats: List<StressHourlyStat>,
     val peakStress: List<StressPoint>,
-    val lowestStress: List<StressPoint>
+    val lowestStress: List<StressPoint>,
+    val peakFrequencyHour: Int?,      // 측정 빈도가 가장 높은 시간대 (0~23)
+    val peakFrequencyCount: Int?      // 해당 시간대의 측정 횟수
 )
 
 data class StressHourlyStat(
