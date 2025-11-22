@@ -52,6 +52,13 @@ class BM25User(BaseModel):
     disease: str
     family: str
 
+class BM25User(BaseModel):
+    age: int
+    gender: str
+    job: str
+    disease: str
+    family: str
+
 class Biometrics(BaseModel):
     baseline: BaselineItem
     anomalies: List[AnomalyItem]

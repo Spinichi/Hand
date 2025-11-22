@@ -194,31 +194,16 @@ async def rerank(summary: str, single_retrieval: list, multi_retrieval:list):
         raise HTTPException(status_code=500, detail=f"GMS 요청 중 오류 발생: {e}")
 
 # 유사 상담내용 검색
-async def retrieve_similar_cases(query: str, info, top_k: int = 5):
+async def retrieve_similar_cases(query: str, info: dict, top_k: int = 5):
     try:
-        # info가 dict인지 Pydantic 모델인지 확인하고 처리
-        if isinstance(info, dict):
-            user_age = info.get('age', '정보 없음')
-            user_job = str(info.get('job', '정보 없음'))
-            user_disease = str(info.get('disease', '정보 없음'))
-            user_gender = str(info.get('gender', '정보 없음'))
-            user_family = str(info.get('family', '정보 없음'))
-        else:
-            # Pydantic 모델인 경우
-            user_age = info.age if hasattr(info, 'age') else '정보 없음'
-            user_job = str(info.job) if hasattr(info, 'job') and info.job else "정보 없음"
-            user_disease = str(info.disease) if hasattr(info, 'disease') and info.disease else "정보 없음"
-            user_gender = str(info.gender) if hasattr(info, 'gender') and info.gender else "정보 없음"
-            user_family = str(info.family) if hasattr(info, 'family') and info.family else "정보 없음"
-
         prompt = f"""
         {query}
         사용자 정보
-        나이 : {user_age}
-        직업 : {user_job}
-        질병력 : {user_disease}
-        성별 : {user_gender}
-        거주 형태 : {user_family}
+        나이 : {info["age"]}
+        직업 : {info["job"]}
+        질병력 : {info['disease']}
+        성별 : {info['gender']}
+        거주 형태 : {info['family']}
         """
         # 쿼리 임베딩 생성
         query_vector = embed(prompt)

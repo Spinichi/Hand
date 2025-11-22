@@ -149,6 +149,8 @@ async def group_advice(input_data: ManageAdviceInput):
         )
 
     except Exception as e:
+        import traceback
+        traceback.print_exc()  # Print full stack trace
         print(f"❌ manager_advice 오류: {e}")
         raise HTTPException(status_code=500, detail=f"관리자 조언 생성 중 오류: {e}")
 
@@ -219,5 +221,7 @@ async def personal_advice(data: PersonalAdviceInput):
         )
 
     except Exception as e:
+        import traceback
+        traceback.print_exc()  # Print full stack trace
         print(f"❌ personal_advice 오류: {e}")
         raise HTTPException(status_code=500, detail=f"개인 조언 생성 중 오류: {e}")
