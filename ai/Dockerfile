@@ -17,9 +17,13 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # 1단계: 가장 무거운 패키지 먼저 설치 (캐시 최적화)
+# CPU 전용 PyTorch + ONNX Runtime (CPU 추론용)
 RUN pip install --no-cache-dir \
     torch==2.5.1 \
-    transformers==4.57.1
+    transformers==4.57.1 \
+    onnx==1.19.1 \
+    onnxruntime==1.23.2 \
+    onnxruntime-tools==1.7.0
 
 # 2단계: ML/데이터 관련 패키지
 RUN pip install --no-cache-dir \
