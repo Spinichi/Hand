@@ -6,6 +6,7 @@ import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
+import java.util.concurrent.TimeUnit
 
 object RetrofitClient {
     private const val BASE_URL = "https://gatewaytohand.store/api/"
@@ -31,6 +32,10 @@ object RetrofitClient {
             }
 
             val client = OkHttpClient.Builder()
+                // ★ AI 분석처럼 오래 걸리는 요청을 위해 타임아웃 증가
+                .connectTimeout(30, TimeUnit.SECONDS)  // 연결 타임아웃: 30초
+                .readTimeout(120, TimeUnit.SECONDS)    // 읽기 타임아웃: 120초 (AI 분석 대기)
+                .writeTimeout(30, TimeUnit.SECONDS)    // 쓰기 타임아웃: 30초
                 .addInterceptor { chain ->
                     val original = chain.request()
                     val builder = original.newBuilder()
