@@ -67,20 +67,49 @@ def safe_load_json(text: str):
         text = re.sub(r"```json", "", text, flags=re.IGNORECASE)
         text = re.sub(r"```", "", text)
 
-        # 2) JSON 객체 또는 리스트 추출
-        pattern = r"(\{[\s\S]*\}|\[[\s\S]*\])"     # { ... } 또는 [ ... ] 둘 다 탐색
-        match = re.search(pattern, text)
+        # 2) JSON 객체만 정확하게 추출 (중괄호 매칭)
+        start = text.find('{')
+        if start == -1:
+            raise ValueError("JSON 객체를 찾을 수 없습니다")
 
-        if match:
-            json_str = match.group(1)
-            return json.loads(json_str)
+        # 중괄호 카운팅으로 정확한 끝 찾기
+        brace_count = 0
+        end = start
+        in_string = False
+        escape = False
 
-        # 3) 못 찾으면 그대로 파싱 시도
-        return json.loads(text)
+        for i in range(start, len(text)):
+            char = text[i]
+
+            # 이스케이프 처리
+            if escape:
+                escape = False
+                continue
+            if char == '\\':
+                escape = True
+                continue
+
+            # 문자열 내부 체크
+            if char == '"':
+                in_string = not in_string
+                continue
+
+            # 문자열 밖에서만 중괄호 카운트
+            if not in_string:
+                if char == '{':
+                    brace_count += 1
+                elif char == '}':
+                    brace_count -= 1
+                    if brace_count == 0:
+                        end = i + 1
+                        break
+
+        json_str = text[start:end]
+        return json.loads(json_str)
 
     except Exception as e:
         print("❌ JSON 파싱 실패:", e)
-        print("원본 텍스트:\n", text)
+        print("원본 텍스트 (처음 500자):\n", text[:500] if len(text) > 500 else text)
         raise e
 
 # rerank를 더 잘 이해하게 하기 위해
