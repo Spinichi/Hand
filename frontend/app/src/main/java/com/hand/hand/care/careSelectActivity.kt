@@ -103,10 +103,47 @@ fun CareScreen() {
                                     subText = subText,
                                     modifier = Modifier.weight(1f),
                                     onClick = {
-                                        if (text == "안전지대 연습") {
-                                            context.startActivity(
-                                                Intent(context, CareSafeZone1Activity::class.java)
-                                            )
+                                        when (text) {
+                                            "복식호흡 훈련" -> {
+                                                context.startActivity(
+                                                    Intent(context, CareBreathing1Activity::class.java)
+                                                )
+                                            }
+                                            "근육 이완 훈련" -> {
+                                                context.startActivity(
+                                                    Intent(context, CareMuscleRelax1Activity::class.java)
+                                                )
+                                            }
+                                            "안전지대 연습" -> {
+                                                context.startActivity(
+                                                    Intent(context, CareSafeZone1Activity::class.java)
+                                                )
+                                            }
+                                            "착지 연습" -> {
+                                                context.startActivity(
+                                                    Intent(context, CareGrounding1Activity::class.java)
+                                                )
+                                            }
+                                            "빛줄기 기법" -> {
+                                                context.startActivity(
+                                                    Intent(context, CareLightBeam1Activity::class.java)
+                                                )
+                                            }
+                                            "바디스캔" -> {
+                                                context.startActivity(
+                                                    Intent(context, CareBodyScan1Activity::class.java)
+                                                )
+                                            }
+                                            "봉인연습" -> {
+                                                context.startActivity(
+                                                    Intent(context, CareSeal1Activity::class.java)
+                                                )
+                                            }
+                                            "자원강화" -> {
+                                                context.startActivity(
+                                                    Intent(context, CareResource1Activity::class.java)
+                                                )
+                                            }
                                         }
                                     }
                                 )
@@ -147,9 +184,8 @@ fun CareScreen() {
                     context.startActivity(Intent(context, MyPageActivity::class.java))
                 },
                 onClickCenter = {
-                    // ✅ 중앙 버튼 클릭 → CareActivity로 이동
-                    val intent = Intent(context, CareActivity::class.java)
-                    context.startActivity(intent)
+                    // ✅ 중앙 버튼 클릭 → 이미 CareActivity에 있으므로 아무 동작 안함
+                    // Do nothing - already in CareActivity
                 }
             )
         }

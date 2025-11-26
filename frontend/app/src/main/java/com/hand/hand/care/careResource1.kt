@@ -1,4 +1,4 @@
-// careGrounding1.kt
+// careResource1.kt - 자원강화
 
 package com.hand.hand.care
 
@@ -27,13 +27,17 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.hand.hand.R
+import com.hand.hand.api.Relief.ReliefManager
 import com.hand.hand.ui.theme.BrandFontFamily
+import java.text.SimpleDateFormat
+import java.util.Date
 import java.util.Locale
+import java.util.TimeZone
 
-class CareGrounding1Activity : ComponentActivity() {
+class CareResource1Activity : ComponentActivity() {
 
     companion object {
-        var groundingSessionId: Long? = null
+        var resourceSessionId: Long? = null
         var beforeStressLevel: Int? = null
         var beforeStressTimestamp: Long? = null
     }
@@ -44,11 +48,9 @@ class CareGrounding1Activity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // TTS 초기화
         tts = TextToSpeech(this) { status ->
             if (status == TextToSpeech.SUCCESS) {
                 val result = tts?.setLanguage(Locale.KOREAN)
-
                 if (result != TextToSpeech.LANG_MISSING_DATA &&
                     result != TextToSpeech.LANG_NOT_SUPPORTED
                 ) {
@@ -63,16 +65,48 @@ class CareGrounding1Activity : ComponentActivity() {
 
         setContent {
             val ttsReady by ttsInitialized
-            CareGrounding1Screen(
+            CareResource1Screen(
                 onBackClick = { finish() },
-                onStartClick = {
-                    // TODO: 다음 화면으로 이동 (CareGrounding2Activity 구현 시)
-                    Toast.makeText(this, "착지 연습 시작", Toast.LENGTH_SHORT).show()
-                },
+                onStartClick = { startResourceSession() },
                 tts = tts,
                 ttsReady = ttsReady
             )
         }
+    }
+
+    private fun startResourceSession() {
+        beforeStressLevel =
+            com.hand.hand.wear.WearListenerForegroundService.getLatestStressLevel()
+        beforeStressTimestamp =
+            com.hand.hand.wear.WearListenerForegroundService.getLatestStressTimestamp()
+
+        val startedAt = nowIsoUtc()
+
+        ReliefManager.startReliefSession(
+            interventionId = 8,
+            triggerType = "MANUAL",
+            anomalyDetectionId = null,
+            gestureCode = "RESOURCE",
+            startedAt = startedAt,
+            onSuccess = { res ->
+                val sessionId = res.data?.sessionId
+                resourceSessionId = sessionId
+                Toast.makeText(this, "자원강화를 시작합니다.", Toast.LENGTH_SHORT).show()
+                // TODO: 다음 화면으로 이동 (구현 필요)
+                // startActivity(Intent(this, CareResource2Activity::class.java))
+                finish()
+            },
+            onFailure = { e ->
+                e.printStackTrace()
+                Toast.makeText(this, "세션 시작에 실패했습니다.", Toast.LENGTH_SHORT).show()
+            }
+        )
+    }
+
+    private fun nowIsoUtc(): String {
+        val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
+        sdf.timeZone = TimeZone.getTimeZone("Asia/Seoul")
+        return sdf.format(Date())
     }
 
     override fun onPause() {
@@ -87,14 +121,13 @@ class CareGrounding1Activity : ComponentActivity() {
     }
 }
 
-// TTS 확장 함수
-fun TextToSpeech?.readGroundingText() {
-    val text = "착지법은 땅에 발을 딛고 있는 것을 느끼면서 지금 여기로 돌아오는 거예요. 발바닥을 바닥에 붙이고, 발이 땅에 닿아있는 느낌에 집중하세요."
-    this?.speak(text, TextToSpeech.QUEUE_FLUSH, null, "Grounding1TTS")
+fun TextToSpeech?.readResourceText() {
+    val text = "자원강화는 긍정적인 경험과 자원을 활성화하여 내면의 힘을 키우는 방법입니다. 편안하게 시작해보세요."
+    this?.speak(text, TextToSpeech.QUEUE_FLUSH, null, "Resource1TTS")
 }
 
 @Composable
-fun CareGrounding1Screen(
+fun CareResource1Screen(
     onBackClick: () -> Unit,
     onStartClick: () -> Unit,
     tts: TextToSpeech?,
@@ -105,11 +138,9 @@ fun CareGrounding1Screen(
     val screenWidth = configuration.screenWidthDp.dp
     val headerHeight = screenHeight * 0.25f
 
-    // 페이지 들어오고 TTS 준비되면 자동으로 한 번 읽기
     LaunchedEffect(ttsReady) {
         if (ttsReady) {
-            android.util.Log.d("CareGrounding1", "TTS ready, speaking text.")
-            tts.readGroundingText()
+            tts.readResourceText()
         }
     }
 
@@ -119,11 +150,10 @@ fun CareGrounding1Screen(
             .background(Color(0xFFF7F4F2))
     ) {
         CareHeader2(
-            titleText = "착지 연습",
+            titleText = "자원강화",
             subtitleTags = listOf(
-                TagWithIcon("지금 여기", R.drawable.stress_icon),
-                TagWithIcon("발바닥 집중", R.drawable.home_icon),
-                TagWithIcon("현실 감각", R.drawable.stress_icon)
+                TagWithIcon("긍정 경험", R.drawable.home_icon),
+                TagWithIcon("내면의 힘", R.drawable.stress_icon)
             ),
             onBackClick = onBackClick
         )
@@ -138,24 +168,21 @@ fun CareGrounding1Screen(
                     bottom = 80.dp
                 )
                 .verticalScroll(rememberScrollState()),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-
-            Text(
-                text = "착지법은 땅에 발을 딛고 있는 것을 \n 느끼면서 '지금 여기'로 \n 돌아오는 거예요.",
-                fontFamily = BrandFontFamily,
-                fontWeight = FontWeight.Bold,
-                fontSize = (screenHeight * 0.035f).value.sp,
-                color = Color(0xFF4F3422),
-                lineHeight = (screenHeight * 0.05f).value.sp,
-                textAlign = TextAlign.Center
+            Spacer(modifier = Modifier.height(screenHeight * 0.01f))
+            Image(
+                painter = painterResource(id = R.drawable.safe_zone_level),
+                contentDescription = "Resource Level",
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(screenHeight * 0.1f)
             )
 
-            Spacer(modifier = Modifier.height(screenHeight * 0.04f))
+            Spacer(modifier = Modifier.height(16.dp))
 
             Text(
-                text = "발바닥을 바닥에 붙이고, \n 발이 땅에 닿아있는 \n 느낌에 집중하세요.",
+                text = "자원강화는 긍정적인 경험과 \n 자원을 활성화하여 \n 내면의 힘을 키우는 방법입니다. \n \n 편안하게 시작해보세요",
                 fontFamily = BrandFontFamily,
                 fontWeight = FontWeight.Medium,
                 fontSize = (screenHeight * 0.035f).value.sp,
