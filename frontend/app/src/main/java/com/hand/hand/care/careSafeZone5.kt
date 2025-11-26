@@ -214,7 +214,11 @@ fun CareSafeZone5Screen(
             modifier = Modifier
                 .fillMaxWidth()
                 .align(Alignment.BottomCenter)
-                .padding(bottom = 16.dp, start = screenWidth * 0.05f, end = screenWidth * 0.05f)
+                .padding(
+                    bottom = 16.dp + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding(),
+                    start = screenWidth * 0.05f,
+                    end = screenWidth * 0.05f
+                )
         ) {
             val buttonHeight = screenHeight * 0.065f
             val arrowHeight = buttonHeight * 0.4f

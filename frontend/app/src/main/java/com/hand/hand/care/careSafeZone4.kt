@@ -177,7 +177,7 @@ fun CareSafeZone4Screen(onBackClick: () -> Unit, onStartClick: () -> Unit) {
                 .fillMaxWidth()
                 .align(Alignment.BottomCenter)
                 .padding(
-                    bottom = 16.dp,
+                    bottom = 16.dp + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding(),
                     start = screenWidth * 0.05f,
                     end = screenWidth * 0.05f
                 )
