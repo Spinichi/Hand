@@ -13,6 +13,7 @@ public interface IndividualUserRepository extends JpaRepository<IndividualUser, 
     Optional<IndividualUser> findByUserId(Long userId);
     boolean existsByUserId(Long userId);
     void deleteByUserId(Long userId);
+    List<IndividualUser> findByNameStartingWith(String prefix);
 
     /**
      * 알림 활성화되어 있고, 특정 시간에 알림받을 사용자 목록 조회
