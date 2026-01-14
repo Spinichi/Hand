@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  mysql-local:
+    image: mysql:8.0
+    container_name: hand-mysql-local
+    environment:
+      MYSQL_ROOT_PASSWORD: root1234
+      MYSQL_DATABASE: hand_db
+      MYSQL_USER: hand_user
+      MYSQL_PASSWORD: hand1234
+      TZ: Asia/Seoul
+    ports:
+      - "3307:3306"  # 로컬 3306이 사용 중일 수 있어 3307로 매핑
+    volumes:
+      - mysql-local-data:/var/lib/mysql
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot1234"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  mongodb-local:
+    image: mongo:7.0
+    container_name: hand-mongodb-local
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: hand_user
+      MONGO_INITDB_ROOT_PASSWORD: hand1234
+      MONGO_INITDB_DATABASE: hand_db
+      TZ: Asia/Seoul
+    ports:
+      - "27018:27017"  # 로컬 27017이 사용 중일 수 있어 27018로 매핑
+    volumes:
+      - mongodb-local-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  mysql-local-data:
+    driver: local
+  mongodb-local-data:
+    driver: local

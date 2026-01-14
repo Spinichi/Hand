@@ -1,4 +1,5 @@
 spring:
+    jpa.open-in-view: false
     config:
         import: "optional:file:.env[.properties]"
     application:
@@ -8,17 +9,20 @@ spring:
         username: ${DB_USERNAME}
         password: ${DB_PASSWORD}
         driver-class-name: com.mysql.cj.jdbc.Driver
+        hikari:
+            maximum-pool-size: 10
+            leak-detection-threshold: 2000
     jpa:
         hibernate:
             ddl-auto: update
-        show-sql: true
+        show-sql: false
         properties:
             hibernate:
-                format_sql: true
+                format_sql: false
                 dialect: org.hibernate.dialect.MySQL8Dialect
     data:
         mongodb:
-            uri: mongodb://${MONGO_USERNAME}:${MONGO_PASSWORD}@${MONGO_HOST}:${MONGO_PORT}/${MONGO_DB}?authSource=${MONGO_USERNAME}
+            uri: mongodb://${MONGO_USERNAME}:${MONGO_PASSWORD}@${MONGO_HOST}:${MONGO_PORT}/${MONGO_DB}?authSource=admin
             auto-index-creation: true
     jackson:
         time-zone: Asia/Seoul
@@ -45,30 +49,34 @@ gms:
         key: ${GMS_API_KEY}
 
 # AI 서버 설정 (FastAPI)
+# 로컬 테스트 시 Mock 응답 사용 (연결 실패 시 자동으로 Mock 데이터 반환)
 ai:
     server:
-        base-url: https://gatewaytohand.store/ai
+      base-url: http://localhost:${server.port}${server.servlet.context-path}
 
 emotion:
     api:
-        url: ${ai.server.base-url}/diary/summary
-
+      url: ${ai.server.base-url}/diary/summary
 report:
     api:
-        individual:
-            url: ${ai.server.base-url}/individual-users/report
-        manager:
-            url: ${ai.server.base-url}/manager/advice
+      individual:
+        url: ${ai.server.base-url}/individual-users/report
+      manager:
+        url: ${ai.server.base-url}/manager/advice
 
 logging:
     level:
-        com.finger.hand_backend.diary.service: DEBUG
+        root: INFO
+        org.hibernate.SQL: WARN
+        org.hibernate.orm.jdbc.bind: WARN
+        org.mongodb.driver: WARN
+        org.springframework.boot.devtools: WARN
 
 management:
     endpoints:
         web:
             exposure:
-                include: health,info,prometheus,metrics
+                include: "*"  # 로컬 테스트용: 모든 엔드포인트 노출
             base-path: /actuator
     endpoint:
         health:

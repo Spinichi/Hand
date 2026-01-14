@@ -33,7 +33,9 @@ public class SecurityConfig {
                                 "/swagger-ui.html", "/swagger-ui/**",
                                 "/v3/api-docs", "/v3/api-docs/**",
                                 "/swagger-resources/**",
-                                "/actuator/**"
+                                "/actuator/**",
+                                "/diaries/**",  // 성능 테스트용 임시 비활성화
+                                "/admin/test/**"
                         ).permitAll()
                         // 나머지 모든 요청은 인증 필요
                         .anyRequest().authenticated())

@@ -5,6 +5,8 @@ import com.finger.hand_backend.diary.dto.*;
 import com.finger.hand_backend.diary.service.DiaryService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -75,7 +77,8 @@ public class DiaryController {
             Authentication authentication,
             @PathVariable Long sessionId
     ) {
-        Long userId = Long.valueOf(authentication.getName());
+        // 성능 테스트용: 인증 없으면 userId=1 사용
+        Long userId = (authentication != null) ? Long.valueOf(authentication.getName()) : 1L;
 
         DiaryCompleteResponse response = diaryService.completeDiary(userId, sessionId);
 

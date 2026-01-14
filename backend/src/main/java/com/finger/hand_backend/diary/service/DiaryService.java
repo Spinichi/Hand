@@ -13,6 +13,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -34,6 +35,10 @@ public class DiaryService {
     private final GmsClient gmsClient;
     private final EmotionAnalysisClient emotionAnalysisClient;
     private final DailyRiskScoreService riskScoreService;
+
+    // 트랜잭션 분리를 위한 별도 서비스
+    private final DiaryPhase1Service phase1Service;
+    private final DiaryPhase3Service phase3Service;
 
     /**
      * 다이어리 시작
@@ -184,72 +189,30 @@ public class DiaryService {
     }
 
     /**
-     * 다이어리 완료
+     * 다이어리 완료 (트랜잭션 분리 버전)
+     * Phase 1: 세션 조회 및 검증 (트랜잭션) - 별도 서비스
+     * Phase 2: 감정 분석 (트랜잭션 외부) - 현재 서비스
+     * Phase 3: 결과 저장 및 완료 (트랜잭션) - 별도 서비스
      */
-    @Transactional
+//    @Transactional
     public DiaryCompleteResponse completeDiary(Long userId, Long sessionId) {
-        // 1. 세션 조회
-        DiarySession session = sessionRepository.findById(sessionId)
-                .orElseThrow(() -> new IllegalArgumentException("세션을 찾을 수 없습니다"));
+        // Phase 1: 세션 조회 및 검증 (트랜잭션 내) - 별도 서비스로 프록시 호출
+        DiaryPhase1Service.Phase1Result phase1Result = phase1Service.validateAndLoadData(userId, sessionId);
 
-        if (!session.getUserId().equals(userId)) {
-            throw new IllegalArgumentException("권한이 없습니다");
-        }
+        // Phase 2: 감정 분석 (트랜잭션 외부 - 커넥션 해제 상태)
+        boolean isTxActive = TransactionSynchronizationManager.isActualTransactionActive();
+        log.info("⚪ Phase 2 시작 - TX Active: {} (예상: false)", isTxActive);
 
-        if (session.getStatus() == DiaryStatus.COMPLETED) {
-            throw new IllegalStateException("이미 완료된 다이어리입니다");
-        }
-
-        if (session.getQuestionCount() < 2) {
-            throw new IllegalStateException("최소 2개 이상의 질문에 답변해야 합니다");
-        }
-
-        // 2. MongoDB에서 대화 조회
-        DiaryConversation conversation = conversationRepository.findById(session.getMongodbDiaryId())
-                .orElseThrow(() -> new IllegalStateException("대화를 찾을 수 없습니다"));
-
-        // 3. 감정 분석 (FastAPI - 현재는 Mock)
         EmotionAnalysis analysis = emotionAnalysisClient.analyzeEmotion(
                 userId,
-                session.getSessionDate(),
-                conversation.getQuestions()
+                phase1Result.sessionDate,
+                phase1Result.conversation.getQuestions()
         );
 
-        // 4. 감정 분석 결과를 MongoDB에 저장
-        conversation.setEmotionAnalysisResult(analysis);
-        conversationRepository.save(conversation);
+        log.info("⚪ Phase 2 완료 - TX Active: {}", TransactionSynchronizationManager.isActualTransactionActive());
 
-        // 5. 세션 완료
-        session.complete();
-        sessionRepository.save(session);
-
-        // 6. daily_risk_scores 계산 및 저장 (내부 데이터)
-        riskScoreService.calculateAndSave(
-                userId,
-                session.getSessionDate(),
-                analysis.getDepressionScore()
-        );
-
-        log.info("다이어리 완료 - userId: {}, sessionId: {}, depressionScore: {}",
-                userId, sessionId, analysis.getDepressionScore());
-
-        // 7. 사용자에게는 감정 분석 결과와 요약 반환
-        return DiaryCompleteResponse.builder()
-                .sessionId(sessionId)
-                .emotions(EmotionScores.builder()
-                        .joy(analysis.getJoy())
-                        .embarrassment(analysis.getEmbarrassment())
-                        .anger(analysis.getAnger())
-                        .anxiety(analysis.getAnxiety())
-                        .hurt(analysis.getHurt())
-                        .sadness(analysis.getSadness())
-                        .build())
-                .depressionScore(analysis.getDepressionScore())
-                .shortSummary(analysis.getShortSummary())
-                .longSummary(analysis.getLongSummary())
-                .emotionalAdvice(analysis.getEmotionalAdvice())
-                .completedAt(session.getCompletedAt())
-                .build();
+        // Phase 3: 결과 저장 및 완료 (트랜잭션 내) - 별도 서비스로 프록시 호출
+        return phase3Service.saveResultAndComplete(userId, sessionId, phase1Result.conversation, analysis);
     }
 
     /**
