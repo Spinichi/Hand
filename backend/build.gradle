@@ -52,6 +52,8 @@ dependencies {
 
 	// Firebase Admin SDK (FCM)
 	implementation 'com.google.firebase:firebase-admin:9.7.0'
+
+	implementation 'net.logstash.logback:logstash-logback-encoder:7.4'
 }
 
 tasks.named('test') {
