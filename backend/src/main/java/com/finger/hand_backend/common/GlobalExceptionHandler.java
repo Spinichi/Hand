@@ -4,6 +4,7 @@ import com.finger.hand_backend.common.dto.ErrorResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -59,6 +60,18 @@ public class GlobalExceptionHandler {
         log.error("IllegalStateException: {}", ex.getMessage());
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(new ErrorResponse("INTERNAL_ERROR", ex.getMessage()));
+    }
+
+    /**
+     * 낙관적 락 충돌 처리
+     * - 동시 요청으로 인한 version 충돌
+     * - 이미 다른 요청이 완료 처리함 → 409 Conflict
+     */
+    @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
+    public ResponseEntity<ErrorResponse> handleOptimisticLock(ObjectOptimisticLockingFailureException ex) {
+        log.warn("🔒 낙관적 락 충돌: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(new ErrorResponse("ALREADY_COMPLETED", "이미 완료된 다이어리입니다"));
     }
 
     /**

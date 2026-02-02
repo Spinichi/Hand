@@ -2,6 +2,7 @@ package com.finger.hand_backend.diary.service;
 
 import com.finger.hand_backend.diary.entity.DiaryConversation;
 import com.finger.hand_backend.diary.entity.DiarySession;
+import com.finger.hand_backend.diary.entity.DiaryStatus;
 import com.finger.hand_backend.diary.repository.DiaryConversationRepository;
 import com.finger.hand_backend.diary.repository.DiarySessionRepository;
 import lombok.RequiredArgsConstructor;
@@ -55,10 +56,9 @@ public class DiaryPhase1Service {
             throw new IllegalArgumentException("권한이 없습니다");
         }
 
-        // 성능 테스트용: 중복 완료 검증 임시 비활성화
-        // if (session.getStatus() == DiaryStatus.COMPLETED) {
-        //     throw new IllegalStateException("이미 완료된 다이어리입니다");
-        // }
+        if (session.getStatus() == DiaryStatus.COMPLETED) {
+            throw new IllegalStateException("이미 완료된 다이어리입니다");
+        }
 
         if (session.getQuestionCount() < 2) {
             throw new IllegalStateException("최소 2개 이상의 질문에 답변해야 합니다");

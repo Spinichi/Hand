@@ -79,6 +79,15 @@ public class DiarySession {
     private LocalDateTime completedAt;
 
     /**
+     * 낙관적 락 (Optimistic Lock)
+     * - 동시 수정 시 ObjectOptimisticLockingFailureException 발생
+     * - Race condition 방지
+     */
+    @Version
+    @Column(name = "version")
+    private Long version;
+
+    /**
      * 질문 수 증가
      */
     public void incrementQuestionCount() {

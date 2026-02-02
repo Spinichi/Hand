@@ -38,6 +38,9 @@ public class EmotionAnalysisClient {
     @Value("${emotion.api.url}")
     private String emotionApiUrl;
 
+    @Value("${emotion.test.delay-ms:0}")
+    private long testDelayMs;
+
     /**
      * 감정 분석
      * FastAPI 서버(/ai/diary/summary)로 대화 내용 전송 후 감정 분석 결과 수신
@@ -49,6 +52,17 @@ public class EmotionAnalysisClient {
     public EmotionAnalysis analyzeEmotion(Long userId, LocalDate date, List<QuestionAnswer> conversationHistory) {
         log.info("EmotionAnalysis: Analyzing for user {} on {} (conversation size: {})",
                 userId, date, conversationHistory.size());
+
+        // race condition 테스트용 의도적 지연 (emotion.test.delay-ms > 0일 때만 활성화)
+        if (testDelayMs > 0) {
+            log.info("⏳ [TEST] EmotionAnalysis 의도적 지연 시작: {}ms", testDelayMs);
+            try {
+                Thread.sleep(testDelayMs);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            log.info("⏳ [TEST] EmotionAnalysis 의도적 지연 종료");
+        }
 
         try {
             // 답변들만 추출하여 텍스트 배열 생성
